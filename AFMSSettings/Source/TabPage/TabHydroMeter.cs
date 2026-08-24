@@ -107,7 +107,7 @@ namespace AFMSSettings
             AFMSDataGridViewButtonColumn column = new AFMSDataGridViewButtonColumn();
             column.Name = COL_TRANSECT_SETTING;
             column.HeaderText = COL_TRANSECT_SETTING;
-            column.Text = "측선입력 ";
+            column.Text = "측선입력";
             column.BackColor = DllColorHelper.HexToColor("#02925D");
             column.HoverBackColor = DllColorHelper.HexToColor("#027F51");
             column.PressedBackColor = DllColorHelper.HexToColor("#026D46");

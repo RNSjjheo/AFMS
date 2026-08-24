@@ -219,7 +219,9 @@ namespace AFMSSettings
         private string SaveTransect(List<double> distances)
         {
             DateTime now = DateTime.Now;
-            string json = JsonSerializer.Serialize(distances);
+            List<object> transects = new List<object>(distances.Count);
+            for (int i = 0; i < distances.Count; i++) transects.Add(new { no = i + 1, distance = distances[i] });
+            string json = JsonSerializer.Serialize(transects);
 
             QueryBuilderInsert query = new QueryBuilderInsert();
             query.Table = FbtAFMSHydroTransect.TABLE_NAME;
