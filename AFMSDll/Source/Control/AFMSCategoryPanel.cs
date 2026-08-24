@@ -49,8 +49,7 @@ namespace AFMSDll
                 GrowStyle = TableLayoutPanelGrowStyle.AddRows
             };
 
-            _contentLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 45F));
-            _contentLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 55F));
+            SetTableItem(1, 1);
 
             Controls.Add(_contentLayout);
             Controls.Add(_categoryLabel);
@@ -184,6 +183,28 @@ namespace AFMSDll
             _contentLayout.SetBounds(1, contentTop, Math.Max(0, ClientSize.Width - 2), contentHeight);
 
             _categoryLabel.BringToFront();
+        }
+
+        public void SetTableItem(int col, int row)
+        {
+            if (col < 1) col = 1;
+            if (row < 1) row = 1;
+
+            _contentLayout.RowStyles.Clear();
+            _contentLayout.ColumnStyles.Clear();
+
+            _contentLayout.RowCount = row;
+            _contentLayout.ColumnCount = col;
+
+            for (int i = 0; i < row; i++)
+            {
+                _contentLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F / row));
+            }
+
+            for (int i = 0; i < col; i++)
+            {
+                _contentLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F / row));
+            }
         }
     }
 }

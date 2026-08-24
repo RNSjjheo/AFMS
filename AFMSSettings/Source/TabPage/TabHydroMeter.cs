@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace AFMSSettings
 {
@@ -14,10 +15,26 @@ namespace AFMSSettings
         private const string COL_DEV_CONFIG = "연결정보";
         private const string COL_TRANSECT_CNT = "측선수";
         private const string COL_TRANSECT_SETTING = "측선설정";
+        private const string COL_DISTANCE_DATAS = FbtAFMSHydroTransect.COL_DISTANCE_DATAS;
+
+        private sealed class TransectJsonData
+        {
+            [JsonPropertyName("transects")]
+            public List<TransectJsonItem> Transects { get; set; } = new List<TransectJsonItem>();
+        }
+
+        private sealed class TransectJsonItem
+        {
+            [JsonPropertyName("no")]
+            public int No { get; set; }
+
+            [JsonPropertyName("distance")]
+            public double Distance { get; set; }
+        }
 
         private TableLayoutPanel uiTpRigth;
         private AFMSGuidePanel uiGuide;
-        private AFMSCategoryPanel uiPnDetail;
+        private AFMSSectionPanel uiPnDetail;
         private AFMSDataGridView uiGridDetail;
         private AFMSButton uiBtnAdd;
 
@@ -72,17 +89,24 @@ namespace AFMSSettings
             uiGridDetail.AFMSRowHeight = 54;
             uiGridDetail.BorderRadius = 8;
             uiGridDetail.DataBindingComplete += BindingDetailComplete;
+            uiGridDetail.Margin = Padding.Empty;
 
-            uiPnDetail = new AFMSCategoryPanel();
-            uiPnDetail.CategoryText = "측선 정보 상세";
+            uiPnDetail = new AFMSSectionPanel();
+            uiPnDetail.HeaderText = "측선 정보 상세";
+            uiPnDetail.HeaderLabel.TextAlign = ContentAlignment.MiddleRight;
+            uiPnDetail.HeaderBarPosition = AFMSHeaderBarPosition.Right;
             uiPnDetail.Dock = DockStyle.Fill;
             uiPnDetail.HeaderBackColor = DllColorHelper.HexToColor("#F5F8F6");
-            uiPnDetail.HeaderForeColor = DllColorHelper.HexToColor("#244B37");
+            uiPnDetail.HeaderLineColor = DllColorHelper.HexToColor("#244B37");
             uiPnDetail.BorderRadius = 8;
-            uiPnDetail.Padding = new Padding(10);
-            uiPnDetail.Margin = Padding.Empty;
-
-            uiPnDetail.Controls.Add(uiGridDetail);
+            uiPnDetail.Padding = Padding.Empty;
+            uiPnDetail.Margin = new Padding(50, 0, 0, 0);
+            uiPnDetail.HeaderHorizontalPadding = 0;
+            uiPnDetail.HeaderLineThickness = 0F;
+            uiPnDetail.ContentLayout.Margin = Padding.Empty;
+            uiPnDetail.ContentLayout.Padding = new Padding(0, 0, 0, 0);
+            //uiPnDetail.SetTableItem(1,1);
+            uiPnDetail.ContentLayout.Controls.Add(uiGridDetail);
             uiTpRigth.Controls.Add(uiPnDetail, 0, 0);
 
             CtlMain = uiGridMain;
@@ -97,6 +121,7 @@ namespace AFMSSettings
         protected override void BindingComplete(object? sender, DataGridViewBindingCompleteEventArgs e)
         {
             if (uiGridMain.Columns.Contains(COL_HYDRO_ID)) uiGridMain.Columns[COL_HYDRO_ID].Visible = false;
+            if (uiGridMain.Columns.Contains(COL_DISTANCE_DATAS)) uiGridMain.Columns[COL_DISTANCE_DATAS].Visible = false;
             SetupTransectInputColumn();
         }
 
@@ -144,7 +169,21 @@ namespace AFMSSettings
             using FormTransectInput form = new FormTransectInput(hydroId, transectCount);
             if (form.ShowDialog(FindForm()) != DialogResult.OK) return;
 
-            ShowDetail(row);
+            LoadHydroMeterList();
+            SelectHydroMeter(hydroId);
+        }
+
+        private void SelectHydroMeter(int hydroId)
+        {
+            foreach (DataGridViewRow gridRow in uiGridMain.Rows)
+            {
+                if (gridRow.DataBoundItem is not DataRowView rowView || Convert.ToInt32(rowView.Row[COL_HYDRO_ID]) != hydroId) continue;
+
+                uiGridMain.CurrentCell = gridRow.Cells[COL_DEV_TYPE];
+                return;
+            }
+
+            ClearDetail();
         }
 
         protected void BindingDetailComplete(object? sender, DataGridViewBindingCompleteEventArgs e)
@@ -169,28 +208,13 @@ namespace AFMSSettings
 
         private void ShowDetail(DataRow row)
         {
-            if (!row.Table.Columns.Contains(COL_HYDRO_ID) || row[COL_HYDRO_ID] == DBNull.Value)
+            if (!row.Table.Columns.Contains(COL_DISTANCE_DATAS) || row[COL_DISTANCE_DATAS] == DBNull.Value)
             {
                 ClearDetail();
                 return;
             }
 
-            int hydroId = Convert.ToInt32(row[COL_HYDRO_ID]);
-            string sql = $"SELECT FIRST 1 {FbtAFMSHydroTransect.COL_DISTANCE_DATAS}";
-            sql += "\n" + $"FROM {FbtAFMSHydroTransect.TABLE_NAME}";
-            sql += "\n" + $"WHERE {FbtAFMSHydroTransect.COL_HYDRO_ID} = {hydroId}";
-            sql += "\n" + $"ORDER BY {FbtAFMSHydroTransect.COL_ID} DESC";
-
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
-            db.RunQuery(sql);
-
-            if (db.Results.Rows.Count == 0)
-            {
-                ClearDetail();
-                return;
-            }
-
-            string json = Convert.ToString(db.Results.Rows[0][FbtAFMSHydroTransect.COL_DISTANCE_DATAS])?.Trim() ?? "";
+            string json = Convert.ToString(row[COL_DISTANCE_DATAS])?.Trim() ?? "";
             if (string.IsNullOrEmpty(json))
             {
                 ClearDetail();
@@ -199,15 +223,15 @@ namespace AFMSSettings
 
             try
             {
-                List<double>? distances = JsonSerializer.Deserialize<List<double>>(json);
-                if (distances == null || distances.Count == 0)
+                TransectJsonData? transectData = JsonSerializer.Deserialize<TransectJsonData>(json);
+                if (transectData == null || transectData.Transects.Count == 0)
                 {
                     ClearDetail();
                     return;
                 }
 
                 DataTable table = CreateTransectDetailTable();
-                for (int i = 0; i < distances.Count; i++) table.Rows.Add(i + 1, distances[i]);
+                foreach (TransectJsonItem transect in transectData.Transects) table.Rows.Add(transect.No, transect.Distance);
                 uiGridDetail.DataSource = table;
             }
             catch (JsonException)
@@ -269,6 +293,14 @@ namespace AFMSSettings
             query.AsAlias(FbtAFMSHydroMeter.COL_DEVICE_NAME, COL_DEV_TYPE);
             query.AsAlias(FbtAFMSHydroMeter.COL_COMM_CONFIG, COL_DEV_CONFIG);
             query.AsAlias(FbtAFMSHydroMeter.COL_TRANSECT_CNT, COL_TRANSECT_CNT);
+            query.AsAliasB(FbtAFMSHydroTransect.COL_DISTANCE_DATAS, COL_DISTANCE_DATAS);
+            query.LeftJoinB.Table = FbtAFMSHydroTransect.TABLE_NAME;
+            query.LeftJoinB.Add(FbtAFMSHydroTransect.COL_HYDRO_ID, "=", FbtAFMSHydroMeter.COL_ID);
+            query.LeftJoinB.AddRaw(
+                $"B.{FbtAFMSHydroTransect.COL_ID} = (" +
+                $"SELECT MAX(B2.{FbtAFMSHydroTransect.COL_ID}) " +
+                $"FROM {FbtAFMSHydroTransect.TABLE_NAME} B2 " +
+                $"WHERE B2.{FbtAFMSHydroTransect.COL_HYDRO_ID} = A.{FbtAFMSHydroMeter.COL_ID})");
             query.OrderBy(FbtAFMSHydroMeter.COL_AFMS_ONLY);
 
             using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
