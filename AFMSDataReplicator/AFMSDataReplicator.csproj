@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-AFMSDataReplicator-f0907abf-74bd-4e7c-8b79-168735a4d6d6</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.10" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AFMSDll\AFMSDll.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="RnsLibrary">
+      <HintPath>..\Dll\RnsLibrary.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>

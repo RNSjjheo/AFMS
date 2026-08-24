@@ -1,0 +1,9 @@
+<Solution>
+  <Project Path="AFMSDataReplicator/AFMSDataReplicator.csproj" Id="78dd5ee5-3e8a-47a7-959c-0f50c9e9dc60" />
+  <Project Path="AFMSDataViewer/AFMSDataViewer.csproj" Id="eb536a4e-0709-4dcb-8316-7aa3f6193ec0" />
+  <Project Path="AFMSDischargeService/AFMSDischargeService.csproj" Id="ce0e8176-ee81-4bd7-aeb9-622203c88ed8" />
+  <Project Path="AFMSDll/AFMSDll.csproj" Id="ed432cb2-91fc-469e-8287-c6d0bff9314f" />
+  <Project Path="AFMSExtraLogger/AFMSExtraLogger.csproj" />
+  <Project Path="AFMSExtraMonitor/AFMSExtraMonitor.csproj" Id="53a03e51-a16c-4532-9ce5-6c5082898317" />
+  <Project Path="AFMSSettings/AFMSSettings.csproj" Id="34d74f86-1d69-458f-9c45-66910c91b626" />
+</Solution>

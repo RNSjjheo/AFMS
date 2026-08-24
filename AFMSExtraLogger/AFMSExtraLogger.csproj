@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+	  <Version>0.9.0.1</Version>
+	  <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-AFMSExtraLogger-d39c4494-eeb7-460a-9f24-9bcc74802029</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FirebirdSql.Data.FirebirdClient" Version="10.3.4" />
+    <PackageReference Include="log4net" Version="3.3.2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" Version="10.0.10" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="System.IO.Ports" Version="10.0.10" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AFMSDll\AFMSDll.csproj" />
+    <ProjectReference Include="..\AFMSExtraMonitor\AFMSExtraMonitor.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="RnsLibrary">
+      <HintPath>..\Dll\RnsLibrary.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+</Project>

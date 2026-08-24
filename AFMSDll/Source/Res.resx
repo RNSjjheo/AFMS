@@ -1,0 +1,166 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:import namespace="http://www.w3.org/XML/1998/namespace" />
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="metadata">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" use="required" type="xsd:string" />
+              <xsd:attribute name="type" type="xsd:string" />
+              <xsd:attribute name="mimetype" type="xsd:string" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="assembly">
+            <xsd:complexType>
+              <xsd:attribute name="alias" type="xsd:string" />
+              <xsd:attribute name="name" type="xsd:string" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+                <xsd:element name="comment" type="xsd:string" minOccurs="0" msdata:Ordinal="2" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" msdata:Ordinal="1" />
+              <xsd:attribute name="type" type="xsd:string" msdata:Ordinal="3" />
+              <xsd:attribute name="mimetype" type="xsd:string" msdata:Ordinal="4" />
+              <xsd:attribute ref="xml:space" />
+            </xsd:complexType>
+          </xsd:element>
+          <xsd:element name="resheader">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="1" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="icon_arrow_down" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_arrow_down.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_arrow_left" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_arrow_left.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_arrow_right" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_arrow_right.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_calender" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_calender.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_export" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_export.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_flowRate" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_flowRate.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_flowRate_select" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_flowRate_select.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_flowVelocity" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_flowVelocity.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_flowVelocity_select" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_flowVelocity_select.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_layout11_off" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_layout11_off.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_layout11_on" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_layout11_on.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_layout12_off" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_layout12_off.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_layout12_on" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_layout12_on.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_layout21_off" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_layout21_off.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_layout21_on" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_layout21_on.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_layout22_off" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_layout22_off.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_layout22_on" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_layout22_on.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_measure_off" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_measure_off.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_measure_on" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_measure_on.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_search_off" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_search_off.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_search_on" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_search_on.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_setting" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_setting.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_titlebar_close" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_titlebar_close.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_titlebar_close_w" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_titlebar_close_w.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_titlebar_max" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_titlebar_max.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_titlebar_max_w" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_titlebar_max_w.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_titlebar_min_w" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_titlebar_min_w.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_vth" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_vth.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_vth_select" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_vth_select.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_waterLevel" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_waterLevel.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="icon_waterLevel_select" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\icon_waterLevel_select.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="toggle_off" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\toggle_off.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="toggle_off_w" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\toggle_off_w.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="toggle_on" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\toggle_on.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+  <data name="toggle_on_w" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\toggle_on_w.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
+</root>
