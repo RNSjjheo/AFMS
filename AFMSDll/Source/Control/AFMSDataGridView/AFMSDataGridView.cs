@@ -49,6 +49,7 @@ namespace AFMSDll
 
         private readonly Dictionary<int, AFMSCheckBoxColumnSetting> _checkBoxColumns = new Dictionary<int, AFMSCheckBoxColumnSetting>();
         private readonly Dictionary<string, AFMSCheckBox> _checkBoxControls = new Dictionary<string, AFMSCheckBox>();
+        private readonly Dictionary<string, bool> _checkBoxCellVisibility = new Dictionary<string, bool>();
         private readonly List<AFMSMergedHeaderSetting> _mergedHeaders = new List<AFMSMergedHeaderSetting>();
         private bool _syncingCheckBox;
         private bool _adjustingScrollBars;
@@ -506,6 +507,29 @@ namespace AFMSDll
             return checkBox;
         }
 
+        public void SetAFMSCheckBoxVisible(int rowIndex, string columnName, bool visible)
+        {
+            if (string.IsNullOrWhiteSpace(columnName) || !Columns.Contains(columnName)) return;
+            SetAFMSCheckBoxVisible(rowIndex, Columns[columnName].Index, visible);
+        }
+
+        public void SetAFMSCheckBoxVisible(int rowIndex, int columnIndex, bool visible)
+        {
+            if (rowIndex < 0 || rowIndex >= Rows.Count || !_checkBoxColumns.ContainsKey(columnIndex)) return;
+
+            string key = GetCheckBoxKey(rowIndex, columnIndex);
+            _checkBoxCellVisibility[key] = visible;
+
+            if (_checkBoxControls.TryGetValue(key, out AFMSCheckBox checkBox)) checkBox.Visible = visible;
+            UpdateAFMSCheckBoxBounds();
+        }
+
+        public void ClearAFMSCheckBoxCellVisibility()
+        {
+            _checkBoxCellVisibility.Clear();
+            UpdateAFMSCheckBoxBounds();
+        }
+
         private void CreateAFMSCheckBoxes()
         {
             if (!IsHandleCreated && Rows.Count == 0) return;
@@ -583,6 +607,12 @@ namespace AFMSDll
                 }
 
                 if (!_checkBoxColumns.TryGetValue(cell.X, out AFMSCheckBoxColumnSetting setting) || !Columns[cell.X].Visible || !Rows[cell.Y].Visible)
+                {
+                    checkBox.Visible = false;
+                    continue;
+                }
+
+                if (_checkBoxCellVisibility.TryGetValue(pair.Key, out bool cellVisible) && !cellVisible)
                 {
                     checkBox.Visible = false;
                     continue;
