@@ -1,10 +1,9 @@
-using AFMSSettings.Source.Form.Discharge;
 using System;
 using System.ComponentModel;
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace AFMSSettings
+namespace AFMSSettings.Source.Form.Discharge
 {
     public sealed class FormDischargeRatingCurve : _FormDischargeBase
     {

@@ -1,4 +1,5 @@
 using AFMSDll;
+using AFMSSettings.Source.Form.Discharge;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -23,7 +24,6 @@ namespace AFMSSettings
         {
             public int Id { get; set; } = -1;
             public int DisVer { get; set; }
-            public string CurveName { get; set; } = string.Empty;
             public List<RatingCurveCoefficient> Coefficients { get; set; } = new();
         }
 
@@ -51,7 +51,6 @@ namespace AFMSSettings
             SetColumnVisible(grid, FbtAFMSDiscAttrRatingCurve.COL_DIS_VER, false);
             SetColumnVisible(grid, FbtAFMSDiscAttrRatingCurve.COL_DIS_ATTR, false);
             SetColumnStyle(grid, COL_NO, "No.", 14F);
-            SetColumnStyle(grid, FbtAFMSDiscAttrRatingCurve.COL_CURVE_NAME, "곡선명", 42F);
             SetColumnStyle(grid, FbtAFMSDiscAttrRatingCurve.COL_COEFF_COUNT, "구간수", 18F);
             SetColumnStyle(grid, _FBTableBase.COL_MEASURE_DATE, "등록일", 26F);
             grid.ClearSelection();
@@ -75,7 +74,6 @@ namespace AFMSSettings
             query.Table = FbtAFMSDiscAttrRatingCurve.TABLE_NAME;
             query.Add(FbtAFMSDiscAttrRatingCurve.COL_ID);
             query.Add(FbtAFMSDiscAttrRatingCurve.COL_DIS_VER);
-            query.Add(FbtAFMSDiscAttrRatingCurve.COL_CURVE_NAME);
             query.Add(FbtAFMSDiscAttrRatingCurve.COL_COEFF_COUNT);
             query.Add(FbtAFMSDiscAttrRatingCurve.COL_DIS_ATTR);
             query.Add(_FBTableBase.COL_MEASURE_DATE);
@@ -101,7 +99,6 @@ namespace AFMSSettings
         {
             if (uiGridMain.CurrentRow?.DataBoundItem is not DataRowView rowView) return;
             DataRow row = rowView.Row;
-            _uiCurveName.Text = Convert.ToString(row[FbtAFMSDiscAttrRatingCurve.COL_CURVE_NAME]) ?? string.Empty;
             _uiGridDetail.Rows.Clear();
             string json = Convert.ToString(row[FbtAFMSDiscAttrRatingCurve.COL_DIS_ATTR]) ?? string.Empty;
             if (string.IsNullOrWhiteSpace(json)) return;
@@ -132,7 +129,6 @@ namespace AFMSSettings
             query.Value(_FBTableBase.COL_MEASURE_DATE, now.ToString("yyyyMMdd"));
             query.Value(_FBTableBase.COL_MEASURE_TIME, now.ToString("HHmmss"));
             query.Value(FbtAFMSDiscAttrRatingCurve.COL_DIS_VER, config.DisVer);
-            query.Value(FbtAFMSDiscAttrRatingCurve.COL_CURVE_NAME, config.CurveName);
             query.Value(FbtAFMSDiscAttrRatingCurve.COL_COEFF_COUNT, config.Coefficients.Count);
             query.Value(FbtAFMSDiscAttrRatingCurve.COL_DIS_ATTR, JsonSerializer.Serialize(config.Coefficients));
             using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
