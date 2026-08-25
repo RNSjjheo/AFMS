@@ -2,9 +2,28 @@ namespace AFMSDll
 {
     public sealed class DischargeRating : DischargeBase
     {
+        public const string VER1_ATTR_MAX_H = "max h";
+        public const string VER1_ATTR_NODE1 = "a";
+        public const string VER1_ATTR_NODE2 = "b";
+        public const string VER1_ATTR_NODE3 = "c";
+
         public DischargeRating()
             : base(DischargeMethod.RatingCurve)
         {
+        }
+
+        public static AFMSMathLabel GetExample(DiscVerSurfaceVelo version)
+        {
+            AFMSMathLabel item = new AFMSMathLabel();
+            item.ClearMath();
+            item.Add("Q = ");
+            item.Add(VER1_ATTR_NODE1);
+            item.Add(" × (h - ");
+            item.Add(VER1_ATTR_NODE2);
+            item.Add(")");
+            item.Add(VER1_ATTR_NODE3, AFMSMathTextType.Superscript);
+
+            return item;
         }
     }
 }

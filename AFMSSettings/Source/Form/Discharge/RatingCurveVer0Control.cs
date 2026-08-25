@@ -22,43 +22,29 @@ namespace AFMSSettings.Source.Form.Discharge
             main.Dock = DockStyle.Fill;
             main.Margin = Padding.Empty;
             main.ColumnCount = 1;
-            main.RowCount = 5;
+            main.RowCount = 3;
             main.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            main.RowStyles.Add(new RowStyle(SizeType.Absolute, 58F));
-            main.RowStyles.Add(new RowStyle(SizeType.Absolute, 72F));
-            main.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));
+            main.RowStyles.Add(new RowStyle(SizeType.Absolute, 100F));
             main.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             main.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F));
             Controls.Add(main);
 
-            TableLayoutPanel nameLayout = new TableLayoutPanel();
-            nameLayout.Dock = DockStyle.Fill;
-            nameLayout.ColumnCount = 2;
-            nameLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 90F));
-            nameLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-
-            Label formula = CreateLabel("Q = a(h − h₀)ᵇ");
-
-            formula.Font = new Font("Cambria Math", 17F, FontStyle.Italic);
-
-            Label guide = CreateLabel("ⓘ  적용 수위의 최댓값이 작은 구간부터 순서대로 입력해주세요.");
-            guide.TextAlign = ContentAlignment.MiddleLeft;
-            guide.ForeColor = DllColorHelper.HexToColor("#667085");
+            AFMSMathLabel formula = DischargeRating.GetExample(DiscVerSurfaceVelo.Ver00);
+            formula.Dock = DockStyle.Fill;
+            formula.TextAlign = ContentAlignment.MiddleCenter;
 
             _uiGrid = CreateGrid();
             _uiGrid.CellDoubleClick += UiGrid_CellDoubleClick;
             SetupGridColumns();
 
             _uiMaxWaterLevel = CreateNumberBox("최대 수위");
-            _uiA = CreateNumberBox("a");
-            _uiB = CreateNumberBox("b");
-            _uiH0 = CreateNumberBox("h₀");
+            _uiA = CreateNumberBox(DischargeRating.VER1_ATTR_NODE1);
+            _uiB = CreateNumberBox(DischargeRating.VER1_ATTR_NODE2);
+            _uiH0 = CreateNumberBox(DischargeRating.VER1_ATTR_NODE3);
 
-            main.Controls.Add(nameLayout, 0, 0);
-            main.Controls.Add(formula, 0, 1);
-            main.Controls.Add(guide, 0, 2);
-            main.Controls.Add(_uiGrid, 0, 3);
-            main.Controls.Add(CreateInputPanel(), 0, 4);
+            main.Controls.Add(formula, 0, 0);
+            main.Controls.Add(_uiGrid, 0, 1);
+            main.Controls.Add(CreateInputPanel(), 0, 2);
         }
 
         public DiscVerRatingCurve Version => DiscVerRatingCurve.Ver00;
@@ -79,10 +65,10 @@ namespace AFMSSettings.Source.Form.Discharge
             {
                 config.Coefficients.Add(new TabDiscRatingCurve.RatingCurveCoefficient
                 {
-                    MaxWaterLevel = Convert.ToDouble(row.Cells["MAX_H"].Value),
-                    A = Convert.ToDouble(row.Cells["A"].Value),
-                    B = Convert.ToDouble(row.Cells["B"].Value),
-                    H0 = Convert.ToDouble(row.Cells["H0"].Value)
+                    MaxWaterLevel = Convert.ToDouble(row.Cells[DischargeRating.VER1_ATTR_MAX_H].Value),
+                    A = Convert.ToDouble(row.Cells[DischargeRating.VER1_ATTR_NODE1].Value),
+                    B = Convert.ToDouble(row.Cells[DischargeRating.VER1_ATTR_NODE2].Value),
+                    H0 = Convert.ToDouble(row.Cells[DischargeRating.VER1_ATTR_NODE3].Value)
                 });
             }
             return true;
