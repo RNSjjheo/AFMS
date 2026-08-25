@@ -136,13 +136,94 @@ namespace AFMSSettings
             _TransectSettings.Clear();
             _HasRatingCurveConfig = false;
 
-            LoadConfiguredHydroIds(db, FbtAFMSDiscAttrSurfaceVelo.TABLE_NAME, FbtAFMSDiscAttrSurfaceVelo.COL_HYDRO_ID, _SurfaceConfiguredHydroIds);
+            LoadConfiguredSurfaceHydroIds(db);
             LoadConfiguredHydroIds(db, FbtAFMSDiscAttrMidSection.TABLE_NAME, FbtAFMSDiscAttrMidSection.COL_HYDRO_ID, _MidSectionConfiguredHydroIds);
             LoadLatestTransectSettings(db);
 
             string ratingSql = $"SELECT FIRST 1 {FbtAFMSDiscAttrRatingCurve.COL_ID} FROM {FbtAFMSDiscAttrRatingCurve.TABLE_NAME}";
             DataTable ratingTable = db.Execute(ratingSql, out string ratingError);
             _HasRatingCurveConfig = string.IsNullOrEmpty(ratingError) && ratingTable.Rows.Count > 0;
+        }
+
+        private void LoadConfiguredSurfaceHydroIds(FBDatabase db)
+        {
+            QueryBuilderSelect query = new QueryBuilderSelect();
+            query.Table = FbtAFMSDiscAttrSurfaceVelo.TABLE_NAME;
+            query.Add(FbtAFMSDiscAttrSurfaceVelo.COL_DIS_VER);
+            query.Add(FbtAFMSDiscAttrSurfaceVelo.COL_HYDRO_ID);
+            query.Add(FbtAFMSDiscAttrSurfaceVelo.COL_CELL_RANGE_MIN);
+            query.Add(FbtAFMSDiscAttrSurfaceVelo.COL_CELL_RANGE_MAX);
+            query.Add(FbtAFMSDiscAttrSurfaceVelo.COL_UCERT_V_ST);
+            query.Add(FbtAFMSDiscAttrSurfaceVelo.COL_UCERT_V_INDEX);
+            query.Add(FbtAFMSDiscAttrSurfaceVelo.COL_COEFF_COUNT);
+            query.Add(FbtAFMSDiscAttrSurfaceVelo.COL_DIS_ATTR);
+            query.WhereRaw(
+                $"A.{FbtAFMSDiscAttrSurfaceVelo.COL_ID} = (" +
+                $"SELECT MAX(B.{FbtAFMSDiscAttrSurfaceVelo.COL_ID}) FROM {FbtAFMSDiscAttrSurfaceVelo.TABLE_NAME} B " +
+                $"WHERE B.{FbtAFMSDiscAttrSurfaceVelo.COL_HYDRO_ID} = A.{FbtAFMSDiscAttrSurfaceVelo.COL_HYDRO_ID})");
+
+            DataTable table = db.Execute(query, out string error);
+            if (!string.IsNullOrEmpty(error)) return;
+
+            foreach (DataRow row in table.Rows)
+            {
+                if (!IsValidSurfaceConfig(row)) continue;
+                _SurfaceConfiguredHydroIds.Add(Convert.ToInt32(row[FbtAFMSDiscAttrSurfaceVelo.COL_HYDRO_ID]));
+            }
+        }
+
+        private static bool IsValidSurfaceConfig(DataRow row)
+        {
+            try
+            {
+                if (row[FbtAFMSDiscAttrSurfaceVelo.COL_DIS_VER] == DBNull.Value ||
+                    row[FbtAFMSDiscAttrSurfaceVelo.COL_HYDRO_ID] == DBNull.Value ||
+                    row[FbtAFMSDiscAttrSurfaceVelo.COL_CELL_RANGE_MIN] == DBNull.Value ||
+                    row[FbtAFMSDiscAttrSurfaceVelo.COL_CELL_RANGE_MAX] == DBNull.Value ||
+                    row[FbtAFMSDiscAttrSurfaceVelo.COL_UCERT_V_ST] == DBNull.Value ||
+                    row[FbtAFMSDiscAttrSurfaceVelo.COL_UCERT_V_INDEX] == DBNull.Value ||
+                    row[FbtAFMSDiscAttrSurfaceVelo.COL_COEFF_COUNT] == DBNull.Value ||
+                    row[FbtAFMSDiscAttrSurfaceVelo.COL_DIS_ATTR] == DBNull.Value) return false;
+
+                int version = Convert.ToInt32(row[FbtAFMSDiscAttrSurfaceVelo.COL_DIS_VER]);
+                int cellMin = Convert.ToInt32(row[FbtAFMSDiscAttrSurfaceVelo.COL_CELL_RANGE_MIN]);
+                int cellMax = Convert.ToInt32(row[FbtAFMSDiscAttrSurfaceVelo.COL_CELL_RANGE_MAX]);
+                int coefficientCount = Convert.ToInt32(row[FbtAFMSDiscAttrSurfaceVelo.COL_COEFF_COUNT]);
+                double uncertaintyVst = Convert.ToDouble(row[FbtAFMSDiscAttrSurfaceVelo.COL_UCERT_V_ST]);
+                double uncertaintyVindex = Convert.ToDouble(row[FbtAFMSDiscAttrSurfaceVelo.COL_UCERT_V_INDEX]);
+
+                if (!Enum.IsDefined(typeof(DiscVerSurfaceVelo), version) || cellMin < 1 || cellMax < cellMin ||
+                    coefficientCount < 1 || !double.IsFinite(uncertaintyVst) || !double.IsFinite(uncertaintyVindex)) return false;
+
+                string attributes = Convert.ToString(row[FbtAFMSDiscAttrSurfaceVelo.COL_DIS_ATTR])?.Trim() ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(attributes)) return false;
+
+                using JsonDocument document = JsonDocument.Parse(attributes);
+                JsonElement coefficients = document.RootElement;
+
+                if (coefficients.ValueKind != JsonValueKind.Array || coefficients.GetArrayLength() != coefficientCount) return false;
+
+                foreach (JsonElement coefficient in coefficients.EnumerateArray())
+                {
+                    if (coefficient.ValueKind != JsonValueKind.Object ||
+                        !TryGetFiniteDouble(coefficient, DischargeSurface.VER1_ATTR_NODE1) ||
+                        !TryGetFiniteDouble(coefficient, DischargeSurface.VER1_ATTR_NODE2) ||
+                        !TryGetFiniteDouble(coefficient, DischargeSurface.VER1_ATTR_NODE3)) return false;
+                }
+
+                return true;
+            }
+            catch (Exception ex) when (ex is JsonException || ex is InvalidCastException || ex is FormatException ||
+                                       ex is OverflowException || ex is InvalidOperationException)
+            {
+                return false;
+            }
+        }
+
+        private static bool TryGetFiniteDouble(JsonElement item, string propertyName)
+        {
+            return item.TryGetProperty(propertyName, out JsonElement value) &&
+                   value.TryGetDouble(out double number) && double.IsFinite(number);
         }
 
         private static void LoadConfiguredHydroIds(FBDatabase db, string tableName, string hydroIdColumn, HashSet<int> target)
@@ -158,14 +239,17 @@ namespace AFMSSettings
 
         private void LoadLatestTransectSettings(FBDatabase db)
         {
-            string sql =
-                $"SELECT A.{FbtAFMSHydroTransect.COL_HYDRO_ID}, A.{FbtAFMSHydroTransect.COL_TRANSECT_COUNT}, A.{FbtAFMSHydroTransect.COL_DISTANCE_DATAS} " +
-                $"FROM {FbtAFMSHydroTransect.TABLE_NAME} A " +
-                $"WHERE A.{FbtAFMSHydroTransect.COL_ID} = (" +
+            QueryBuilderSelect query = new QueryBuilderSelect();
+            query.Table = FbtAFMSHydroTransect.TABLE_NAME;
+            query.Add(FbtAFMSHydroTransect.COL_HYDRO_ID);
+            query.Add(FbtAFMSHydroTransect.COL_TRANSECT_COUNT);
+            query.Add(FbtAFMSHydroTransect.COL_DISTANCE_DATAS);
+            query.WhereRaw(
+                $"A.{FbtAFMSHydroTransect.COL_ID} = (" +
                 $"SELECT MAX(B.{FbtAFMSHydroTransect.COL_ID}) FROM {FbtAFMSHydroTransect.TABLE_NAME} B " +
-                $"WHERE B.{FbtAFMSHydroTransect.COL_HYDRO_ID} = A.{FbtAFMSHydroTransect.COL_HYDRO_ID})";
+                $"WHERE B.{FbtAFMSHydroTransect.COL_HYDRO_ID} = A.{FbtAFMSHydroTransect.COL_HYDRO_ID})");
 
-            DataTable table = db.Execute(sql, out string error);
+            DataTable table = db.Execute(query, out string error);
             if (!string.IsNullOrEmpty(error)) return;
 
             foreach (DataRow row in table.Rows)
