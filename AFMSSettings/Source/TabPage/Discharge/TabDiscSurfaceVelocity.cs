@@ -34,7 +34,7 @@ namespace AFMSSettings
 
         private int _hydroId = -1;
 
-        private AFMSCategoryPanel uiPanelDetail;
+        private AFMSSectionPanel uiPanelDetail;
         private AFMSDataGridView uiGridCoefficient;
         private Panel uiPanelExample;
 
@@ -365,14 +365,14 @@ namespace AFMSSettings
             uiGridCoefficient.Rows.Clear();
         }
 
-        private static AFMSCategoryPanel CreateCategoryPanel(string title)
+        private static AFMSSectionPanel CreateCategoryPanel(string title)
         {
-            AFMSCategoryPanel panel = new AFMSCategoryPanel();
+            AFMSSectionPanel panel = new AFMSSectionPanel();
             panel.Dock = DockStyle.Fill;
-            panel.CategoryText = title;
+            panel.HeaderText = title;
             panel.HeaderHeight = 38;
             panel.HeaderBackColor = DllColorHelper.HexToColor("#F5F8F6");
-            panel.HeaderForeColor = DllColorHelper.HexToColor("#244B37");
+            panel.HeaderLineColor = DllColorHelper.HexToColor("#244B37");
             return panel;
         }
 

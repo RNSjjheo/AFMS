@@ -61,12 +61,12 @@ namespace AFMSSettings
 
         private void SetupUncertaintyPanel()
         {
-            AFMSCategoryPanel gpucert = new AFMSCategoryPanel();
+            AFMSSectionPanel gpucert = new AFMSSectionPanel();
             gpucert.Dock = DockStyle.Fill;
-            gpucert.CategoryText = "중간단면적 불확도 정보";
+            gpucert.HeaderText = "중간단면적 불확도 정보";
             gpucert.HeaderHeight = 38;
             gpucert.HeaderBackColor = DllColorHelper.HexToColor("#F5F8F6");
-            gpucert.HeaderForeColor = DllColorHelper.HexToColor("#244B37");
+            gpucert.HeaderLineColor = DllColorHelper.HexToColor("#244B37");
             gpucert.Padding = Padding.Empty;
             gpucert.Margin = Padding.Empty;
 

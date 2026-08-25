@@ -1,4 +1,5 @@
 using System;
+using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
@@ -24,14 +25,23 @@ namespace AFMSDll
             DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
         }
 
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
         public string Text { get => _text; set { _text = value ?? ""; DataGridView?.InvalidateColumn(Index); } }
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
         public Color BackColor { get => _backColor; set { _backColor = value; DataGridView?.InvalidateColumn(Index); } }
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
         public Color HoverBackColor { get => _hoverBackColor; set { _hoverBackColor = value; DataGridView?.InvalidateColumn(Index); } }
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
         public Color PressedBackColor { get => _pressedBackColor; set { _pressedBackColor = value; DataGridView?.InvalidateColumn(Index); } }
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
         public Color ForeColor { get => _foreColor; set { _foreColor = value; DataGridView?.InvalidateColumn(Index); } }
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
         public Color BorderColor { get => _borderColor; set { _borderColor = value; DataGridView?.InvalidateColumn(Index); } }
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
         public float BorderThickness { get => _borderThickness; set { _borderThickness = Math.Max(0F, value); DataGridView?.InvalidateColumn(Index); } }
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
         public int BorderRadius { get => _borderRadius; set { _borderRadius = Math.Max(0, value); DataGridView?.InvalidateColumn(Index); } }
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
         public Padding ButtonMargin { get => _buttonMargin; set { _buttonMargin = value; DataGridView?.InvalidateColumn(Index); } }
 
         public override object Clone()

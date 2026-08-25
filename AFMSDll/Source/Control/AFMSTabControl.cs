@@ -7,7 +7,7 @@ using System.Windows.Forms;
 namespace AFMSDll
 {
     [ToolboxItem(true)]
-    public class AFMSTabControl : TabControl
+    public class AFMSTabControl : _AFMSTabControlBase
     {
         private const int WS_BORDER = 0x00800000;
         private const int WS_EX_CLIENTEDGE = 0x00000200;
@@ -22,7 +22,6 @@ namespace AFMSDll
         private Color _normalBackColor = Color.White;
         private Color _normalForeColor = Color.FromArgb(83, 100, 121);
         private Color _hoverBackColor = Color.White;
-        private Color _borderColor = Color.FromArgb(226, 232, 239);
         private Color _selectedBorderColor = Color.FromArgb(0, 157, 111);
 
         private int _headerHeight = 34;
@@ -32,8 +31,6 @@ namespace AFMSDll
         private int _tabGap = 4;
         private int _tabHorizontalPadding = 10;
         private int _iconTextGap = 5;
-        private int _borderRadius = 12;
-        private float _borderThickness = 1F;
         private int _hoverIndex = -1;
 
         public AFMSTabControl()
@@ -163,22 +160,6 @@ namespace AFMSDll
 
         [Category("AFMS Appearance")]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public Color BorderColor
-        {
-            get => _borderColor;
-            set { _borderColor = value; Invalidate(); }
-        }
-
-        [Category("AFMS Appearance")]
-        [DefaultValue(1F)]
-        public float BorderThickness
-        {
-            get => _borderThickness;
-            set { _borderThickness = Math.Max(0F, value); Invalidate(); }
-        }
-
-        [Category("AFMS Appearance")]
-        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public Color SelectedBorderColor
         {
             get => _selectedBorderColor;
@@ -258,14 +239,6 @@ namespace AFMSDll
             set { _iconTextGap = Math.Max(0, value); Invalidate(); }
         }
 
-        [Category("AFMS Appearance")]
-        [DefaultValue(12)]
-        public int BorderRadius
-        {
-            get => _borderRadius;
-            set { _borderRadius = Math.Max(0, value); Invalidate(); }
-        }
-
         #endregion
 
         protected override void OnPaintBackground(PaintEventArgs e)
@@ -321,8 +294,10 @@ namespace AFMSDll
             Color foreColor = selected ? SelectedForeColor : NormalForeColor;
             Color borderColor = selected ? SelectedBorderColor : BorderColor;
 
-            using GraphicsPath fillPath = CreateRoundedRectanglePath(rect, BorderRadius);
-            using GraphicsPath borderPath = CreateRoundedBorderPath(rect, BorderRadius);
+            using GraphicsPath fillPath = AFMSRoundedDrawing.CreatePath(rect, BorderRadius);
+            RectangleF borderRectangle = new RectangleF(rect.Left + 0.5F, rect.Top + 0.5F,
+                Math.Max(0F, rect.Width - 1F), Math.Max(0F, rect.Height - 1F));
+            using GraphicsPath borderPath = AFMSRoundedDrawing.CreatePath(borderRectangle, BorderRadius);
             using SolidBrush backBrush = new SolidBrush(backColor);
             using Pen borderPen = new Pen(borderColor, BorderThickness) { Alignment = PenAlignment.Center, LineJoin = LineJoin.Round };
 
@@ -403,57 +378,6 @@ namespace AFMSDll
             if (!string.IsNullOrEmpty(page.ImageKey) && ImageList.Images.ContainsKey(page.ImageKey)) return ImageList.Images[page.ImageKey];
             if (page.ImageIndex >= 0 && page.ImageIndex < ImageList.Images.Count) return ImageList.Images[page.ImageIndex];
             return null;
-        }
-
-        private static GraphicsPath CreateRoundedBorderPath(Rectangle rect, int radius)
-        {
-            GraphicsPath path = new GraphicsPath();
-
-            float left = rect.Left + 0.5F;
-            float top = rect.Top + 0.5F;
-            float right = rect.Right - 0.5F;
-            float bottom = rect.Bottom - 0.5F;
-            float width = right - left;
-            float height = bottom - top;
-            float r = Math.Min(radius, Math.Min(width / 2F, height / 2F));
-
-            if (r <= 0)
-            {
-                path.AddRectangle(new RectangleF(left, top, width, height));
-                path.CloseFigure();
-                return path;
-            }
-
-            float d = r * 2F;
-            path.AddArc(left, top, d, d, 180F, 90F);
-            path.AddArc(right - d, top, d, d, 270F, 90F);
-            path.AddArc(right - d, bottom - d, d, d, 0F, 90F);
-            path.AddArc(left, bottom - d, d, d, 90F, 90F);
-            path.CloseFigure();
-
-            return path;
-        }
-
-        private static GraphicsPath CreateRoundedRectanglePath(Rectangle rect, int radius)
-        {
-            GraphicsPath path = new GraphicsPath();
-            int r = Math.Min(radius, Math.Min(rect.Width / 2, rect.Height / 2));
-
-            if (r <= 0)
-            {
-                path.AddRectangle(rect);
-                path.CloseFigure();
-                return path;
-            }
-
-            int d = r * 2;
-            path.AddArc(rect.Left, rect.Top, d, d, 180F, 90F);
-            path.AddArc(rect.Right - d, rect.Top, d, d, 270F, 90F);
-            path.AddArc(rect.Right - d, rect.Bottom - d, d, d, 0F, 90F);
-            path.AddArc(rect.Left, rect.Bottom - d, d, d, 90F, 90F);
-            path.CloseFigure();
-
-            return path;
         }
 
         private void ApplyTabPageBackColor()

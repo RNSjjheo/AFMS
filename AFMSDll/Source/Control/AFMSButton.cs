@@ -7,14 +7,10 @@ using System.Windows.Forms;
 namespace AFMSDll
 {
     [ToolboxItem(true)]
-    public class AFMSButton : Button
+    public class AFMSButton : _AFMSButtonBase
     {
-        private Color _borderColor = Color.FromArgb(205, 211, 220);
         private Color _hoverBackColor = Color.FromArgb(247, 249, 252);
         private Color _pressedBackColor = Color.FromArgb(238, 242, 247);
-
-        private float _borderThickness = 1F;
-        private int _borderRadius = 6;
 
         private bool _mouseOver;
         private bool _mouseDown;
@@ -34,14 +30,6 @@ namespace AFMSDll
 
             Size = new Size(90, 36);
             Cursor = Cursors.Hand;
-        }
-
-        [Category("AFMS Appearance")]
-        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public Color BorderColor
-        {
-            get => _borderColor;
-            set { _borderColor = value; Invalidate(); }
         }
 
         [Category("AFMS Appearance")]
@@ -72,29 +60,11 @@ namespace AFMSDll
             set { _pressedBackColor = value; Invalidate(); }
         }
 
-        [Category("AFMS Appearance")]
-        [DefaultValue(1F)]
-        public float BorderThickness
-        {
-            get => _borderThickness;
-            set { _borderThickness = Math.Max(0F, value); Invalidate(); }
-        }
-
-        [Category("AFMS Appearance")]
-        [DefaultValue(6)]
-        public int BorderRadius
-        {
-            get => _borderRadius;
-            set { _borderRadius = Math.Max(0, value); Invalidate(); }
-        }
-
         protected override void OnPaint(PaintEventArgs e)
         {
             Graphics g = e.Graphics;
 
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
-            g.CompositingQuality = CompositingQuality.HighQuality;
+            AFMSRoundedDrawing.SetHighQuality(g);
 
             Color parentBackColor = Parent?.BackColor ?? Color.White;
 
@@ -103,7 +73,7 @@ namespace AFMSDll
             float offset = BorderThickness <= 1F ? 0.5F : BorderThickness / 2F;
             RectangleF rect = new RectangleF(offset, offset, Width - (offset * 2f) - 1f, Height - (offset * 2f) - 1f);
 
-            using GraphicsPath path = CreateRoundPath(rect, BorderRadius);
+            using GraphicsPath path = AFMSRoundedDrawing.CreatePath(rect, BorderRadius);
 
             Color backColor = GetCurrentBackColor();
 
@@ -162,30 +132,6 @@ namespace AFMSDll
             if (_mouseOver) return HoverBackColor;
 
             return BackColor;
-        }
-
-        private static GraphicsPath CreateRoundPath(RectangleF rect, int radius)
-        {
-            GraphicsPath path = new GraphicsPath();
-            if (rect.Width <= 0F || rect.Height <= 0F) return path;
-
-            if (radius <= 0)
-            {
-                path.AddRectangle(rect);
-                path.CloseFigure();
-                return path;
-            }
-
-            float r = Math.Min(radius, Math.Min(rect.Width / 2f, rect.Height / 2f));
-            float d = r * 2f;
-
-            path.AddArc(rect.Left, rect.Top, d, d, 180, 90);
-            path.AddArc(rect.Right - d, rect.Top, d, d, 270, 90);
-            path.AddArc(rect.Right - d, rect.Bottom - d, d, d, 0, 90);
-            path.AddArc(rect.Left, rect.Bottom - d, d, d, 90, 90);
-            path.CloseFigure();
-
-            return path;
         }
 
         protected override void OnMouseEnter(EventArgs e)
