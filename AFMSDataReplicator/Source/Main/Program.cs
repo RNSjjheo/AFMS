@@ -38,7 +38,19 @@ namespace AFMSDataReplicator
                 Log.Info(log);
             }
 
-            HostApplicationBuilder builder = Host.CreateApplicationBuilder(args);
+            HostApplicationBuilder builder = Host.CreateApplicationBuilder(
+                new HostApplicationBuilderSettings
+                {
+                    Args = args,
+                    ContentRootPath = AppContext.BaseDirectory
+                });
+
+            builder.Configuration
+                .AddJsonFile("AFMSDataReplicator.settings.json", optional: false, reloadOnChange: true)
+                .AddJsonFile(
+                    $"AFMSDataReplicator.settings.{builder.Environment.EnvironmentName}.json",
+                    optional: true,
+                    reloadOnChange: true);
 
             builder.Services.AddWindowsService(options =>
             {

@@ -32,7 +32,19 @@ namespace AFMSExtraLogger
 
             try
             {
-                var builder = WebApplication.CreateBuilder(args);
+                var builder = WebApplication.CreateBuilder(
+                    new WebApplicationOptions
+                    {
+                        Args = args,
+                        ContentRootPath = AppContext.BaseDirectory
+                    });
+
+                builder.Configuration
+                    .AddJsonFile("AFMSExtraLogger.settings.json", optional: false, reloadOnChange: true)
+                    .AddJsonFile(
+                        $"AFMSExtraLogger.settings.{builder.Environment.EnvironmentName}.json",
+                        optional: true,
+                        reloadOnChange: true);
 
                 builder.Services.AddWindowsService(options =>
                 {
@@ -59,8 +71,8 @@ namespace AFMSExtraLogger
 
                 TcpBrocastBuffer.WriteLog("SYS", $"===========================================================");
                 TcpBrocastBuffer.WriteLog("SYS", $"= AFMS Extra Logger");
-                TcpBrocastBuffer.WriteLog("SYS", $"= ¹öÀü: {AFMSBuild.GetVersion()} ");
-                TcpBrocastBuffer.WriteLog("SYS", $"= ºôµå: {AFMSBuild.GetBuildDate()} ");
+                TcpBrocastBuffer.WriteLog("SYS", $"= ë²„ì „: {AFMSBuild.GetVersion()} ");
+                TcpBrocastBuffer.WriteLog("SYS", $"= ë¹Œë“œ: {AFMSBuild.GetBuildDate()} ");
                 TcpBrocastBuffer.WriteLog("SYS", $"===========================================================");
 
                 foreach (string log in dbtablelog)
@@ -70,28 +82,28 @@ namespace AFMSExtraLogger
 
                 app.Run();
 
-                Log.Info("AFMSExtraLogger Á¤»ó Á¾·á");
+                Log.Info("AFMSExtraLogger ì •ìƒ ì¢…ë£Œ");
 
                 return 0;
             }
             catch (Exception ex)
             {
-                // ÇÁ·Î±×·¥ ½ÃÀÛ, Host ½ÇÇà µî¿¡¼­ ºüÁ®³ª¿Â ÃÖ»óÀ§ ¿¹¿Ü
-                WriteFatalLog("Program.Main¿¡¼­ Ã³¸®µÇÁö ¾ÊÀº ¿¹¿Ü°¡ ¹ß»ıÇß½À´Ï´Ù.", ex);
+                // í”„ë¡œê·¸ë¨ ì‹œì‘, Host ì‹¤í–‰ ë“±ì—ì„œ ë¹ ì ¸ë‚˜ì˜¨ ìµœìƒìœ„ ì˜ˆì™¸
+                WriteFatalLog("Program.Mainì—ì„œ ì²˜ë¦¬ë˜ì§€ ì•Šì€ ì˜ˆì™¸ê°€ ë°œìƒí–ˆìŠµë‹ˆë‹¤.", ex);
 
-                // ºñÁ¤»ó Á¾·á ÄÚµå
+                // ë¹„ì •ìƒ ì¢…ë£Œ ì½”ë“œ
                 return 1;
             }
             finally
             {
                 try
                 {
-                    // ³²¾Æ ÀÖ´Â ·Î±×¸¦ ±â·ÏÇÏ°í Appender¸¦ Á¾·áÇÕ´Ï´Ù.
+                    // ë‚¨ì•„ ìˆëŠ” ë¡œê·¸ë¥¼ ê¸°ë¡í•˜ê³  Appenderë¥¼ ì¢…ë£Œí•©ë‹ˆë‹¤.
                     LogManager.Shutdown();
                 }
                 catch
                 {
-                    // Á¾·á Ã³¸® Áß Ãß°¡ ¿¹¿Ü´Â ¹«½Ã
+                    // ì¢…ë£Œ ì²˜ë¦¬ ì¤‘ ì¶”ê°€ ì˜ˆì™¸ëŠ” ë¬´ì‹œ
                 }
             }
         }
@@ -99,10 +111,10 @@ namespace AFMSExtraLogger
         private static void RegisterGlobalExceptionHandlers()
         {
             /*
-             * ÀÏ¹İ ½º·¹µå¿¡¼­ Ã³¸®µÇÁö ¾ÊÀº ¿¹¿Ü
+             * ì¼ë°˜ ìŠ¤ë ˆë“œì—ì„œ ì²˜ë¦¬ë˜ì§€ ì•Šì€ ì˜ˆì™¸
              *
-             * ÀÌ ÀÌº¥Æ®°¡ ½ÇÇàµÈ µÚ ÇÁ·Î¼¼½º°¡ Á¾·áµÉ ¼ö ÀÖÀ¸¹Ç·Î
-             * Ã³¸® ÄÚµå¸¦ ÃÖ´ëÇÑ ´Ü¼øÇÏ°Ô À¯ÁöÇØ¾ß ÇÕ´Ï´Ù.
+             * ì´ ì´ë²¤íŠ¸ê°€ ì‹¤í–‰ëœ ë’¤ í”„ë¡œì„¸ìŠ¤ê°€ ì¢…ë£Œë  ìˆ˜ ìˆìœ¼ë¯€ë¡œ
+             * ì²˜ë¦¬ ì½”ë“œë¥¼ ìµœëŒ€í•œ ë‹¨ìˆœí•˜ê²Œ ìœ ì§€í•´ì•¼ í•©ë‹ˆë‹¤.
              */
             AppDomain.CurrentDomain.UnhandledException +=
                 (_, eventArgs) =>
@@ -112,21 +124,21 @@ namespace AFMSExtraLogger
                         if (eventArgs.ExceptionObject is Exception ex)
                         {
                             WriteFatalLog(
-                                $"AppDomain Ã³¸®µÇÁö ¾ÊÀº ¿¹¿Ü ¹ß»ı. " +
+                                $"AppDomain ì²˜ë¦¬ë˜ì§€ ì•Šì€ ì˜ˆì™¸ ë°œìƒ. " +
                                 $"IsTerminating={eventArgs.IsTerminating}",
                                 ex);
                         }
                         else
                         {
                             Log.Fatal(
-                                $"AppDomain Ã³¸®µÇÁö ¾ÊÀº °´Ã¼°¡ ¹ß»ıÇß½À´Ï´Ù. " +
+                                $"AppDomain ì²˜ë¦¬ë˜ì§€ ì•Šì€ ê°ì²´ê°€ ë°œìƒí–ˆìŠµë‹ˆë‹¤. " +
                                 $"IsTerminating={eventArgs.IsTerminating}, " +
                                 $"ExceptionObject={eventArgs.ExceptionObject}");
                         }
                     }
                     catch
                     {
-                        // Àü¿ª ¿¹¿Ü Ã³¸®±â¿¡¼­ ´Ù½Ã ¿¹¿Ü¸¦ ¹ß»ı½ÃÅ°Áö ¾ÊÀ½
+                        // ì „ì—­ ì˜ˆì™¸ ì²˜ë¦¬ê¸°ì—ì„œ ë‹¤ì‹œ ì˜ˆì™¸ë¥¼ ë°œìƒì‹œí‚¤ì§€ ì•ŠìŒ
                     }
                     finally
                     {
@@ -144,10 +156,10 @@ namespace AFMSExtraLogger
                 };
 
             /*
-             * awaitµÇÁö ¾Ê¾Ò°Å³ª °á°ú¸¦ È®ÀÎÇÏÁö ¾ÊÀº TaskÀÇ ¿¹¿Ü
+             * awaitë˜ì§€ ì•Šì•˜ê±°ë‚˜ ê²°ê³¼ë¥¼ í™•ì¸í•˜ì§€ ì•Šì€ Taskì˜ ì˜ˆì™¸
              *
-             * ÀÌ ÀÌº¥Æ®´Â ¿¹¿Ü ¹ß»ı Áï½Ã ½ÇÇàµÈ´Ù´Â º¸ÀåÀÌ ¾øÀ¸¹Ç·Î
-             * º¸Á¶ÀûÀÎ Áø´Ü ¿ëµµ·Î¸¸ »ç¿ëÇÕ´Ï´Ù.
+             * ì´ ì´ë²¤íŠ¸ëŠ” ì˜ˆì™¸ ë°œìƒ ì¦‰ì‹œ ì‹¤í–‰ëœë‹¤ëŠ” ë³´ì¥ì´ ì—†ìœ¼ë¯€ë¡œ
+             * ë³´ì¡°ì ì¸ ì§„ë‹¨ ìš©ë„ë¡œë§Œ ì‚¬ìš©í•©ë‹ˆë‹¤.
              */
             TaskScheduler.UnobservedTaskException +=
                 (_, eventArgs) =>
@@ -155,7 +167,7 @@ namespace AFMSExtraLogger
                     try
                     {
                         Log.Error(
-                            "°üÂûµÇÁö ¾ÊÀº Task ¿¹¿Ü°¡ ¹ß»ıÇß½À´Ï´Ù.",
+                            "ê´€ì°°ë˜ì§€ ì•Šì€ Task ì˜ˆì™¸ê°€ ë°œìƒí–ˆìŠµë‹ˆë‹¤.",
                             eventArgs.Exception.Flatten());
 
                         eventArgs.SetObserved();
@@ -176,7 +188,7 @@ namespace AFMSExtraLogger
             }
             catch
             {
-                // ·Î±× ½Ã½ºÅÛ ÀÚÃ¼¿¡ ¹®Á¦°¡ ¹ß»ıÇÑ °æ¿ì¸¦ ´ëºñ
+                // ë¡œê·¸ ì‹œìŠ¤í…œ ìì²´ì— ë¬¸ì œê°€ ë°œìƒí•œ ê²½ìš°ë¥¼ ëŒ€ë¹„
                 WriteEmergencyLog(message, exception);
             }
         }
@@ -214,7 +226,7 @@ namespace AFMSExtraLogger
             }
             catch
             {
-                // ¿©±â¼­µµ ½ÇÆĞÇÏ¸é ´õ ÀÌ»ó Ã³¸®ÇÒ ¹æ¹ıÀÌ ¾øÀ½
+                // ì—¬ê¸°ì„œë„ ì‹¤íŒ¨í•˜ë©´ ë” ì´ìƒ ì²˜ë¦¬í•  ë°©ë²•ì´ ì—†ìŒ
             }
         }
     
