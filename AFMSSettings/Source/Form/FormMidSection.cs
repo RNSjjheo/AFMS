@@ -96,7 +96,7 @@ namespace AFMSSettings
 
         private void SetupInputRange()
         {
-            AFMSHeaderGroupBox group = CreateHeaderGroupBox("입력 범위");
+            AFMSSectionPanel group = CreateHeaderGroupBox("입력 범위");
             group.Margin = new Padding(0, 4, 0, 6);
 
             TableLayoutPanel layout = new TableLayoutPanel();
@@ -134,7 +134,7 @@ namespace AFMSSettings
 
         private void SetupConversionFactor()
         {
-            AFMSHeaderGroupBox group = CreateHeaderGroupBox("환산계수");
+            AFMSSectionPanel group = CreateHeaderGroupBox("환산계수");
             group.Margin = new Padding(0, 6, 0, 6);
 
             TableLayoutPanel layout = new TableLayoutPanel();
@@ -318,9 +318,9 @@ namespace AFMSSettings
             return config;
         }
 
-        private static AFMSHeaderGroupBox CreateHeaderGroupBox(string headerText)
+        private static AFMSSectionPanel CreateHeaderGroupBox(string headerText)
         {
-            AFMSHeaderGroupBox group = new AFMSHeaderGroupBox();
+            AFMSSectionPanel group = new AFMSSectionPanel();
             group.Dock = DockStyle.Fill;
             group.HeaderText = headerText;
             group.HeaderColor = DllColorHelper.HexToColor("#02925D");

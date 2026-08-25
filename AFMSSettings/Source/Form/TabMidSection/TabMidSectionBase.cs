@@ -15,8 +15,8 @@ namespace AFMSSettings
         public AFMSMathLabel uiLbExample;
         public Label uiDesc;
 
-        private AFMSHeaderGroupBox uiGpRange;
-        private AFMSHeaderGroupBox uiGpConversion;
+        private AFMSSectionPanel uiGpRange;
+        private AFMSSectionPanel uiGpConversion;
 
         protected TabMidSectionBase()
         {
@@ -159,9 +159,9 @@ namespace AFMSSettings
             uiLbExample.Add("m", AFMSMathTextType.Subscript);
         }
 
-        private static AFMSHeaderGroupBox CreateHeaderGroupBox()
+        private static AFMSSectionPanel CreateHeaderGroupBox()
         {
-            AFMSHeaderGroupBox item = new AFMSHeaderGroupBox();
+            AFMSSectionPanel item = new AFMSSectionPanel();
             item.HeaderColor = DllColorHelper.HexToColor("#02925D");
             item.HeaderHeight = 40;
             item.HeaderHorizontalPadding = 14;

@@ -1,4 +1,4 @@
-﻿using AFMSDll
+﻿using AFMSDll;
 using System;
 using System.ComponentModel;
 using System.Drawing;

@@ -19,8 +19,8 @@ namespace AFMSSettings
         public AFMSNumberBox uiNumberVst;
         public AFMSNumberBox uiNumberVindex;
 
-        private AFMSHeaderGroupBox uiGpRange;
-        private AFMSHeaderGroupBox uiGpUncert;
+        private AFMSSectionPanel uiGpRange;
+        private AFMSSectionPanel uiGpUncert;
         public TabSurfaceBase()
         {
             uiTpMainRow = new TableLayoutPanel();
@@ -239,9 +239,9 @@ namespace AFMSSettings
             uiGrid.ClearSelection();
         }
 
-        private AFMSHeaderGroupBox GreateHeaderGroupBox()
+        private AFMSSectionPanel GreateHeaderGroupBox()
         {
-            AFMSHeaderGroupBox item = new AFMSHeaderGroupBox();
+            AFMSSectionPanel item = new AFMSSectionPanel();
             item.HeaderColor = DllColorHelper.HexToColor("#02925D");
             item.HeaderHeight = 40;
             item.HeaderHorizontalPadding = 14;
