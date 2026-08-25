@@ -581,12 +581,22 @@ namespace AFMSDll
         {
             if (rowIndex < 0 || rowIndex >= Rows.Count) return;
 
-            ClearSelection();
+            if (!IsHandleCreated || IsDisposed) return;
 
-            if (columnIndex >= 0 && columnIndex < Columns.Count) CurrentCell = Rows[rowIndex].Cells[columnIndex];
+            BeginInvoke(new Action(() =>
+            {
+                if (IsDisposed || rowIndex < 0 || rowIndex >= Rows.Count) return;
 
-            Rows[rowIndex].Selected = true;
-            InvalidateRow(rowIndex);
+                ClearSelection();
+
+                if (columnIndex >= 0 && columnIndex < Columns.Count && Columns[columnIndex].Visible)
+                {
+                    CurrentCell = Rows[rowIndex].Cells[columnIndex];
+                }
+
+                Rows[rowIndex].Selected = true;
+                InvalidateRow(rowIndex);
+            }));
         }
 
         private void UpdateAFMSCheckBoxBounds()
