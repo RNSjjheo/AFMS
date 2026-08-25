@@ -189,6 +189,7 @@ namespace AFMSSettings
             // AFMS_DIS_ATTR_SURFACE_VELO.HYDRO_ID 연결 위치
             int hydroId = uiComboHydro.SelectedItem is HydroComboItem item ? item.Id : -1;
             uiTabPageSurfaceVelo.SetHydroId(hydroId);
+            uiTabPageMidSection.SetHydroId(hydroId);
             SelectMethodPage();
         }
 
@@ -215,6 +216,7 @@ namespace AFMSSettings
                         break;
                     case DischargeMethod.MidSection:
                         uiTabMain.SelectedTab = uiTabPageMidSection;
+                        uiTabPageMidSection.SetHydroId(uiComboHydro.SelectedItem is HydroComboItem midSectionItem ? midSectionItem.Id : -1);
                         break;
                     case DischargeMethod.VeloDist:
                         uiTabMain.SelectedTab = uiTabPageVeloDist;

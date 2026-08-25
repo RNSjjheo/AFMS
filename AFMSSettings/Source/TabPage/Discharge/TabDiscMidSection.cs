@@ -9,6 +9,8 @@ namespace AFMSSettings
 {
     public class TabDiscMidSection : _TabDischargeBase
     {
+        private int _hydroId = -1;
+
         private AFMSDataGridView uiGridDepth;
         private AFMSDataGridView uiGridWidth;
         private AFMSDataGridView uiGridVertical;
@@ -37,6 +39,9 @@ namespace AFMSSettings
             grid.ClearMergedHeaders();
 
             SetColumnVisible(grid, FbtAFMSDiscAttrMidSection.COL_ID, false);
+            SetColumnVisible(grid, FbtAFMSDiscAttrMidSection.COL_DIS_VER, false);
+            SetColumnVisible(grid, FbtAFMSDiscAttrMidSection.COL_HYDRO_ID, false);
+            SetColumnVisible(grid, FbtAFMSDiscAttrMidSection.COL_DIS_ATTR, false);
 
             SetColumnStyle(grid, COL_NO, "No.", 20F);
             SetColumnStyle(grid, FbtAFMSDiscAttrMidSection.COL_CELL_RANGE_MIN, "MIN", 27F);
@@ -52,11 +57,25 @@ namespace AFMSSettings
 
         protected override void UiButtonInput_Click(object? sender, EventArgs e)
         {
+            if (_hydroId < 0)
+            {
+                MessageBox.Show("유속계를 먼저 선택해주세요.", "입력 확인", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            using FormMidSection form = new FormMidSection();
+            form.HydroId = _hydroId;
+            form.SaveHandler = SaveConfig;
+
+            if (form.ShowDialog(FindForm()) != DialogResult.OK || form.ResultConfig == null) return;
+
+            string error = LoadData();
+            if (!string.IsNullOrEmpty(error)) MessageBox.Show(error, "중간단면적 설정 조회 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
         protected override void _TabDischargeBase_Enter(object? sender, EventArgs e)
         {
-            LoggingData();
+            LoadData();
         }
 
         private void SetupUncertaintyPanel()
@@ -223,17 +242,35 @@ namespace AFMSSettings
             grid.Columns.Add(column);
         }
 
-        private string LoggingData()
+        public void SetHydroId(int hydroId)
         {
+            if (_hydroId == hydroId) return;
+
+            _hydroId = hydroId;
+            string error = LoadData();
+            if (!string.IsNullOrEmpty(error)) MessageBox.Show(error, "중간단면적 설정 조회 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+
+        public string LoadData()
+        {
+            if (_hydroId < 0)
+            {
+                uiGridMain.DataSource = null;
+                return string.Empty;
+            }
+
             QueryBuilderSelect query = new QueryBuilderSelect();
             query.Table = FbtAFMSDiscAttrMidSection.TABLE_NAME;
 
             query.Add(FbtAFMSDiscAttrMidSection.COL_ID);
+            query.Add(FbtAFMSDiscAttrMidSection.COL_DIS_VER);
+            query.Add(FbtAFMSDiscAttrMidSection.COL_HYDRO_ID);
             query.Add(FbtAFMSDiscAttrMidSection.COL_CELL_RANGE_MIN);
             query.Add(FbtAFMSDiscAttrMidSection.COL_CELL_RANGE_MAX);
             query.AsAlias(FbtAFMSDiscAttrMidSection.COL_CONVERSION_FACTOR, "환산계수");
+            query.Add(FbtAFMSDiscAttrMidSection.COL_DIS_ATTR);
 
-            query.Where(FbtAFMSDiscAttrMidSection.COL_HYDRO_ID, "=", 0);
+            query.Where(FbtAFMSDiscAttrMidSection.COL_HYDRO_ID, "=", _hydroId);
             query.OrderBy(FbtAFMSDiscAttrMidSection.COL_ID);
 
             using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
@@ -245,6 +282,28 @@ namespace AFMSSettings
             uiGridMain.DataSource = table;
 
             return string.Empty;
+        }
+
+        private static string SaveConfig(FormMidSection.MidSectionConfig config)
+        {
+            DateTime now = DateTime.Now;
+
+            QueryBuilderInsert query = new QueryBuilderInsert();
+            query.Table = FbtAFMSDiscAttrMidSection.TABLE_NAME;
+            query.AutoIncrement = FbtAFMSDiscAttrMidSection.COL_ID;
+
+            query.Value(FbtAFMSDiscAttrMidSection.COL_MEASURE_DATE, now.ToString("yyyyMMdd"));
+            query.Value(FbtAFMSDiscAttrMidSection.COL_MEASURE_TIME, now.ToString("HHmmss"));
+            query.Value(FbtAFMSDiscAttrMidSection.COL_DIS_VER, config.DisVer);
+            query.Value(FbtAFMSDiscAttrMidSection.COL_HYDRO_ID, config.HydroId);
+            query.Value(FbtAFMSDiscAttrMidSection.COL_CELL_RANGE_MIN, config.CellMin);
+            query.Value(FbtAFMSDiscAttrMidSection.COL_CELL_RANGE_MAX, config.CellMax);
+            query.Value(FbtAFMSDiscAttrMidSection.COL_CONVERSION_FACTOR, config.ConversionFactor);
+
+            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            db.Execute(query, out string error);
+
+            return error;
         }
     }
 }
