@@ -19,7 +19,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\AFMSDataReplicator\AFMSDataReplicator.csproj" />
+    <ProjectReference Include="..\AFMSDischargeService\AFMSDischargeService.csproj" />
     <ProjectReference Include="..\AFMSDll\AFMSDll.csproj" />
+    <ProjectReference Include="..\AFMSExtraLogger\AFMSExtraLogger.csproj" />
+    <ProjectReference Include="..\AFMSExtraMonitor\AFMSExtraMonitor.csproj" />
+    <ProjectReference Include="..\AFMSSettings\AFMSSettings.csproj" />
   </ItemGroup>
 
   <ItemGroup>

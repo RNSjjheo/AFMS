@@ -25,7 +25,7 @@ namespace AFMSDataViewer
         {
             InitializeComponent();
 
-            uiPnMain.CategoryText = "장비 정보";
+            uiPnMain.HeaderText = "장비 정보";
             uiTpMain = uiPnMain.ContentLayout;
             uiTpMain.RowStyles.Clear();
             uiTpMain.ColumnStyles.Clear();

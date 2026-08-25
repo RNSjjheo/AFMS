@@ -32,8 +32,8 @@ namespace AFMSDataViewer
             uiInfoDev.Padding = Padding.Empty;
 
             SetupMainPanel(uiSysInfo.uiPnMain);
-            SetupMainPanel(uiInfoSite.uiPnMain as AFMSPanel);
-            SetupMainPanel(uiInfoDev.uiPnMain as AFMSPanel);
+            SetupMainPanel(uiInfoSite.uiPnMain);
+            SetupMainPanel(uiInfoDev.uiPnMain);
         }
 
         private void SetupMainPanel(AFMSPanel panel)
@@ -41,6 +41,16 @@ namespace AFMSDataViewer
             panel.BorderStyle = BorderStyle.None;
             panel.BorderRadius = 5;
             panel.BorderColor = DllColorHelper.HexToColor("#E3E9F1");
+            panel.BackColor = Color.White;
+            panel.Padding = new Padding(6);
+            panel.Margin = new Padding(5);
+        }
+
+        private void SetupMainPanel(AFMSSectionPanel panel)
+        {
+            panel.BorderRadius = 5;
+            panel.BorderColor = DllColorHelper.HexToColor("#E3E9F1");
+            panel.BorderThickness = 1F;
             panel.BackColor = Color.White;
             panel.Padding = new Padding(6);
             panel.Margin = new Padding(5);

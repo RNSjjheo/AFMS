@@ -28,7 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
-            uiPnMain = new AFMSDll.AFMSCategoryPanel();
+            uiPnMain = new AFMSDll.AFMSSectionPanel();
             SuspendLayout();
             // 
             // uiPnMain
@@ -48,11 +48,14 @@
             uiPnMain.ContentLayout.Size = new Size(344, 117);
             uiPnMain.ContentLayout.TabIndex = 0;
             uiPnMain.BorderRadius = 8;
-            uiPnMain.DividerColor = Color.FromArgb(225, 229, 235);
+            uiPnMain.BorderColor = Color.FromArgb(225, 229, 235);
+            uiPnMain.BorderThickness = 0.5F;
             uiPnMain.Dock = DockStyle.Fill;
             uiPnMain.HeaderBackColor = Color.FromArgb(245, 247, 250);
-            uiPnMain.HeaderFont = new Font("Segoe UI", 9F, FontStyle.Bold);
-            uiPnMain.HeaderForeColor = Color.FromArgb(55, 62, 72);
+            uiPnMain.HeaderColor = Color.FromArgb(55, 62, 72);
+            uiPnMain.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+            uiPnMain.HeaderLineColor = Color.FromArgb(225, 229, 235);
+            uiPnMain.SectionStyle = AFMSDll.AFMSSectionStyle.FilledHeader;
             uiPnMain.Location = new Point(0, 0);
             uiPnMain.Name = "uiPnMain";
             uiPnMain.Size = new Size(346, 150);
@@ -70,6 +73,6 @@
 
         #endregion
 
-        public AFMSDll.AFMSCategoryPanel uiPnMain;
+        public AFMSDll.AFMSSectionPanel uiPnMain;
     }
 }

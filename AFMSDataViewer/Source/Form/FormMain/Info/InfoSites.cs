@@ -26,7 +26,7 @@ namespace AFMSDataViewer
         {
             InitializeComponent();
 
-            uiPnMain.CategoryText = "지점 정보";
+            uiPnMain.HeaderText = "지점 정보";
             uiTpMain = uiPnMain.ContentLayout;
 
             uiTpMain.ColumnStyles.Clear();
