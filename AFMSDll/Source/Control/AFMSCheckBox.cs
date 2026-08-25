@@ -30,7 +30,6 @@ namespace AFMSDll
             Font = new Font("맑은 고딕", 9F, FontStyle.Regular);
             Cursor = Cursors.Hand;
 
-            AFMSRoundedDrawing.ApplyRegion(this, BorderRadius);
         }
 
         [Category("AFMS Appearance")]
@@ -106,8 +105,8 @@ namespace AFMSDll
         protected override void OnPaint(PaintEventArgs e)
         {
             e.Graphics.Clear(BackColor);
-            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-            e.Graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            AFMSRoundedDrawing.SetHighQuality(e.Graphics);
+            e.Graphics.PixelOffsetMode = PixelOffsetMode.Half;
 
             DrawBackground(e.Graphics);
             DrawCheckBox(e.Graphics);

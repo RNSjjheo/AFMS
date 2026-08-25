@@ -5,14 +5,14 @@ using System.Windows.Forms;
 
 namespace AFMSDll
 {
-    public abstract class _AFMSCheckBoxBase : CheckBox, IAFMSRoundedControl
+    public abstract class _AFMSComboBoxBase : Control, IAFMSRoundedControl
     {
-        private Color _borderColor = Color.FromArgb(214, 220, 226);
-        private int _borderRadius = 6;
+        private Color _borderColor = Color.FromArgb(218, 224, 232);
+        private int _borderRadius = 14;
         private float _borderThickness = 1F;
 
         [Category("AFMS Appearance")]
-        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public virtual Color BorderColor
         {
             get => _borderColor;
@@ -20,7 +20,7 @@ namespace AFMSDll
         }
 
         [Category("AFMS Appearance")]
-        [DefaultValue(6)]
+        [DefaultValue(14)]
         public virtual int BorderRadius
         {
             get => _borderRadius;
@@ -34,6 +34,5 @@ namespace AFMSDll
             get => _borderThickness;
             set { _borderThickness = Math.Max(0F, value); Invalidate(); }
         }
-
     }
 }

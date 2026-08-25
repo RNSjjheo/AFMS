@@ -10,12 +10,11 @@ namespace AFMSDll
 {
     [ToolboxItem(true)]
     [DefaultEvent(nameof(SelectedIndexChanged))]
-    public class AFMSComboBox : Control
+    public class AFMSComboBox : _AFMSComboBoxBase
     {
         private readonly List<object> _Items = new List<object>();
         private int _SelectedIndex = -1;
         private string _PlaceholderText = "선택";
-        private Color _borderColor = Color.FromArgb(218, 224, 232);
         private Color _HoverBorderColor = Color.FromArgb(190, 200, 214);
         private Color _ForeColor = Color.FromArgb(84, 98, 121);
         private Color _ArrowColor = Color.FromArgb(84, 98, 121);
@@ -23,8 +22,6 @@ namespace AFMSDll
         private Color _DropDownForeColor = Color.FromArgb(60, 70, 85);
         private Color _SelectedBackColor = Color.FromArgb(235, 248, 243);
         private Color _SelectedForeColor = Color.FromArgb(40, 90, 70);
-        private int _borderRadius = 14;
-        private float _borderThickness = 1F;
         private int _HorizontalPadding = 14;
         private int _ArrowAreaWidth = 30;
         private int _DropDownItemHeight = 32;
@@ -49,14 +46,6 @@ namespace AFMSDll
         {
             get => _PlaceholderText;
             set { _PlaceholderText = value ?? string.Empty; Invalidate(); }
-        }
-
-        [Category("AFMS Appearance")]
-        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-        public Color BorderColor
-        {
-            get => _borderColor;
-            set { _borderColor = value; Invalidate(); }
         }
 
         [Category("AFMS Appearance")]
@@ -113,22 +102,6 @@ namespace AFMSDll
         {
             get => _SelectedForeColor;
             set { _SelectedForeColor = value; }
-        }
-
-        [Category("AFMS Appearance")]
-        [DefaultValue(14)]
-        public int BorderRadius
-        {
-            get => _borderRadius;
-            set { _borderRadius = Math.Max(0, value); UpdateRegion(); Invalidate(); }
-        }
-
-        [Category("AFMS Appearance")]
-        [DefaultValue(1F)]
-        public float BorderThickness
-        {
-            get => _borderThickness;
-            set { _borderThickness = Math.Max(0F, value); Invalidate(); }
         }
 
         [Category("AFMS Appearance")]
@@ -233,15 +206,14 @@ namespace AFMSDll
             base.OnPaint(e);
             if (ClientSize.Width <= 0 || ClientSize.Height <= 0) return;
 
-            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            AFMSRoundedDrawing.SetHighQuality(e.Graphics);
             e.Graphics.PixelOffsetMode = PixelOffsetMode.Half;
-            e.Graphics.CompositingQuality = CompositingQuality.HighQuality;
 
             float inset = BorderThickness > 0F ? BorderThickness / 2F : 0F;
             RectangleF rect = new RectangleF(inset, inset, Math.Max(0F, ClientSize.Width - BorderThickness), Math.Max(0F, ClientSize.Height - BorderThickness));
             float radius = Math.Max(0F, Math.Min(BorderRadius, rect.Height / 2F) - inset);
 
-            using GraphicsPath path = CreateRoundedPath(rect, radius);
+            using GraphicsPath path = AFMSRoundedDrawing.CreatePath(rect, radius);
             using SolidBrush backBrush = new SolidBrush(BackColor);
             using Pen borderPen = new Pen(_Hover || Focused || (_DropDown?.Visible ?? false) ? HoverBorderColor : BorderColor, BorderThickness) { Alignment = PenAlignment.Center };
             e.Graphics.FillPath(backBrush, path);
@@ -294,12 +266,6 @@ namespace AFMSDll
         {
             base.OnLostFocus(e);
             Invalidate();
-        }
-
-        protected override void OnSizeChanged(EventArgs e)
-        {
-            base.OnSizeChanged(e);
-            UpdateRegion();
         }
 
         private void ToggleDropDown()
@@ -430,39 +396,6 @@ namespace AFMSDll
 
             using Pen pen = new Pen(ArrowColor, 1.7F) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
             g.DrawLines(pen, new[] { p1, p2, p3 });
-        }
-
-        private void UpdateRegion()
-        {
-            if (Width <= 0 || Height <= 0) return;
-            using GraphicsPath path = CreateRoundedPath(new RectangleF(0, 0, Width, Height), Math.Min(BorderRadius, Height / 2F));
-            Region oldRegion = Region;
-            Region = new Region(path);
-            oldRegion?.Dispose();
-        }
-
-        private static GraphicsPath CreateRoundedPath(RectangleF rect, float radius)
-        {
-            GraphicsPath path = new GraphicsPath();
-            if (rect.Width <= 0F || rect.Height <= 0F) return path;
-
-            if (radius <= 0)
-            {
-                path.AddRectangle(rect);
-                path.CloseFigure();
-                return path;
-            }
-
-            float r = Math.Min(radius, Math.Min(rect.Width / 2f, rect.Height / 2f));
-            float d = r * 2f;
-
-            path.AddArc(rect.Left, rect.Top, d, d, 180, 90);
-            path.AddArc(rect.Right - d, rect.Top, d, d, 270, 90);
-            path.AddArc(rect.Right - d, rect.Bottom - d, d, d, 0, 90);
-            path.AddArc(rect.Left, rect.Bottom - d, d, d, 90, 90);
-            path.CloseFigure();
-
-            return path;
         }
 
         private sealed class ItemCollection : IList
