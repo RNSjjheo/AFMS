@@ -94,8 +94,8 @@ namespace AFMSSettings
         }
         public void LoadData()
         {
-            uiGridMain.ClearAFMSCheckBoxCellVisibility();
             uiGridMain.Rows.Clear();
+            uiGridMain.ClearAFMSCheckBoxCellVisibility();
             _OriginalValues.Clear();
 
             QueryBuilderSelect query = new QueryBuilderSelect();
@@ -127,6 +127,7 @@ namespace AFMSSettings
             foreach (DataRow row in table.Rows) AddGridRow(row, rowNo++);
 
             uiGridMain.ClearSelection();
+            uiGridMain.RefreshAFMSCheckBoxes();
         }
 
         private void LoadMethodAvailability(FBDatabase db)

@@ -17,6 +17,16 @@ namespace AFMSDll
             public int VerticalMargin { get; set; } = 8;
         }
 
+        private sealed class AFMSCheckBoxCellVisibilitySetting
+        {
+            public bool Visible { get; }
+
+            public AFMSCheckBoxCellVisibilitySetting(bool visible)
+            {
+                Visible = visible;
+            }
+        }
+
         private sealed class AFMSMergedHeaderSetting
         {
             public string Text { get; }
@@ -519,6 +529,7 @@ namespace AFMSDll
 
             string key = GetCheckBoxKey(rowIndex, columnIndex);
             _checkBoxCellVisibility[key] = visible;
+            Rows[rowIndex].Cells[columnIndex].Tag = new AFMSCheckBoxCellVisibilitySetting(visible);
 
             if (_checkBoxControls.TryGetValue(key, out AFMSCheckBox checkBox)) checkBox.Visible = visible;
             UpdateAFMSCheckBoxBounds();
@@ -527,6 +538,19 @@ namespace AFMSDll
         public void ClearAFMSCheckBoxCellVisibility()
         {
             _checkBoxCellVisibility.Clear();
+
+            foreach (DataGridViewRow row in Rows)
+            {
+                foreach (int columnIndex in _checkBoxColumns.Keys)
+                {
+                    if (columnIndex >= 0 && columnIndex < row.Cells.Count &&
+                        row.Cells[columnIndex].Tag is AFMSCheckBoxCellVisibilitySetting)
+                    {
+                        row.Cells[columnIndex].Tag = null;
+                    }
+                }
+            }
+
             UpdateAFMSCheckBoxBounds();
         }
 
@@ -623,6 +647,12 @@ namespace AFMSDll
                 }
 
                 if (_checkBoxCellVisibility.TryGetValue(pair.Key, out bool cellVisible) && !cellVisible)
+                {
+                    checkBox.Visible = false;
+                    continue;
+                }
+
+                if (Rows[cell.Y].Cells[cell.X].Tag is AFMSCheckBoxCellVisibilitySetting visibility && !visibility.Visible)
                 {
                     checkBox.Visible = false;
                     continue;
