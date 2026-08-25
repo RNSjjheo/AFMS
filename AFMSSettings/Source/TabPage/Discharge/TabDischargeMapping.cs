@@ -208,9 +208,9 @@ namespace AFMSSettings
                 foreach (JsonElement coefficient in coefficients.EnumerateArray())
                 {
                     if (coefficient.ValueKind != JsonValueKind.Object ||
-                        !TryGetFiniteDouble(coefficient, DischargeSurface.VER1_ATTR_NODE1) ||
-                        !TryGetFiniteDouble(coefficient, DischargeSurface.VER1_ATTR_NODE2) ||
-                        !TryGetFiniteDouble(coefficient, DischargeSurface.VER1_ATTR_NODE3)) return false;
+                        !TryGetFiniteDouble(coefficient, QSurfaceVelocity.VER1_ATTR_NODE1) ||
+                        !TryGetFiniteDouble(coefficient, QSurfaceVelocity.VER1_ATTR_NODE2) ||
+                        !TryGetFiniteDouble(coefficient, QSurfaceVelocity.VER1_ATTR_NODE3)) return false;
                 }
 
                 return true;

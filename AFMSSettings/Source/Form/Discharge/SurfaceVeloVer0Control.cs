@@ -49,7 +49,7 @@ namespace AFMSSettings
             uiDesc.Padding = Padding.Empty;
             uiDesc.Margin = Padding.Empty;
 
-            uiLbExample = DischargeSurface.GetExample(Version);
+            uiLbExample = QSurfaceVelocity.GetExample(Version);
             uiLbExample.Dock = DockStyle.Fill;
             uiLbExample.Font = new Font("맑은 고딕", 12F, FontStyle.Regular);
             uiLbExample.ForeColor = Color.Black;
@@ -109,8 +109,8 @@ namespace AFMSSettings
             SetupInputRange();
             SetupUncertainty();
 
-            uiDesc.Text = $"아래 입력란에서 {DischargeSurface.VER1_ATTR_NODE1}, " +
-                $"{DischargeSurface.VER1_ATTR_NODE2}, {DischargeSurface.VER1_ATTR_NODE3} 값을 입력한 후 추가 버튼을 눌러주세요.";
+            uiDesc.Text = $"아래 입력란에서 {QSurfaceVelocity.VER1_ATTR_NODE1}, " +
+                $"{QSurfaceVelocity.VER1_ATTR_NODE2}, {QSurfaceVelocity.VER1_ATTR_NODE3} 값을 입력한 후 추가 버튼을 눌러주세요.";
 
             SetupGridColumns();
             SetupAttrInput();
@@ -363,9 +363,9 @@ namespace AFMSSettings
 
             foreach (DataGridViewRow row in uiGrid.Rows)
             {
-                if (!TryGetGridDouble(row, DischargeSurface.VER1_ATTR_NODE1, out _) ||
-                    !TryGetGridDouble(row, DischargeSurface.VER1_ATTR_NODE2, out _) ||
-                    !TryGetGridDouble(row, DischargeSurface.VER1_ATTR_NODE3, out _))
+                if (!TryGetGridDouble(row, QSurfaceVelocity.VER1_ATTR_NODE1, out _) ||
+                    !TryGetGridDouble(row, QSurfaceVelocity.VER1_ATTR_NODE2, out _) ||
+                    !TryGetGridDouble(row, QSurfaceVelocity.VER1_ATTR_NODE3, out _))
                 {
                     MessageBox.Show(
                         $"{row.Index + 1}번 구간에 빈 데이터가 있습니다. Max Vi, a, b 값을 모두 입력해주세요.",
@@ -385,9 +385,9 @@ namespace AFMSSettings
 
             foreach (DataGridViewRow row in uiGrid.Rows)
             {
-                TryGetGridDouble(row, DischargeSurface.VER1_ATTR_NODE1, out double maxVi);
-                TryGetGridDouble(row, DischargeSurface.VER1_ATTR_NODE2, out double a);
-                TryGetGridDouble(row, DischargeSurface.VER1_ATTR_NODE3, out double b);
+                TryGetGridDouble(row, QSurfaceVelocity.VER1_ATTR_NODE1, out double maxVi);
+                TryGetGridDouble(row, QSurfaceVelocity.VER1_ATTR_NODE2, out double a);
+                TryGetGridDouble(row, QSurfaceVelocity.VER1_ATTR_NODE3, out double b);
 
                 config.Coefficients.Add(new TabDiscSurfaceVelocity.SurfaceVelocityCoefficient
                 {
@@ -411,24 +411,24 @@ namespace AFMSSettings
             colNo.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 
             DataGridViewTextBoxColumn colMaxVi = new DataGridViewTextBoxColumn();
-            colMaxVi.Name = DischargeSurface.VER1_ATTR_NODE1;
-            colMaxVi.HeaderText = DischargeSurface.VER1_ATTR_NODE1;
+            colMaxVi.Name = QSurfaceVelocity.VER1_ATTR_NODE1;
+            colMaxVi.HeaderText = QSurfaceVelocity.VER1_ATTR_NODE1;
             colMaxVi.FillWeight = 28F;
             colMaxVi.ReadOnly = true;
             colMaxVi.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             colMaxVi.DefaultCellStyle.Format = ATTR_FORMAT;
 
             DataGridViewTextBoxColumn colA = new DataGridViewTextBoxColumn();
-            colA.Name = DischargeSurface.VER1_ATTR_NODE2;
-            colA.HeaderText = DischargeSurface.VER1_ATTR_NODE2;
+            colA.Name = QSurfaceVelocity.VER1_ATTR_NODE2;
+            colA.HeaderText = QSurfaceVelocity.VER1_ATTR_NODE2;
             colA.FillWeight = 27F;
             colA.ReadOnly = true;
             colA.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             colA.DefaultCellStyle.Format = ATTR_FORMAT;
 
             DataGridViewTextBoxColumn colC = new DataGridViewTextBoxColumn();
-            colC.Name = DischargeSurface.VER1_ATTR_NODE3;
-            colC.HeaderText = DischargeSurface.VER1_ATTR_NODE3;
+            colC.Name = QSurfaceVelocity.VER1_ATTR_NODE3;
+            colC.HeaderText = QSurfaceVelocity.VER1_ATTR_NODE3;
             colC.FillWeight = 27F;
             colC.ReadOnly = true;
             colC.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
@@ -466,9 +466,9 @@ namespace AFMSSettings
             row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             row.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
-            uiNumberMaxVi = CreateAttributeNumberBox(DischargeSurface.VER1_ATTR_NODE1);
-            uiNumberA = CreateAttributeNumberBox(DischargeSurface.VER1_ATTR_NODE2);
-            uiNumberB = CreateAttributeNumberBox(DischargeSurface.VER1_ATTR_NODE3);
+            uiNumberMaxVi = CreateAttributeNumberBox(QSurfaceVelocity.VER1_ATTR_NODE1);
+            uiNumberA = CreateAttributeNumberBox(QSurfaceVelocity.VER1_ATTR_NODE2);
+            uiNumberB = CreateAttributeNumberBox(QSurfaceVelocity.VER1_ATTR_NODE3);
 
             uiBtnAdd = new AFMSButton();
             uiBtnAdd.Dock = DockStyle.Fill;
@@ -492,13 +492,13 @@ namespace AFMSSettings
 
         private void UiBtnAdd_Click(object? sender, EventArgs e)
         {
-            double? maxVi = GetInputValue(uiNumberMaxVi, DischargeSurface.VER1_ATTR_NODE1);
+            double? maxVi = GetInputValue(uiNumberMaxVi, QSurfaceVelocity.VER1_ATTR_NODE1);
             if (!maxVi.HasValue) return;
 
-            double? a = GetInputValue(uiNumberA, DischargeSurface.VER1_ATTR_NODE2);
+            double? a = GetInputValue(uiNumberA, QSurfaceVelocity.VER1_ATTR_NODE2);
             if (!a.HasValue) return;
 
-            double? b = GetInputValue(uiNumberB, DischargeSurface.VER1_ATTR_NODE3);
+            double? b = GetInputValue(uiNumberB, QSurfaceVelocity.VER1_ATTR_NODE3);
             if (!b.HasValue) return;
 
             if (uiGrid.Rows.Count >= MAX_ATTR_COUNT)
@@ -527,11 +527,11 @@ namespace AFMSSettings
             if (uiGrid.Rows.Count == 0) return true;
 
             DataGridViewRow lastRow = uiGrid.Rows[uiGrid.Rows.Count - 1];
-            double lastMaxVi = Convert.ToDouble(lastRow.Cells[DischargeSurface.VER1_ATTR_NODE1].Value);
+            double lastMaxVi = Convert.ToDouble(lastRow.Cells[QSurfaceVelocity.VER1_ATTR_NODE1].Value);
             if (maxVi > lastMaxVi) return true;
 
             MessageBox.Show(
-                $"{DischargeSurface.VER1_ATTR_NODE1} 값은 이전 값 {lastMaxVi:0.####}보다 커야 합니다.",
+                $"{QSurfaceVelocity.VER1_ATTR_NODE1} 값은 이전 값 {lastMaxVi:0.####}보다 커야 합니다.",
                 "입력 확인",
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Information);
@@ -544,9 +544,9 @@ namespace AFMSSettings
             int rowIndex = uiGrid.Rows.Add();
             DataGridViewRow row = uiGrid.Rows[rowIndex];
             row.Cells["No."].Value = rowIndex + 1;
-            row.Cells[DischargeSurface.VER1_ATTR_NODE1].Value = maxVi;
-            row.Cells[DischargeSurface.VER1_ATTR_NODE2].Value = a;
-            row.Cells[DischargeSurface.VER1_ATTR_NODE3].Value = b;
+            row.Cells[QSurfaceVelocity.VER1_ATTR_NODE1].Value = maxVi;
+            row.Cells[QSurfaceVelocity.VER1_ATTR_NODE2].Value = a;
+            row.Cells[QSurfaceVelocity.VER1_ATTR_NODE3].Value = b;
 
             uiGrid.ClearSelection();
             row.Selected = true;
