@@ -9,6 +9,7 @@ namespace AFMSDataReplicator
 {
     public class FBReplicationTable
     {
+        private const int ReplicationBatchSize = 20;
         private static readonly TimeSpan SchemaValidationInterval = TimeSpan.FromMinutes(10);
         private static readonly TimeSpan SchemaValidationRetryInterval = TimeSpan.FromSeconds(30);
 
@@ -135,14 +136,22 @@ ORDER BY RF.RDB$FIELD_POSITION";
             Logs.Clear();
 
             if (!Validate(out string error)) return false;
-            if (!TryGetNextRow(out DataRow? row, out error)) return false;
-            if (row == null) return false;
-            if (!TryGetMeasureDateTime(row, out DateTime measureDT)) return false;
-            if (!TryReplicateRow(row, measureDT, out error)) return false;
+            if (!TryGetNextRows(out DataTable rows, out error)) return false;
 
-            LastDT = measureDT;
+            bool replicated = false;
 
-            return true;
+            foreach (DataRow row in rows.Rows)
+            {
+                if (!TryGetMeasureDateTime(row, out DateTime measureDT)) continue;
+
+                // DB 오류 행을 건너뛰고 커서를 이동하면 해당 데이터가 영구 누락될 수 있으므로 중단한다.
+                if (!TryReplicateRow(row, measureDT, out error)) break;
+
+                LastDT = measureDT;
+                replicated = true;
+            }
+
+            return replicated;
         }
 
         private bool Validate(out string error)
@@ -185,16 +194,14 @@ ORDER BY RF.RDB$FIELD_POSITION";
             _nextSchemaValidationUtc = DateTime.UtcNow.Add(interval);
         }
 
-        private bool TryGetNextRow(out DataRow? row, out string error)
+        private bool TryGetNextRows(out DataTable rows, out string error)
         {
-            row = null;
-
             string date = LastDT.ToString("yyyyMMdd");
             string time = LastDT.ToString("HHmmss");
 
             QueryBuilderSelect query = new QueryBuilderSelect();
             query.Table = TableName;
-            query.First = 1;
+            query.First = ReplicationBatchSize;
 
             foreach (string column in Columns) query.Add(column);
 
@@ -202,7 +209,7 @@ ORDER BY RF.RDB$FIELD_POSITION";
             query.OrWhereRaw($"({_FBTableBase.COL_MEASURE_DATE} = '{date}' AND {_FBTableBase.COL_MEASURE_TIME} > '{time}')");
             query.OrderBy(_FBTableBase.COL_MEASURE_DATE, _FBTableBase.COL_MEASURE_TIME);
 
-            DataTable table = sourceDb.Execute(query, out error);
+            rows = sourceDb.Execute(query, out error);
 
             if (!string.IsNullOrEmpty(error))
             {
@@ -210,10 +217,6 @@ ORDER BY RF.RDB$FIELD_POSITION";
                 Logs.Add(error);
                 return false;
             }
-
-            if (table.Rows.Count == 0) return true;
-
-            row = table.Rows[0];
 
             return true;
         }
@@ -223,9 +226,10 @@ ORDER BY RF.RDB$FIELD_POSITION";
             string date = row[_FBTableBase.COL_MEASURE_DATE]?.ToString()?.Trim() ?? "";
             string time = row[_FBTableBase.COL_MEASURE_TIME]?.ToString()?.Trim() ?? "";
 
-            if (DateTime.TryParseExact(date + time, "yyyyMMddHHmmss", CultureInfo.InvariantCulture, DateTimeStyles.None, out measureDT)) return true;
+            if (DateTime.TryParseExact(date + time, "yyyyMMddHHmmss", CultureInfo.InvariantCulture, DateTimeStyles.None, out measureDT) &&
+                measureDT.Minute % 10 == 0 && measureDT.Second == 0) return true;
 
-            Logs.Add($"ERROR [{TableName}] 측정시간 형식 오류 - MEASUREDATE={date}, MEASURETIME={time}");
+            Logs.Add($"ERROR [{TableName}] 측정시간 형식 또는 10분 정각 조건 오류 - MEASUREDATE={date}, MEASURETIME={time}");
 
             return false;
         }
