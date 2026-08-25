@@ -9,8 +9,12 @@ namespace AFMSDataReplicator
 {
     public class FBReplicationTable
     {
+        private static readonly TimeSpan SchemaValidationInterval = TimeSpan.FromMinutes(10);
+        private static readonly TimeSpan SchemaValidationRetryInterval = TimeSpan.FromSeconds(30);
+
         private readonly FBDatabase sourceDb;
         private readonly FBDatabase targetDb;
+        private DateTime _nextSchemaValidationUtc;
    
         public string TableName { get; private set; }
         public List<string> Columns { get; private set; } = new();
@@ -30,6 +34,7 @@ namespace AFMSDataReplicator
             Compare = new FBCompareTable(sourceDb, targetDb, TableName);
 
             CompareResult = Compare.Validate();
+            SetNextSchemaValidationTime();
             
             if (!CompareResult.IsValid) return;
 
@@ -64,104 +69,6 @@ namespace AFMSDataReplicator
                     Logs.Add($"외래키 삭제 => ALTER TABLE {TableName} DROP CONSTRAINT {row[CONSTRAINT_NAME].ToString()}");
                 }
             }
-        }
-
-        private string GetColumnInfos(FBDatabase database, out List<FBColumnInfo> columns)
-        {
-            columns = new List<FBColumnInfo>();
-
-            string query = $@"
-SELECT
-    TRIM(RF.RDB$FIELD_NAME) AS FIELD_NAME,
-    COALESCE(F.RDB$FIELD_TYPE, 0) AS FIELD_TYPE,
-    COALESCE(F.RDB$FIELD_SUB_TYPE, 0) AS FIELD_SUB_TYPE,
-    COALESCE(F.RDB$FIELD_LENGTH, 0) AS FIELD_LENGTH,
-    COALESCE(F.RDB$FIELD_SCALE, 0) AS FIELD_SCALE,
-    COALESCE(F.RDB$CHARACTER_LENGTH, 0) AS CHAR_LENGTH_VALUE
-FROM RDB$RELATION_FIELDS RF
-JOIN RDB$FIELDS F ON F.RDB$FIELD_NAME = RF.RDB$FIELD_SOURCE
-WHERE RF.RDB$RELATION_NAME = '{TableName.ToUpperInvariant()}'
-ORDER BY RF.RDB$FIELD_POSITION";
-
-            string error = database.RunQuery(query);
-
-            if (!string.IsNullOrEmpty(error))
-                return error;
-
-            foreach (DataRow row in database.Results.Rows)
-            {
-                FBColumnInfo column = new()
-                {
-                    Name = row["FIELD_NAME"]?.ToString()?.Trim() ?? "",
-                    FieldType = GetInt(row, "FIELD_TYPE"),
-                    FieldSubType = GetInt(row, "FIELD_SUB_TYPE"),
-                    FieldLength = GetInt(row, "FIELD_LENGTH"),
-                    FieldScale = GetInt(row, "FIELD_SCALE"),
-                    CharacterLength = GetInt(row, "CHAR_LENGTH_VALUE")
-                };
-
-                columns.Add(column);
-            }
-
-            return string.Empty;
-        }
-
-        private static int GetInt(DataRow row, string columnName)
-        {
-            if (row[columnName] == DBNull.Value)
-                return 0;
-
-            return Convert.ToInt32(row[columnName]);
-        }
-
-        public string DiagnoseTargetDatabase()
-        {
-            string error = targetDb.RunQuery("SELECT 1 AS TEST_VALUE FROM RDB$DATABASE");
-
-            if (!string.IsNullOrEmpty(error))
-                return $"Target DB connection failed.{Environment.NewLine}{error}";
-
-            error = GetColumnInfos(sourceDb, out List<FBColumnInfo> sourceColumns);
-
-            if (!string.IsNullOrEmpty(error))
-                return error;
-
-            error = GetColumnInfos(targetDb, out List<FBColumnInfo> targetColumns);
-
-            if (!string.IsNullOrEmpty(error))
-                return error;
-
-            if (sourceColumns.Count == 0)
-                return $"Source table does not exist: {TableName}";
-
-            if (targetColumns.Count == 0)
-                return $"Target table does not exist: {TableName}";
-
-            if (sourceColumns.Count != targetColumns.Count)
-                return $"Column count mismatch: {TableName} - Source={sourceColumns.Count}, Target={targetColumns.Count}";
-
-            for (int i = 0; i < sourceColumns.Count; i++)
-            {
-                FBColumnInfo source = sourceColumns[i];
-                FBColumnInfo target = targetColumns[i];
-
-                if (!source.Name.Equals(target.Name, StringComparison.OrdinalIgnoreCase))
-                    return $"Column name mismatch: {TableName} - Source={source.Name}, Target={target.Name}";
-
-                if (source.FieldType != target.FieldType)
-                    return $"Column type mismatch: {TableName}.{source.Name}";
-
-                if (source.FieldSubType != target.FieldSubType)
-                    return $"Column subtype mismatch: {TableName}.{source.Name}";
-
-                if (source.FieldScale != target.FieldScale)
-                    return $"Column scale mismatch: {TableName}.{source.Name}";
-
-                if (source.CharacterLength != target.CharacterLength)
-                    return $"Column length mismatch: {TableName}.{source.Name}";
-            }
-
-            return string.Empty;
         }
 
         private void Initialize()
@@ -248,14 +155,34 @@ ORDER BY RF.RDB$FIELD_POSITION";
                 return false;
             }
 
-            error = DiagnoseTargetDatabase();
+            bool validatedNow = false;
 
-            if (string.IsNullOrEmpty(error)) return true;
+            if (DateTime.UtcNow >= _nextSchemaValidationUtc)
+            {
+                CompareResult = Compare.Validate();
+                SetNextSchemaValidationTime();
+                validatedNow = true;
+            }
 
-            Logs.Add($"ERROR [{TableName}] Target DB 진단 실패");
-            Logs.Add(error);
+            if (CompareResult.IsValid) return true;
+
+            if (validatedNow)
+            {
+                Logs.Add($"ERROR [{TableName}] 원격/로컬 테이블 구조 검증 실패");
+
+                foreach (FBSurveyDifference difference in CompareResult.Differences)
+                {
+                    Logs.Add($"{difference.Type}, {difference.ColumnName}, Remote={difference.RemoteValue}, Local={difference.LocalValue}");
+                }
+            }
 
             return false;
+        }
+
+        private void SetNextSchemaValidationTime()
+        {
+            TimeSpan interval = CompareResult.IsValid ? SchemaValidationInterval : SchemaValidationRetryInterval;
+            _nextSchemaValidationUtc = DateTime.UtcNow.Add(interval);
         }
 
         private bool TryGetNextRow(out DataRow? row, out string error)
