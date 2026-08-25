@@ -289,6 +289,7 @@ namespace AFMSSettings
         private void SetupGrid()
         {
             uiGridMain.AutoGenerateColumns = false;
+            uiGridMain.ShowCellToolTips = false;
             uiGridMain.Columns.Clear();
 
             DataGridViewTextBoxColumn colHydroId = new DataGridViewTextBoxColumn { Name = COL_HYDRO_ID, Visible = false };
