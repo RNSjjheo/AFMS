@@ -92,4 +92,9 @@ namespace AFMSDll
     {
         Ver00 = 0,
     }
+
+    public enum DiscVerRatingCurve
+    {
+        Ver00 = 0,
+    }
 }

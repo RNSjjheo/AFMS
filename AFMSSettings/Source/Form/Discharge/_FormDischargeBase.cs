@@ -9,6 +9,7 @@ namespace AFMSSettings
     public class _FormDischargeBase : AFMSForm
     {
         private readonly Label _uiLabelHydroMeterName;
+        private readonly Label _uiLabelTarget;
         private Control? _detailControl;
         private string _hydroMeterName = string.Empty;
 
@@ -40,7 +41,8 @@ namespace AFMSSettings
             AFMSPanel hydroMeterPanel = CreateHydroMeterPanel(out _uiLabelHydroMeterName);
             uiCbVersion = CreateVersionComboBox();
 
-            contextLayout.Controls.Add(CreateContextLabel("설정 대상 유속계"), 0, 0);
+            _uiLabelTarget = CreateContextLabel("설정 대상 유속계");
+            contextLayout.Controls.Add(_uiLabelTarget, 0, 0);
             contextLayout.Controls.Add(CreateContextLabel("산정법 버전"), 1, 0);
             contextLayout.Controls.Add(hydroMeterPanel, 0, 1);
             contextLayout.Controls.Add(uiCbVersion, 1, 1);
@@ -81,6 +83,14 @@ namespace AFMSSettings
                 _hydroMeterName = value?.Trim() ?? string.Empty;
                 UpdateHydroMeterName();
             }
+        }
+
+        [Category("AFMS Data")]
+        [DefaultValue("설정 대상 유속계")]
+        public string TargetLabelText
+        {
+            get => _uiLabelTarget.Text;
+            set => _uiLabelTarget.Text = value ?? string.Empty;
         }
 
         [Browsable(false)]

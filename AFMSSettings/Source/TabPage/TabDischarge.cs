@@ -196,6 +196,7 @@ namespace AFMSSettings
         private void ClearDetailPanels()
         {
             uiTabPageSurfaceVelo.ClearSelectionAndDetail();
+            uiTabPageRatingCurve.ClearSelectionAndDetail();
         }
 
         private void SelectMethodPage()
@@ -223,6 +224,7 @@ namespace AFMSSettings
                         break;
                     case DischargeMethod.RatingCurve:
                         uiTabMain.SelectedTab = uiTabPageRatingCurve;
+                        uiTabPageRatingCurve.LoadData();
                         break;
                 }
 
