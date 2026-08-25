@@ -13,7 +13,6 @@ namespace AFMSSettings.Source.Form.Discharge
         private readonly AFMSNumberBox _uiA;
         private readonly AFMSNumberBox _uiB;
         private readonly AFMSNumberBox _uiH0;
-        private readonly AFMSNumberBox _uiUncertainty;
 
         public RatingCurveVer0Control()
         {
@@ -54,7 +53,6 @@ namespace AFMSSettings.Source.Form.Discharge
             _uiA = CreateNumberBox("a");
             _uiB = CreateNumberBox("b");
             _uiH0 = CreateNumberBox("h₀");
-            _uiUncertainty = CreateNumberBox("불확도(%)");
 
             main.Controls.Add(nameLayout, 0, 0);
             main.Controls.Add(formula, 0, 1);
@@ -84,8 +82,7 @@ namespace AFMSSettings.Source.Form.Discharge
                     MaxWaterLevel = Convert.ToDouble(row.Cells["MAX_H"].Value),
                     A = Convert.ToDouble(row.Cells["A"].Value),
                     B = Convert.ToDouble(row.Cells["B"].Value),
-                    H0 = Convert.ToDouble(row.Cells["H0"].Value),
-                    Uncertainty = Convert.ToDouble(row.Cells["UNCERTAINTY"].Value)
+                    H0 = Convert.ToDouble(row.Cells["H0"].Value)
                 });
             }
             return true;
@@ -104,9 +101,9 @@ namespace AFMSSettings.Source.Form.Discharge
 
             TableLayoutPanel row = new TableLayoutPanel();
             row.Dock = DockStyle.Fill;
-            row.ColumnCount = 6;
-            for (int i = 0; i < 5; i++) row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 17F));
-            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 15F));
+            row.ColumnCount = 5;
+            for (int i = 0; i < 4; i++) row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 21F));
+            row.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 16F));
 
             AFMSButton add = new AFMSButton();
             add.Dock = DockStyle.Fill;
@@ -122,15 +119,14 @@ namespace AFMSSettings.Source.Form.Discharge
             row.Controls.Add(_uiA, 1, 0);
             row.Controls.Add(_uiB, 2, 0);
             row.Controls.Add(_uiH0, 3, 0);
-            row.Controls.Add(_uiUncertainty, 4, 0);
-            row.Controls.Add(add, 5, 0);
+            row.Controls.Add(add, 4, 0);
             panel.Controls.Add(row);
             return panel;
         }
 
         private void Add_Click(object? sender, EventArgs e)
         {
-            AFMSNumberBox[] inputs = [_uiMaxWaterLevel, _uiA, _uiB, _uiH0, _uiUncertainty];
+            AFMSNumberBox[] inputs = [_uiMaxWaterLevel, _uiA, _uiB, _uiH0];
             foreach (AFMSNumberBox input in inputs)
             {
                 if (input.DoubleValue.HasValue) continue;
@@ -152,7 +148,7 @@ namespace AFMSSettings.Source.Form.Discharge
                 return;
             }
 
-            _uiGrid.Rows.Add(_uiGrid.Rows.Count + 1, maxH, _uiA.DoubleValue, _uiB.DoubleValue, _uiH0.DoubleValue, _uiUncertainty.DoubleValue);
+            _uiGrid.Rows.Add(_uiGrid.Rows.Count + 1, maxH, _uiA.DoubleValue, _uiB.DoubleValue, _uiH0.DoubleValue);
             foreach (AFMSNumberBox input in inputs) input.Text = string.Empty;
         }
 
@@ -175,11 +171,10 @@ namespace AFMSSettings.Source.Form.Discharge
         private void SetupGridColumns()
         {
             AddColumn("NO", "No.", 12F);
-            AddColumn("MAX_H", "최대 수위 (m)", 22F, "0.000");
-            AddColumn("A", "a", 16F, "0.0000");
-            AddColumn("B", "b", 16F, "0.0000");
-            AddColumn("H0", "h₀ (m)", 18F, "0.000");
-            AddColumn("UNCERTAINTY", "불확도 (%)", 20F, "0.00");
+            AddColumn("MAX_H", "최대 수위 (m)", 26F, "0.000");
+            AddColumn("A", "a", 20F, "0.0000");
+            AddColumn("B", "b", 20F, "0.0000");
+            AddColumn("H0", "h₀ (m)", 22F, "0.000");
         }
 
         private void AddColumn(string name, string header, float weight, string format = "")

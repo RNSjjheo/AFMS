@@ -17,7 +17,6 @@ namespace AFMSSettings
             public double A { get; set; }
             public double B { get; set; }
             public double H0 { get; set; }
-            public double Uncertainty { get; set; }
         }
 
         public sealed class RatingCurveConfig
@@ -116,7 +115,7 @@ namespace AFMSSettings
             for (int i = 0; i < items.Count; i++)
             {
                 RatingCurveCoefficient item = items[i];
-                _uiGridDetail.Rows.Add(i + 1, item.MaxWaterLevel, item.A, item.B, item.H0, item.Uncertainty);
+                _uiGridDetail.Rows.Add(i + 1, item.MaxWaterLevel, item.A, item.B, item.H0);
             }
         }
 
@@ -157,11 +156,10 @@ namespace AFMSSettings
             Label formula = new Label { Dock = DockStyle.Fill, Text = "Q = a(h − h₀)ᵇ", Font = new Font("Cambria Math", 17F, FontStyle.Italic), TextAlign = ContentAlignment.MiddleCenter };
             grid = new AFMSDataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false, ReadOnly = true, AllowUserToAddRows = false, AFMSHeaderHeight = 34, AFMSRowHeight = 32, BorderRadius = 6 };
             AddDetailColumn(grid, "NO", "No.", 12F);
-            AddDetailColumn(grid, "MAX_H", "최대 수위", 22F, "0.000");
-            AddDetailColumn(grid, "A", "a", 16F, "0.0000");
-            AddDetailColumn(grid, "B", "b", 16F, "0.0000");
-            AddDetailColumn(grid, "H0", "h₀", 16F, "0.000");
-            AddDetailColumn(grid, "UNCERTAINTY", "불확도(%)", 20F, "0.00");
+            AddDetailColumn(grid, "MAX_H", "최대 수위", 26F, "0.000");
+            AddDetailColumn(grid, "A", "a", 20F, "0.0000");
+            AddDetailColumn(grid, "B", "b", 20F, "0.0000");
+            AddDetailColumn(grid, "H0", "h₀", 22F, "0.000");
             layout.Controls.Add(curveName, 0, 0); layout.Controls.Add(formula, 0, 1); layout.Controls.Add(grid, 0, 2);
             return panel;
         }
