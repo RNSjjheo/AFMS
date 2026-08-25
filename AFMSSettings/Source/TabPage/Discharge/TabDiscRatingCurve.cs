@@ -16,7 +16,7 @@ namespace AFMSSettings
             public double MaxWaterLevel { get; set; }
             public double A { get; set; }
             public double B { get; set; }
-            public double H0 { get; set; }
+            public double C { get; set; }
         }
 
         public sealed class RatingCurveConfig
@@ -115,7 +115,7 @@ namespace AFMSSettings
             for (int i = 0; i < items.Count; i++)
             {
                 RatingCurveCoefficient item = items[i];
-                _uiGridDetail.Rows.Add(i + 1, item.MaxWaterLevel, item.A, item.B, item.H0);
+                _uiGridDetail.Rows.Add(i + 1, item.MaxWaterLevel, item.A, item.B, item.C);
             }
         }
 
@@ -153,13 +153,15 @@ namespace AFMSSettings
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 64F));
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             curveName = new Label { Dock = DockStyle.Fill, Font = new Font(DLLStyle.DEFAULT_FONT_SYLTE, 10F, FontStyle.Bold), ForeColor = DllColorHelper.HexToColor("#138052"), TextAlign = ContentAlignment.MiddleLeft };
-            Label formula = new Label { Dock = DockStyle.Fill, Text = "Q = a(h − h₀)ᵇ", Font = new Font("Cambria Math", 17F, FontStyle.Italic), TextAlign = ContentAlignment.MiddleCenter };
+            AFMSMathLabel formula = DischargeRating.GetExample(DiscVerRatingCurve.Ver00);
+            formula.Dock = DockStyle.Fill;
+            formula.TextAlign = ContentAlignment.MiddleCenter;
             grid = new AFMSDataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false, ReadOnly = true, AllowUserToAddRows = false, AFMSHeaderHeight = 34, AFMSRowHeight = 32, BorderRadius = 6 };
             AddDetailColumn(grid, "NO", "No.", 12F);
-            AddDetailColumn(grid, "MAX_H", "최대 수위", 26F, "0.000");
-            AddDetailColumn(grid, "A", "a", 20F, "0.0000");
-            AddDetailColumn(grid, "B", "b", 20F, "0.0000");
-            AddDetailColumn(grid, "H0", "h₀", 22F, "0.000");
+            AddDetailColumn(grid, DischargeRating.VER1_ATTR_MAX_H, "최대 수위", 26F, "0.000");
+            AddDetailColumn(grid, DischargeRating.VER1_ATTR_NODE1, DischargeRating.VER1_ATTR_NODE1, 20F, "0.0000");
+            AddDetailColumn(grid, DischargeRating.VER1_ATTR_NODE2, DischargeRating.VER1_ATTR_NODE2, 20F, "0.0000");
+            AddDetailColumn(grid, DischargeRating.VER1_ATTR_NODE3, DischargeRating.VER1_ATTR_NODE3, 22F, "0.0000");
             layout.Controls.Add(curveName, 0, 0); layout.Controls.Add(formula, 0, 1); layout.Controls.Add(grid, 0, 2);
             return panel;
         }

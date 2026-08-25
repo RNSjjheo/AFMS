@@ -12,7 +12,7 @@ namespace AFMSDll
         {
         }
 
-        public static AFMSMathLabel GetExample(DiscVerSurfaceVelo version)
+        public static AFMSMathLabel GetExample(DiscVerRatingCurve version)
         {
             AFMSMathLabel item = new AFMSMathLabel();
             item.ClearMath();

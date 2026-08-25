@@ -8,11 +8,17 @@ namespace AFMSSettings.Source.Form.Discharge
     public sealed class RatingCurveVer0Control : UserControl
     {
         private const int MAX_SECTION_COUNT = 10;
+        private const string COL_NO = "NO";
+        private const string COL_MAX_H = DischargeRating.VER1_ATTR_MAX_H;
+        private const string COL_NODE1 = DischargeRating.VER1_ATTR_NODE1;
+        private const string COL_NODE2 = DischargeRating.VER1_ATTR_NODE2;
+        private const string COL_NODE3 = DischargeRating.VER1_ATTR_NODE3;
+
         private readonly AFMSDataGridView _uiGrid;
         private readonly AFMSNumberBox _uiMaxWaterLevel;
         private readonly AFMSNumberBox _uiA;
         private readonly AFMSNumberBox _uiB;
-        private readonly AFMSNumberBox _uiH0;
+        private readonly AFMSNumberBox _uiC;
 
         public RatingCurveVer0Control()
         {
@@ -29,7 +35,7 @@ namespace AFMSSettings.Source.Form.Discharge
             main.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F));
             Controls.Add(main);
 
-            AFMSMathLabel formula = DischargeRating.GetExample(DiscVerSurfaceVelo.Ver00);
+            AFMSMathLabel formula = DischargeRating.GetExample(DiscVerRatingCurve.Ver00);
             formula.Dock = DockStyle.Fill;
             formula.TextAlign = ContentAlignment.MiddleCenter;
 
@@ -38,9 +44,9 @@ namespace AFMSSettings.Source.Form.Discharge
             SetupGridColumns();
 
             _uiMaxWaterLevel = CreateNumberBox("최대 수위");
-            _uiA = CreateNumberBox(DischargeRating.VER1_ATTR_NODE1);
-            _uiB = CreateNumberBox(DischargeRating.VER1_ATTR_NODE2);
-            _uiH0 = CreateNumberBox(DischargeRating.VER1_ATTR_NODE3);
+            _uiA = CreateNumberBox(COL_NODE1);
+            _uiB = CreateNumberBox(COL_NODE2);
+            _uiC = CreateNumberBox(COL_NODE3);
 
             main.Controls.Add(formula, 0, 0);
             main.Controls.Add(_uiGrid, 0, 1);
@@ -65,10 +71,10 @@ namespace AFMSSettings.Source.Form.Discharge
             {
                 config.Coefficients.Add(new TabDiscRatingCurve.RatingCurveCoefficient
                 {
-                    MaxWaterLevel = Convert.ToDouble(row.Cells[DischargeRating.VER1_ATTR_MAX_H].Value),
-                    A = Convert.ToDouble(row.Cells[DischargeRating.VER1_ATTR_NODE1].Value),
-                    B = Convert.ToDouble(row.Cells[DischargeRating.VER1_ATTR_NODE2].Value),
-                    H0 = Convert.ToDouble(row.Cells[DischargeRating.VER1_ATTR_NODE3].Value)
+                    MaxWaterLevel = Convert.ToDouble(row.Cells[COL_MAX_H].Value),
+                    A = Convert.ToDouble(row.Cells[COL_NODE1].Value),
+                    B = Convert.ToDouble(row.Cells[COL_NODE2].Value),
+                    C = Convert.ToDouble(row.Cells[COL_NODE3].Value)
                 });
             }
             return true;
@@ -104,7 +110,7 @@ namespace AFMSSettings.Source.Form.Discharge
             row.Controls.Add(_uiMaxWaterLevel, 0, 0);
             row.Controls.Add(_uiA, 1, 0);
             row.Controls.Add(_uiB, 2, 0);
-            row.Controls.Add(_uiH0, 3, 0);
+            row.Controls.Add(_uiC, 3, 0);
             row.Controls.Add(add, 4, 0);
             panel.Controls.Add(row);
             return panel;
@@ -112,7 +118,7 @@ namespace AFMSSettings.Source.Form.Discharge
 
         private void Add_Click(object? sender, EventArgs e)
         {
-            AFMSNumberBox[] inputs = [_uiMaxWaterLevel, _uiA, _uiB, _uiH0];
+            AFMSNumberBox[] inputs = [_uiMaxWaterLevel, _uiA, _uiB, _uiC];
             foreach (AFMSNumberBox input in inputs)
             {
                 if (input.DoubleValue.HasValue) continue;
@@ -128,13 +134,13 @@ namespace AFMSSettings.Source.Form.Discharge
             }
 
             double maxH = _uiMaxWaterLevel.DoubleValue!.Value;
-            if (_uiGrid.Rows.Count > 0 && maxH <= Convert.ToDouble(_uiGrid.Rows[^1].Cells["MAX_H"].Value))
+            if (_uiGrid.Rows.Count > 0 && maxH <= Convert.ToDouble(_uiGrid.Rows[^1].Cells[COL_MAX_H].Value))
             {
                 MessageBox.Show("최대 수위는 이전 구간보다 커야 합니다.", "입력 확인", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            _uiGrid.Rows.Add(_uiGrid.Rows.Count + 1, maxH, _uiA.DoubleValue, _uiB.DoubleValue, _uiH0.DoubleValue);
+            _uiGrid.Rows.Add(_uiGrid.Rows.Count + 1, maxH, _uiA.DoubleValue, _uiB.DoubleValue, _uiC.DoubleValue);
             foreach (AFMSNumberBox input in inputs) input.Text = string.Empty;
         }
 
@@ -150,17 +156,17 @@ namespace AFMSSettings.Source.Form.Discharge
             if (result != DialogResult.Yes) return;
 
             _uiGrid.Rows.RemoveAt(e.RowIndex);
-            for (int i = 0; i < _uiGrid.Rows.Count; i++) _uiGrid.Rows[i].Cells["NO"].Value = i + 1;
+            for (int i = 0; i < _uiGrid.Rows.Count; i++) _uiGrid.Rows[i].Cells[COL_NO].Value = i + 1;
             _uiGrid.ClearSelection();
         }
 
         private void SetupGridColumns()
         {
-            AddColumn("NO", "No.", 12F);
-            AddColumn("MAX_H", "최대 수위 (m)", 26F, "0.000");
-            AddColumn("A", "a", 20F, "0.0000");
-            AddColumn("B", "b", 20F, "0.0000");
-            AddColumn("H0", "h₀ (m)", 22F, "0.000");
+            AddColumn(COL_NO, "No.", 12F);
+            AddColumn(COL_MAX_H, "최대 수위 (m)", 26F, "0.000");
+            AddColumn(COL_NODE1, COL_NODE1, 20F, "0.0000");
+            AddColumn(COL_NODE2, COL_NODE2, 20F, "0.0000");
+            AddColumn(COL_NODE3, COL_NODE3, 22F, "0.0000");
         }
 
         private void AddColumn(string name, string header, float weight, string format = "")
