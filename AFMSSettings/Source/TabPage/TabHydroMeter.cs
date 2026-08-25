@@ -16,6 +16,8 @@ namespace AFMSSettings
         private const string COL_TRANSECT_CNT = "측선수";
         private const string COL_TRANSECT_SETTING = "측선설정";
         private const string COL_DISTANCE_DATAS = FbtAFMSHydroTransect.COL_DISTANCE_DATAS;
+        private const string COL_TRANSECT_NO = "측선 번호";
+        private const string COL_TRANSECT_DISTANCE = "좌안에서의 거리(m)";
 
         private sealed class TransectJsonData
         {
@@ -203,6 +205,8 @@ namespace AFMSSettings
 
         protected void BindingDetailComplete(object? sender, DataGridViewBindingCompleteEventArgs e)
         {
+            if (uiGridDetail.Columns.Contains(COL_TRANSECT_DISTANCE))
+                uiGridDetail.Columns[COL_TRANSECT_DISTANCE].DefaultCellStyle.Format = "0.00";
         }
 
         private void UiGridList_SelectionChanged(object? sender, EventArgs e)
@@ -258,8 +262,8 @@ namespace AFMSSettings
         private DataTable CreateTransectDetailTable()
         {
             DataTable table = new DataTable();
-            table.Columns.Add("측선 번호", typeof(int));
-            table.Columns.Add("좌안에서의 거리(m)", typeof(double));
+            table.Columns.Add(COL_TRANSECT_NO, typeof(int));
+            table.Columns.Add(COL_TRANSECT_DISTANCE, typeof(double));
             return table;
         }
 

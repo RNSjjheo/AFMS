@@ -147,6 +147,7 @@ namespace AFMSSettings
                 AFMSNumberBox input = new AFMSNumberBox();
                 input.Dock = DockStyle.Fill;
                 input.InputType = AFMSNumericInputType.Double;
+                input.DecimalPlaces = 2;
                 input.AllowNegative = false;
                 input.BorderRadius = 4;
                 input.TextAlign = HorizontalAlignment.Center;

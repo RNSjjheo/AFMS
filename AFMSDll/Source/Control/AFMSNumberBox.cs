@@ -17,6 +17,7 @@ namespace AFMSDll
         private AFMSNumericInputType _inputType = AFMSNumericInputType.Double;
         private bool _allowNegative = true;
         private bool _internalTextChange;
+        private int _decimalPlaces = -1;
         private double? _minimum;
         private double? _maximum;
 
@@ -47,6 +48,19 @@ namespace AFMSDll
             set
             {
                 _allowNegative = value;
+                NormalizeText();
+            }
+        }
+
+        [Category("AFMS Behavior")]
+        [Description("Double 입력 시 허용하고 표시할 소수 자릿수입니다. -1이면 제한하지 않습니다.")]
+        [DefaultValue(-1)]
+        public int DecimalPlaces
+        {
+            get => _decimalPlaces;
+            set
+            {
+                _decimalPlaces = Math.Max(-1, Math.Min(15, value));
                 NormalizeText();
             }
         }
@@ -123,12 +137,11 @@ namespace AFMSDll
 
         protected override void OnEditorKeyPress(KeyPressEventArgs e)
         {
-            if (char.IsControl(e.KeyChar) || char.IsDigit(e.KeyChar)) return;
+            if (char.IsControl(e.KeyChar)) return;
 
-            if (e.KeyChar == '-' && AllowNegative && Editor.SelectionStart == 0 && !Editor.Text.Contains('-')) return;
-            if (e.KeyChar == '.' && InputType == AFMSNumericInputType.Double && !Editor.Text.Contains('.')) return;
-
-            e.Handled = true;
+            string candidate = Editor.Text.Remove(Editor.SelectionStart, Editor.SelectionLength)
+                .Insert(Editor.SelectionStart, e.KeyChar.ToString());
+            e.Handled = FilterText(candidate) != candidate;
         }
 
         protected override void OnEditorTextChanged(EventArgs e)
@@ -163,6 +176,7 @@ namespace AFMSDll
             char[] buffer = new char[text.Length];
             int length = 0;
             bool decimalAdded = false;
+            int decimalDigitCount = 0;
 
             for (int i = 0; i < text.Length; i++)
             {
@@ -170,7 +184,9 @@ namespace AFMSDll
 
                 if (char.IsDigit(ch))
                 {
+                    if (decimalAdded && DecimalPlaces >= 0 && decimalDigitCount >= DecimalPlaces) continue;
                     buffer[length++] = ch;
+                    if (decimalAdded) decimalDigitCount++;
                     continue;
                 }
 
@@ -180,7 +196,7 @@ namespace AFMSDll
                     continue;
                 }
 
-                if (ch == '.' && InputType == AFMSNumericInputType.Double && !decimalAdded)
+                if (ch == '.' && InputType == AFMSNumericInputType.Double && DecimalPlaces != 0 && !decimalAdded)
                 {
                     buffer[length++] = ch;
                     decimalAdded = true;
@@ -227,6 +243,8 @@ namespace AFMSDll
 
             if (InputType == AFMSNumericInputType.Integer)
                 Text = Convert.ToInt32(Math.Truncate(value)).ToString(CultureInfo.InvariantCulture);
+            else if (DecimalPlaces >= 0)
+                Text = value.ToString($"F{DecimalPlaces}", CultureInfo.InvariantCulture);
             else
                 Text = value.ToString(CultureInfo.InvariantCulture);
 
