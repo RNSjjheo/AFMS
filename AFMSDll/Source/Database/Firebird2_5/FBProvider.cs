@@ -97,7 +97,7 @@ namespace AFMSDll
                     continue;
                 }
 
-                string errorMsg = db.RunNonQuery(crateTableSql);
+                db.Execute(crateTableSql, out string errorMsg);
 
                 bool tableCreated = ExistTable(tablename);
 

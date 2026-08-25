@@ -19,6 +19,7 @@ namespace AFMSSettings
         private AFMSGuidePanel uiGuide;
 
         public TabDischargeMapping()
+            : base(false)
         {
             Text = "유량 산정 선택";
             BackColor = Color.White;

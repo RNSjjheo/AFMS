@@ -14,10 +14,13 @@ namespace AFMSSettings
         protected abstract void UiButtonInput_Click(object? sender, EventArgs e);
         private Control _SubControl;
         private Control _MainControl;
+        private readonly TableLayoutPanel? _mainHostLayout;
         public AFMSDataGridView uiGridMain;
         public TableLayoutPanel uiTpMain;
         public AFMSButton uiButtonInput;
-        public _TabDischargeBase()
+        public AFMSGuidePanel? uiLatestDataGuide;
+
+        protected _TabDischargeBase(bool showLatestDataGuide = true)
         {
             this.Enter += _TabDischargeBase_Enter;
             uiTpMain = new TableLayoutPanel();
@@ -56,6 +59,15 @@ namespace AFMSSettings
             uiButtonInput.Click += UiButtonInput_Click;
 
             uiTpMain.Controls.Add(uiButtonInput,1,1);
+
+            if (showLatestDataGuide)
+            {
+                _mainHostLayout = CreateMainHostLayout();
+                uiLatestDataGuide = CreateLatestDataGuide();
+                _mainHostLayout.Controls.Add(uiLatestDataGuide, 0, 1);
+                uiTpMain.Controls.Add(_mainHostLayout, 0, 0);
+            }
+
             CtlMain = uiGridMain;
 
             Controls.Add(uiTpMain);
@@ -86,7 +98,11 @@ namespace AFMSSettings
             get => _MainControl;
             set
             {
-                if (_MainControl != null) uiTpMain.Controls.Remove(_MainControl);
+                if (_MainControl != null)
+                {
+                    if (_mainHostLayout != null) _mainHostLayout.Controls.Remove(_MainControl);
+                    else uiTpMain.Controls.Remove(_MainControl);
+                }
 
                 _MainControl = value;
 
@@ -95,7 +111,8 @@ namespace AFMSSettings
                 _MainControl.Dock = DockStyle.Fill;
                 _MainControl.Margin = new Padding(0,5,0,5);
 
-                uiTpMain.Controls.Add(_MainControl, 0, 0);
+                if (_mainHostLayout != null) _mainHostLayout.Controls.Add(_MainControl, 0, 0);
+                else uiTpMain.Controls.Add(_MainControl, 0, 0);
             }
         }
 
@@ -117,6 +134,35 @@ namespace AFMSSettings
 
                 uiTpMain.Controls.Add(_SubControl, 1, 0);
             }
+        }
+
+        private static TableLayoutPanel CreateMainHostLayout()
+        {
+            TableLayoutPanel layout = new TableLayoutPanel();
+            layout.Dock = DockStyle.Fill;
+            layout.Margin = Padding.Empty;
+            layout.Padding = Padding.Empty;
+            layout.ColumnCount = 1;
+            layout.RowCount = 2;
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 82F));
+            return layout;
+        }
+
+        private static AFMSGuidePanel CreateLatestDataGuide()
+        {
+            AFMSGuidePanel guide = new AFMSGuidePanel();
+            guide.Dock = DockStyle.Fill;
+            guide.Margin = new Padding(0, 5, 0, 5);
+            guide.Padding = new Padding(15, 3, 18, 8);
+            guide.Title = "유량 산정 안내";
+            guide.BorderColor = DllColorHelper.GetCommonBorder();
+            guide.BorderRadius = 6;
+            guide.BorderThickness = 1F;
+            guide.IconColor = DllColorHelper.HexToColor("#02925D");
+            guide.Add(GuideLevelType.Level0, "가장 최근 데이터가 유량 산정에 사용됩니다.");
+            return guide;
         }
     }
 }

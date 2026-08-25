@@ -31,7 +31,7 @@ namespace AFMSDll
             sql += "\n" + $"{COL_DEVICE_ATTR} VARCHAR(50),";
             sql += "\n" + $"{COL_TRANSECT_CNT} INTEGER,";
             sql += "\n" + $"{COL_AFMS_ONLY} INTEGER,";
-            sql += "\n" + $"{COL_COMM_CONFIG} VARCHAR(200)";
+            sql += "\n" + $"{COL_COMM_CONFIG} VARCHAR(200),";
             sql += "\n" + $"CONSTRAINT PK_{TABLE_NAME} PRIMARY KEY({COL_ID})";
             sql += "\n" + ")";
 
