@@ -1,38 +1,58 @@
 using AFMSDll;
 using FirebirdSql.Data.FirebirdClient;
 using log4net;
-using Microsoft.VisualBasic.Logging;
 using RnsLibrary;
 using System.Data;
-using System.Drawing.Interop;
 using System.Globalization;
-using System.Security.Cryptography.Xml;
 
 namespace AFMSDataReplicator
 {
     public class ReplicationWorker() : BackgroundService
     {
+        private static readonly TimeSpan SettingsRefreshInterval = TimeSpan.FromMinutes(1);
+        private static readonly TimeSpan InitializationRetryInterval = TimeSpan.FromSeconds(30);
         private static readonly ILog Log = LogManager.GetLogger("SYS");
-        private FBDatabase _dbRemote;
-        private FBDatabase _dbLocal;
-        private ReplicatorInfo RepVthInfo = new ReplicatorInfo();
-        private ReplicatorInfo RepLevInfo = new ReplicatorInfo();
-        private FbConnectionStringBuilder RemoteStrBuilder = null!;
-        private List<FBReplicationTable> _tables = new();
+
+        private sealed record ReplicationSettingSnapshot(
+            int Id,
+            DateTime BeginDateTime,
+            string TargetIp,
+            bool EnableVth,
+            bool EnableLevel);
+
+        private FBDatabase? _dbRemote;
+        private FBDatabase? _dbLocal;
+        private ReplicationSettingSnapshot? _currentSetting;
+        private DateTime _nextSettingsRefreshUtc = DateTime.MinValue;
+        private readonly List<FBReplicationTable> _tables = new();
+
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             DateTime pretime = DateTime.Now;
             TimeSpan diff = DateTime.Now - pretime;
 
-            List<string> logs = [];
             Log.Info("START Worker");
-
-            SetInfo();
 
             bool copyed = false;
 
             while (!stoppingToken.IsCancellationRequested)
             {
+                if (DateTime.UtcNow >= _nextSettingsRefreshUtc)
+                {
+                    try
+                    {
+                        RefreshSettingsAndTables();
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Error("복제 설정 및 테이블 초기화 중 예외가 발생했습니다. 재시도합니다.", ex);
+                    }
+
+                    _nextSettingsRefreshUtc = DateTime.UtcNow.Add(NeedsInitializationRetry()
+                        ? InitializationRetryInterval
+                        : SettingsRefreshInterval);
+                }
+
                 copyed = false;
 
                 foreach (FBReplicationTable table in _tables)
@@ -56,9 +76,10 @@ namespace AFMSDataReplicator
             }
         }
 
-        private void SetInfo()
+        private bool RefreshSettingsAndTables()
         {
             string sql = $"SELECT FIRST 1 ";
+            sql += $"\n" + $"{FbtAFMSReplicatorSetting.COL_ID}, ";
             sql += $"\n" + $"{FbtAFMSReplicatorSetting.COL_MEASURE_DATE}, ";
             sql += $"\n" + $"{FbtAFMSReplicatorSetting.COL_MEASURE_TIME}, ";
             sql += $"\n" + $"{FbtAFMSReplicatorSetting.COL_ENABLE_VTH}, ";
@@ -68,36 +89,97 @@ namespace AFMSDataReplicator
             sql += $"\n" + $"ORDER BY {FbtAFMSReplicatorSetting.COL_ID} DESC";
 
             using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
-            db.RunQuery(sql);
+            DataTable settings = db.Execute(sql, out string error);
 
-            foreach (DataRow row in db.Results.Rows)
+            if (!string.IsNullOrEmpty(error))
             {
-                string begindate = row[FbtAFMSReplicatorSetting.COL_MEASURE_DATE].ToString();
-                string begintime = row[FbtAFMSReplicatorSetting.COL_MEASURE_TIME].ToString();
-                string targetip = row[FbtAFMSReplicatorSetting.COL_TARGET_IP].ToString();
-
-                string begin = begindate + " " + begintime;
-                DateTime saveDT = DateTime.ParseExact(begin, "yyyyMMdd HHmmss", CultureInfo.InvariantCulture);
-
-                RemoteStrBuilder = SetFBConnStrBuilder(targetip);
-
-                _dbRemote = new FBDatabase(RemoteStrBuilder);
-                _dbLocal = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
-
-                if (row[FbtAFMSReplicatorSetting.COL_ENABLE_VTH].ToString() != "0")
-                {
-                    FBReplicationTable table = new FBReplicationTable(_dbRemote, _dbLocal, FbtVTHLOGGER.TABLE_NAME, saveDT);
-
-                    InsertValidTable(table);
-                }
-
-                if (row[FbtAFMSReplicatorSetting.COL_ENABLE_LEVEL].ToString() != "0")
-                {
-                    FBReplicationTable table  = new FBReplicationTable(_dbRemote, _dbLocal, FbtWATERLEVEL.TABLE_NAME, saveDT);
-
-                    InsertValidTable(table);
-                }
+                Log.Error($"복제 설정 조회 실패{Environment.NewLine}{error}");
+                return false;
             }
+
+            if (settings.Rows.Count == 0)
+            {
+                Log.Error("복제 설정이 없습니다.");
+                return false;
+            }
+
+            DataRow row = settings.Rows[0];
+            string beginText = $"{row[FbtAFMSReplicatorSetting.COL_MEASURE_DATE]} {row[FbtAFMSReplicatorSetting.COL_MEASURE_TIME]}";
+            string targetIp = row[FbtAFMSReplicatorSetting.COL_TARGET_IP]?.ToString()?.Trim() ?? string.Empty;
+
+            if (!DateTime.TryParseExact(beginText, "yyyyMMdd HHmmss", CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime beginDateTime))
+            {
+                Log.Error($"복제 시작 시각 형식이 올바르지 않습니다. {beginText}");
+                return false;
+            }
+
+            if (string.IsNullOrWhiteSpace(targetIp))
+            {
+                Log.Error("원격 DB IP가 설정되지 않았습니다.");
+                return false;
+            }
+
+            ReplicationSettingSnapshot setting;
+
+            try
+            {
+                setting = new ReplicationSettingSnapshot(
+                    Convert.ToInt32(row[FbtAFMSReplicatorSetting.COL_ID]),
+                    beginDateTime,
+                    targetIp,
+                    Convert.ToInt32(row[FbtAFMSReplicatorSetting.COL_ENABLE_VTH]) != 0,
+                    Convert.ToInt32(row[FbtAFMSReplicatorSetting.COL_ENABLE_LEVEL]) != 0);
+            }
+            catch (Exception ex) when (ex is FormatException || ex is InvalidCastException || ex is OverflowException)
+            {
+                Log.Error($"복제 설정 값이 올바르지 않습니다. {ex.Message}");
+                return false;
+            }
+
+            if (_currentSetting != setting)
+            {
+                ResetReplicationResources();
+                _currentSetting = setting;
+                Log.Info($"복제 설정을 적용합니다. ID={setting.Id}, Target={setting.TargetIp}, VTH={setting.EnableVth}, Level={setting.EnableLevel}");
+            }
+
+            if (_dbRemote == null || _dbLocal == null)
+            {
+                FbConnectionStringBuilder remoteConnection = SetFBConnStrBuilder(setting.TargetIp);
+                _dbRemote = new FBDatabase(remoteConnection);
+                _dbLocal = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            }
+
+            EnsureReplicationTables(setting);
+            return !NeedsInitializationRetry();
+        }
+
+        private void EnsureReplicationTables(ReplicationSettingSnapshot setting)
+        {
+            if (_dbRemote == null || _dbLocal == null) return;
+
+            if (setting.EnableVth && !ContainsTable(FbtVTHLOGGER.TABLE_NAME))
+            {
+                InsertValidTable(new FBReplicationTable(_dbRemote, _dbLocal, FbtVTHLOGGER.TABLE_NAME, setting.BeginDateTime));
+            }
+
+            if (setting.EnableLevel && !ContainsTable(FbtWATERLEVEL.TABLE_NAME))
+            {
+                InsertValidTable(new FBReplicationTable(_dbRemote, _dbLocal, FbtWATERLEVEL.TABLE_NAME, setting.BeginDateTime));
+            }
+        }
+
+        private bool NeedsInitializationRetry()
+        {
+            if (_currentSetting == null || _dbRemote == null || _dbLocal == null) return true;
+            if (_currentSetting.EnableVth && !ContainsTable(FbtVTHLOGGER.TABLE_NAME)) return true;
+            if (_currentSetting.EnableLevel && !ContainsTable(FbtWATERLEVEL.TABLE_NAME)) return true;
+            return false;
+        }
+
+        private bool ContainsTable(string tableName)
+        {
+            return _tables.Exists(table => string.Equals(table.TableName, tableName, StringComparison.OrdinalIgnoreCase));
         }
 
         private void InsertValidTable(FBReplicationTable table)
@@ -107,12 +189,13 @@ namespace AFMSDataReplicator
             table.CheckForeignKey();
             PrintReplicateLog(table);
 
-            if (!table.CompareResult.IsValid)
+            if (!table.CompareResult.IsValid || !string.IsNullOrEmpty(table.ErrorMsg))
             {
                 foreach (FBSurveyDifference diff in table.CompareResult.Differences)
                 {
                     Log.Info($"[{table.TableName}] {diff.Type.ToString()}, {diff.ColumnName}, {diff.LocalValue}");
                 }
+                if (!string.IsNullOrEmpty(table.ErrorMsg)) Log.Error($"[{table.TableName}] {table.ErrorMsg}");
                 Log.Info($"[{table.TableName}] 유효성 확인 실패");
                 return;
             }
@@ -186,6 +269,21 @@ namespace AFMSDataReplicator
             info.Pw = "rads2014";
 
             return FBConnectionString.GetConnectionString(info);
+        }
+
+        private void ResetReplicationResources()
+        {
+            _tables.Clear();
+            _dbRemote?.Dispose();
+            _dbLocal?.Dispose();
+            _dbRemote = null;
+            _dbLocal = null;
+        }
+
+        public override void Dispose()
+        {
+            ResetReplicationResources();
+            base.Dispose();
         }
     }
 }
