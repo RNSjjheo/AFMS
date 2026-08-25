@@ -15,8 +15,7 @@ namespace AFMSSettings
         private void SetupUI()
         {
             SetupMainLayout();
-            SetupInputRange();
-            SetupConversionFactor();
+            SetupSettings();
             SetupFormula();
             SetupGuide();
         }
@@ -28,24 +27,45 @@ namespace AFMSSettings
             uiTpMainRow.Margin = Padding.Empty;
             uiTpMainRow.Padding = Padding.Empty;
             uiTpMainRow.ColumnCount = 1;
-            uiTpMainRow.RowCount = 4;
+            uiTpMainRow.RowCount = 3;
             uiTpMainRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            uiTpMainRow.RowStyles.Add(new RowStyle(SizeType.Absolute, 150F));
-            uiTpMainRow.RowStyles.Add(new RowStyle(SizeType.Absolute, 125F));
+            uiTpMainRow.RowStyles.Add(new RowStyle(SizeType.Absolute, 140F));
             uiTpMainRow.RowStyles.Add(new RowStyle(SizeType.Absolute, 95F));
             uiTpMainRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             Controls.Add(uiTpMainRow);
         }
 
-        private void SetupInputRange()
+        private void SetupSettings()
+        {
+            TableLayoutPanel layout = new TableLayoutPanel();
+            layout.Dock = DockStyle.Fill;
+            layout.Margin = Padding.Empty;
+            layout.Padding = Padding.Empty;
+            layout.ColumnCount = 2;
+            layout.RowCount = 1;
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+            AFMSSectionPanel rangeGroup = CreateInputRangeGroup();
+            rangeGroup.Margin = new Padding(0, 5, 4, 5);
+
+            AFMSSectionPanel conversionGroup = CreateConversionFactorGroup();
+            conversionGroup.Margin = new Padding(4, 5, 0, 5);
+
+            layout.Controls.Add(rangeGroup, 0, 0);
+            layout.Controls.Add(conversionGroup, 1, 0);
+            uiTpMainRow.Controls.Add(layout, 0, 0);
+        }
+
+        private AFMSSectionPanel CreateInputRangeGroup()
         {
             AFMSSectionPanel group = CreateHeaderGroupBox("입력범위");
-            group.Margin = new Padding(0, 5, 0, 5);
 
             TableLayoutPanel layout = new TableLayoutPanel();
             layout.Dock = DockStyle.Fill;
             layout.Margin = Padding.Empty;
-            layout.Padding = new Padding(8, 4, 8, 6);
+            layout.Padding = Padding.Empty;
             layout.ColumnCount = 2;
             layout.RowCount = 3;
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
@@ -70,42 +90,44 @@ namespace AFMSSettings
             layout.Controls.Add(separator, 1, 1);
             layout.Controls.Add(lbMax, 0, 2);
             layout.Controls.Add(uiNumberCellMax, 1, 2);
-            group.Controls.Add(layout);
-            uiTpMainRow.Controls.Add(group, 0, 0);
+            group.ContentLayout.Controls.Add(layout);
+            return group;
         }
 
-        private void SetupConversionFactor()
+        private AFMSSectionPanel CreateConversionFactorGroup()
         {
             AFMSSectionPanel group = CreateHeaderGroupBox("환산계수");
-            group.Margin = new Padding(0, 5, 0, 5);
 
             TableLayoutPanel layout = new TableLayoutPanel();
             layout.Dock = DockStyle.Fill;
             layout.Margin = Padding.Empty;
-            layout.Padding = new Padding(8, 10, 8, 8);
-            layout.ColumnCount = 3;
-            layout.RowCount = 2;
-            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 22F));
-            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 56F));
-            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 22F));
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 8F));
+            layout.Padding = Padding.Empty;
+            layout.ColumnCount = 2;
+            layout.RowCount = 1;
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+
+            Label labelConversionFactor = CreateLabel("k");
+            labelConversionFactor.Font = new Font("Cambria Math", 11F, FontStyle.Italic);
 
             uiNumberConversionFactor = new AFMSNumberBox();
             uiNumberConversionFactor.Dock = DockStyle.Fill;
-            uiNumberConversionFactor.Margin = new Padding(0, 5, 0, 5);
+            uiNumberConversionFactor.Margin = new Padding(0, 22, 0, 22);
             uiNumberConversionFactor.InputType = AFMSNumericInputType.Double;
             uiNumberConversionFactor.AllowNegative = false;
             uiNumberConversionFactor.Minimum = 0;
+            uiNumberConversionFactor.DecimalPlaces = 2;
             uiNumberConversionFactor.BorderColor = DllColorHelper.HexToColor("#CDD7D1");
             uiNumberConversionFactor.FocusBorderColor = DllColorHelper.HexToColor("#02925D");
             uiNumberConversionFactor.BorderRadius = 6;
             uiNumberConversionFactor.TextAlign = HorizontalAlignment.Center;
-            uiNumberConversionFactor.SetValue(1.0);
+            uiNumberConversionFactor.SetValue(0.85);
 
-            layout.Controls.Add(uiNumberConversionFactor, 1, 1);
-            group.Controls.Add(layout);
-            uiTpMainRow.Controls.Add(group, 0, 1);
+            layout.Controls.Add(labelConversionFactor, 0, 0);
+            layout.Controls.Add(uiNumberConversionFactor, 1, 0);
+            group.ContentLayout.Controls.Add(layout);
+            return group;
         }
 
         private void SetupFormula()
@@ -127,16 +149,7 @@ namespace AFMSSettings
             uiLbExample.AddVariable("V");
             uiLbExample.Add("m", AFMSMathTextType.Subscript);
 
-            AFMSPanel panel = new AFMSPanel();
-            panel.Dock = DockStyle.Fill;
-            panel.Margin = new Padding(0, 5, 0, 5);
-            panel.Padding = Padding.Empty;
-            panel.BackColor = Color.White;
-            panel.BorderColor = DllColorHelper.GetCommonBorder();
-            panel.BorderThickness = 1F;
-            panel.BorderRadius = 7;
-            panel.Controls.Add(uiLbExample);
-            uiTpMainRow.Controls.Add(panel, 0, 2);
+            uiTpMainRow.Controls.Add(uiLbExample, 0, 1);
         }
 
         private void SetupGuide()
@@ -149,7 +162,7 @@ namespace AFMSSettings
             uiDesc.ForeColor = DllColorHelper.HexToColor("#667085");
             uiDesc.TextAlign = ContentAlignment.MiddleLeft;
             uiDesc.Text = "ⓘ  입력 범위와 환산계수를 설정한 후 저장 버튼을 눌러주세요.";
-            uiTpMainRow.Controls.Add(uiDesc, 0, 3);
+            uiTpMainRow.Controls.Add(uiDesc, 0, 2);
         }
 
         private static AFMSSectionPanel CreateHeaderGroupBox(string headerText)
@@ -171,6 +184,7 @@ namespace AFMSSettings
             item.BackColor = Color.White;
             item.Dock = DockStyle.Fill;
             item.Padding = new Padding(14, 4, 14, 8);
+            item.ContentPadding = new Padding(8, 4, 8, 6);
             return item;
         }
 

@@ -45,7 +45,7 @@ namespace AFMSSettings
             BorderRadius = 8;
             ShowWindowShadow = true;
             ContentBackColor = Color.White;
-            ClientSize = new Size(480, 620);
+            ClientSize = new Size(480, 420);
             Padding = new Padding(18);
 
             SetupMainLayout();
@@ -227,7 +227,7 @@ namespace AFMSSettings
             config.DisVer = (int)page.Version;
             config.CellMin = page.uiNumberCellMin.IntValue.Value;
             config.CellMax = page.uiNumberCellMax.IntValue.Value;
-            config.ConversionFactor = page.uiNumberConversionFactor.DoubleValue.Value;
+            config.ConversionFactor = Math.Round(page.uiNumberConversionFactor.DoubleValue.Value, 2, MidpointRounding.AwayFromZero);
             return config;
         }
 

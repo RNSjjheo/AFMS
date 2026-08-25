@@ -46,7 +46,7 @@ namespace AFMSSettings
             SetColumnStyle(grid, COL_NO, "No.", 20F);
             SetColumnStyle(grid, FbtAFMSDiscAttrMidSection.COL_CELL_RANGE_MIN, "MIN", 27F);
             SetColumnStyle(grid, FbtAFMSDiscAttrMidSection.COL_CELL_RANGE_MAX, "MAX", 27F);
-            SetColumnStyle(grid, "환산계수", "환산계수", 26F, "0.000");
+            SetColumnStyle(grid, "환산계수", "환산계수", 26F, "0.00");
 
             if (grid.Columns.Contains(FbtAFMSDiscAttrMidSection.COL_CELL_RANGE_MIN) && grid.Columns.Contains(FbtAFMSDiscAttrMidSection.COL_CELL_RANGE_MAX))
                 grid.AddMergedHeader("분석범위", FbtAFMSDiscAttrMidSection.COL_CELL_RANGE_MIN, FbtAFMSDiscAttrMidSection.COL_CELL_RANGE_MAX);
