@@ -180,7 +180,7 @@ namespace AFMSSettings
                 return;
             }
 
-            using FormSurfaceVelocityInput form = new FormSurfaceVelocityInput();
+            using FormDischargeSurfaceVelo form = new FormDischargeSurfaceVelo();
             form.HydroId = _hydroId;
             form.SaveHandler = SaveConfig;
 

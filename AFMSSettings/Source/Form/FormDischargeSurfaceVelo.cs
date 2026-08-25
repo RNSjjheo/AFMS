@@ -7,7 +7,7 @@ using System.Windows.Forms;
 
 namespace AFMSSettings
 {
-    public class FormSurfaceVelocityInput : _FormDischargeBase
+    public class FormDischargeSurfaceVelo : _FormDischargeBase
     {
         private sealed class VersionOption
         {
@@ -33,7 +33,7 @@ namespace AFMSSettings
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
         public Func<TabDiscSurfaceVelocity.SurfaceVelocityConfig, string>? SaveHandler { get; set; }
 
-        public FormSurfaceVelocityInput()
+        public FormDischargeSurfaceVelo()
         {
             Text = "지표유속법 설정";
             ClientSize = new Size(480, 720);
