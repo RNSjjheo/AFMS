@@ -236,7 +236,7 @@ namespace AFMSSettings
 
             using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
             DataTable table = db.Execute(query, out string error);
-            
+
             if (!string.IsNullOrEmpty(error)) return error;
 
             table.AddRowNo(COL_NO);
@@ -369,10 +369,12 @@ namespace AFMSSettings
         {
             AFMSSectionPanel panel = new AFMSSectionPanel();
             panel.Dock = DockStyle.Fill;
+            panel.SectionStyle = AFMSSectionStyle.FilledHeader;
             panel.HeaderText = title;
             panel.HeaderHeight = 38;
             panel.HeaderBackColor = DllColorHelper.HexToColor("#F5F8F6");
-            panel.HeaderLineColor = DllColorHelper.HexToColor("#244B37");
+            panel.HeaderColor = DllColorHelper.HexToColor("#244B37");
+            panel.HeaderLineColor = Color.FromArgb(225, 229, 235);
             return panel;
         }
 

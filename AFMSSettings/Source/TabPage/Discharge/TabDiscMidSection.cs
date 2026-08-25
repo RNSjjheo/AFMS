@@ -63,10 +63,12 @@ namespace AFMSSettings
         {
             AFMSSectionPanel gpucert = new AFMSSectionPanel();
             gpucert.Dock = DockStyle.Fill;
+            gpucert.SectionStyle = AFMSSectionStyle.FilledHeader;
             gpucert.HeaderText = "중간단면적 불확도 정보";
             gpucert.HeaderHeight = 38;
             gpucert.HeaderBackColor = DllColorHelper.HexToColor("#F5F8F6");
-            gpucert.HeaderLineColor = DllColorHelper.HexToColor("#244B37");
+            gpucert.HeaderColor = DllColorHelper.HexToColor("#244B37");
+            gpucert.HeaderLineColor = Color.FromArgb(225, 229, 235);
             gpucert.Padding = Padding.Empty;
             gpucert.Margin = Padding.Empty;
 
@@ -92,7 +94,7 @@ namespace AFMSSettings
             content.Controls.Add(depthPanel, 0, 0);
             content.Controls.Add(widthPanel, 0, 1);
             content.Controls.Add(verticalPanel, 1, 0);
-            content.SetRowSpan(verticalPanel,2);
+            content.SetRowSpan(verticalPanel, 2);
 
             CtlSub = gpucert;
 
