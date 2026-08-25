@@ -97,11 +97,26 @@ namespace AFMSDll
                 return;
             }
 
-            e.Graphics.Clear(Parent?.BackColor ?? SystemColors.Control);
+            e.Graphics.Clear(GetVisibleParentBackColor());
             RectangleF backgroundRectangle = new RectangleF(0.5F, 0.5F, ClientSize.Width - 1F, ClientSize.Height - 1F);
             using GraphicsPath backgroundPath = AFMSRoundedDrawing.CreatePath(backgroundRectangle, BorderRadius);
             using SolidBrush backgroundBrush = new SolidBrush(BackColor);
             e.Graphics.FillPath(backgroundBrush, backgroundPath);
+        }
+
+        private Color GetVisibleParentBackColor()
+        {
+            // Clearing a buffered control with Color.Transparent leaves transparent
+            // pixels that WinForms can composite as black. Walk past transparent
+            // layout containers and use the first background that is actually shown.
+            Control? ancestor = Parent;
+            while (ancestor != null)
+            {
+                if (ancestor.BackColor.A > 0) return ancestor.BackColor;
+                ancestor = ancestor.Parent;
+            }
+
+            return SystemColors.Control;
         }
 
         protected override void OnPaint(PaintEventArgs e)
