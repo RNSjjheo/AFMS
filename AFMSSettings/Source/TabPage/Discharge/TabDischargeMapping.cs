@@ -428,6 +428,25 @@ namespace AFMSSettings
         private void SetupMethodCheckBoxes()
         {
             foreach (DischargeMethod method in _DischargeMethods) uiGridMain.SetAFMSCheckBoxColumn(GetGridMethodColumnName(method), EnumPaser.GetKorString(method));
+            uiGridMain.AFMSCheckBoxCellVisibleEvaluator = IsMethodCheckBoxVisible;
+        }
+
+        private bool IsMethodCheckBoxVisible(int rowIndex, int columnIndex)
+        {
+            if (rowIndex < 0 || rowIndex >= uiGridMain.Rows.Count ||
+                columnIndex < 0 || columnIndex >= uiGridMain.Columns.Count ||
+                uiGridMain.Columns[columnIndex].Tag is not DischargeMethod method) return false;
+
+            DataGridViewRow row = uiGridMain.Rows[rowIndex];
+            if (row.Cells[COL_HYDRO_ID].Value == null || row.Cells[COL_HYDRO_ID].Value == DBNull.Value) return false;
+
+            int hydroId = Convert.ToInt32(row.Cells[COL_HYDRO_ID].Value);
+            int transectCount = row.Cells[FbtAFMSHydroMeter.COL_TRANSECT_CNT].Value == null ||
+                                row.Cells[FbtAFMSHydroMeter.COL_TRANSECT_CNT].Value == DBNull.Value
+                ? 0
+                : Convert.ToInt32(row.Cells[FbtAFMSHydroMeter.COL_TRANSECT_CNT].Value);
+
+            return IsMethodAvailable(hydroId, transectCount, method);
         }
 
         private bool IsRowChanged(DataGridViewRow row)

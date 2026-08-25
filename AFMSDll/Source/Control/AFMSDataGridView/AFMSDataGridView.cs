@@ -92,6 +92,10 @@ namespace AFMSDll
 
         public event EventHandler<AFMSCheckBoxCheckedChangedEventArgs> AFMSCheckBoxCheckedChanged;
 
+        [Browsable(false)]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public Func<int, int, bool>? AFMSCheckBoxCellVisibleEvaluator { get; set; }
+
         public AFMSDataGridView()
         {
             SetStyle(ControlStyles.ResizeRedraw | ControlStyles.OptimizedDoubleBuffer, true);
@@ -646,13 +650,7 @@ namespace AFMSDll
                     continue;
                 }
 
-                if (_checkBoxCellVisibility.TryGetValue(pair.Key, out bool cellVisible) && !cellVisible)
-                {
-                    checkBox.Visible = false;
-                    continue;
-                }
-
-                if (Rows[cell.Y].Cells[cell.X].Tag is AFMSCheckBoxCellVisibilitySetting visibility && !visibility.Visible)
+                if (!IsAFMSCheckBoxCellVisible(cell.Y, cell.X, pair.Key))
                 {
                     checkBox.Visible = false;
                     continue;
@@ -684,6 +682,16 @@ namespace AFMSDll
                 checkBox.BringToFront();
                 checkBox.Invalidate();
             }
+        }
+
+        private bool IsAFMSCheckBoxCellVisible(int rowIndex, int columnIndex, string key)
+        {
+            if (_checkBoxCellVisibility.TryGetValue(key, out bool cellVisible) && !cellVisible) return false;
+
+            if (Rows[rowIndex].Cells[columnIndex].Tag is AFMSCheckBoxCellVisibilitySetting visibility && !visibility.Visible)
+                return false;
+
+            return AFMSCheckBoxCellVisibleEvaluator?.Invoke(rowIndex, columnIndex) ?? true;
         }
 
         private void RemoveAFMSCheckBoxes(int columnIndex)
