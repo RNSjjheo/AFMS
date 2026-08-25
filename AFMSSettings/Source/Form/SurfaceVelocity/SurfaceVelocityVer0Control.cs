@@ -330,13 +330,13 @@ namespace AFMSSettings
 
             if (!uiNumberCellMin.IntValue.HasValue || !uiNumberCellMax.IntValue.HasValue)
             {
-                MessageBox.Show("CELL Min과 CELL Max를 입력해주세요.", "입력 확인", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("측선 MIN과 측선 MAX를 입력해주세요.", "입력 확인", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return false;
             }
 
             if (uiNumberCellMin.IntValue.Value > uiNumberCellMax.IntValue.Value)
             {
-                MessageBox.Show("CELL Min은 CELL Max보다 클 수 없습니다.", "입력 확인", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("측선 MIN은 측선 MAX보다 클 수 없습니다.", "입력 확인", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return false;
             }
 
