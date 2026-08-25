@@ -1,4 +1,5 @@
 ﻿using AFMSDll;
+using AFMSDll.Source.Measure.Discharge;
 using System;
 
 namespace AFMSSettings

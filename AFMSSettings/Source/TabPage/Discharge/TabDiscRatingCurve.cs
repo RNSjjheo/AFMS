@@ -1,4 +1,5 @@
 using AFMSDll;
+using AFMSDll.Source.Measure.Discharge;
 using AFMSSettings.Source.Form.Discharge;
 using System;
 using System.Collections.Generic;

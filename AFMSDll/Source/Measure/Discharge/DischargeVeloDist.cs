@@ -1,4 +1,4 @@
-namespace AFMSDll
+namespace AFMSDll.Source.Measure.Discharge
 {
     public sealed class DischargeVeloDist : DischargeBase
     {

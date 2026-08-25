@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Drawing;
 using System.Windows.Forms;
 using AFMSSettings.Source.Form.Discharge;
+using AFMSDll.Source.Measure.Discharge;
 
 namespace AFMSSettings
 {
