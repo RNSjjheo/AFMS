@@ -73,6 +73,8 @@ namespace AFMSSettings
             gpucert.Margin = Padding.Empty;
 
             TableLayoutPanel content = gpucert.ContentLayout;
+            content.ColumnStyles.Clear();
+            content.RowStyles.Clear();
             content.Margin = Padding.Empty;
             content.Padding = new Padding(14, 12, 14, 14);
             content.ColumnCount = 2;
