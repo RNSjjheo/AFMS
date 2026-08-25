@@ -1,4 +1,5 @@
 using AFMSDll;
+using AFMSSettings.Source.Form.Discharge;
 using System;
 using System.Drawing;
 using System.Windows.Forms;

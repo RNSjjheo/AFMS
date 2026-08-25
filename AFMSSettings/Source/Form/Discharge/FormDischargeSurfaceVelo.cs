@@ -5,7 +5,7 @@ using System.Data;
 using System.Drawing;
 using System.Windows.Forms;
 
-namespace AFMSSettings
+namespace AFMSSettings.Source.Form.Discharge
 {
     public class FormDischargeSurfaceVelo : _FormDischargeBase
     {

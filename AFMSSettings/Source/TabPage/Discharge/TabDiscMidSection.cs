@@ -1,4 +1,5 @@
 ﻿using AFMSDll;
+using AFMSSettings.Source.Form.Discharge;
 using log4net.Layout;
 using System;
 using System.Data;

@@ -4,7 +4,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Windows.Forms;
 
-namespace AFMSSettings
+namespace AFMSSettings.Source.Form.Discharge
 {
     public class FormDischargeMidSection : _FormDischargeBase
     {
