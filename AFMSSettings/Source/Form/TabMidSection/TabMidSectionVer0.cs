@@ -6,7 +6,7 @@ namespace AFMSSettings
     {
         public TabMidSectionVer0()
         {
-            Version = 0;
+            Version = DiscVerMidSection.Ver00;
             SetFormulaType1();
         }
     }

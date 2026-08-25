@@ -7,7 +7,7 @@ namespace AFMSSettings
 {
     public abstract class TabMidSectionBase : TabPage
     {
-        public int Version;
+        public DiscVerMidSection Version;
         public TableLayoutPanel uiTpMainRow;
         public AFMSNumberBox uiNumberCellMin;
         public AFMSNumberBox uiNumberCellMax;

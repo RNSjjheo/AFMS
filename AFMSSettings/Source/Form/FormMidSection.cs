@@ -43,6 +43,9 @@ namespace AFMSSettings
             ShowMaximizeButton = false;
             ShowInfoButton = false;
             ShowInTaskbar = false;
+            BorderRadius = 8;
+            ShowWindowShadow = true;
+            ContentBackColor = Color.White;
             BackColor = Color.White;
             ClientSize = new Size(480, 620);
             Padding = new Padding(18);
