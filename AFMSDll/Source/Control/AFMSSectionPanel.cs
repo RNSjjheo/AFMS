@@ -28,6 +28,8 @@ namespace AFMSDll
         private readonly Label _headerLabel;
         private readonly TableLayoutPanel _contentLayout;
         private RectangleF _headerBarRectangle;
+        private Rectangle _headerTextRectangle;
+        private Rectangle _headerTextBackgroundRectangle;
 
         private AFMSSectionStyle _sectionStyle = AFMSSectionStyle.AccentHeader;
         private AFMSHeaderBarPosition _headerBarPosition = AFMSHeaderBarPosition.Left;
@@ -79,7 +81,6 @@ namespace AFMSDll
             _contentLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
             Controls.Add(_contentLayout);
-            Controls.Add(_headerLabel);
 
             ApplyStyleDefaults(AFMSSectionStyle.AccentHeader);
             LayoutInternalControls();
@@ -404,7 +405,6 @@ namespace AFMSDll
             base.OnBackColorChanged(e);
             if (_headerLabel == null) return;
 
-            UpdateHeaderLabelBackColor();
             Invalidate();
         }
 
@@ -447,6 +447,7 @@ namespace AFMSDll
 
             DrawHeaderDecoration(e.Graphics);
             DrawBorder(e.Graphics);
+            DrawHeaderText(e.Graphics);
         }
 
         private void LayoutInternalControls()
@@ -462,6 +463,9 @@ namespace AFMSDll
                 int titleWidth = titleSize.Width + HEADER_TEXT_RENDER_MARGIN + (TitleHorizontalPadding * 2);
                 _headerLabel.SetBounds(TitleLeftMargin, 0, Math.Max(0, titleWidth), HeaderHeight);
                 _headerLabel.Padding = new Padding(TitleHorizontalPadding, 0, TitleHorizontalPadding, 0);
+                _headerTextBackgroundRectangle = _headerLabel.Bounds;
+                _headerTextRectangle = new Rectangle(TitleLeftMargin + TitleHorizontalPadding, 0,
+                    Math.Max(0, titleWidth - (TitleHorizontalPadding * 2)), HeaderHeight);
             }
             else if (SectionStyle == AFMSSectionStyle.AccentHeader)
             {
@@ -486,22 +490,19 @@ namespace AFMSDll
                 }
 
                 _headerLabel.Padding = Padding.Empty;
+                _headerTextBackgroundRectangle = Rectangle.Empty;
+                _headerTextRectangle = _headerLabel.Bounds;
             }
             else
             {
                 _headerBarRectangle = RectangleF.Empty;
                 _headerLabel.SetBounds(HeaderHorizontalPadding, 0, Math.Max(0, ClientSize.Width - (HeaderHorizontalPadding * 2)), HeaderHeight);
                 _headerLabel.Padding = Padding.Empty;
+                _headerTextBackgroundRectangle = Rectangle.Empty;
+                _headerTextRectangle = _headerLabel.Bounds;
             }
 
             _contentLayout.SetBounds(0, contentTop, ClientSize.Width, Math.Max(0, ClientSize.Height - contentTop));
-            UpdateHeaderLabelBackColor();
-            _headerLabel.BringToFront();
-        }
-
-        private void UpdateHeaderLabelBackColor()
-        {
-            _headerLabel.BackColor = SectionStyle == AFMSSectionStyle.OutlineTitle ? BackColor : Color.Transparent;
         }
 
         private void DrawHeaderDecoration(Graphics graphics)
@@ -534,6 +535,39 @@ namespace AFMSDll
             using GraphicsPath borderPath = CreateRoundedPath(outerRectangle, BorderRadius);
             using Pen borderPen = new Pen(BorderColor, BorderThickness) { Alignment = PenAlignment.Center, LineJoin = LineJoin.Round };
             graphics.DrawPath(borderPen, borderPath);
+        }
+
+        private void DrawHeaderText(Graphics graphics)
+        {
+            if (string.IsNullOrEmpty(HeaderText) || _headerTextRectangle.Width <= 0 || _headerTextRectangle.Height <= 0) return;
+
+            if (SectionStyle == AFMSSectionStyle.OutlineTitle && !_headerTextBackgroundRectangle.IsEmpty)
+            {
+                using SolidBrush titleBackBrush = new SolidBrush(BackColor);
+                graphics.FillRectangle(titleBackBrush, _headerTextBackgroundRectangle);
+            }
+
+            TextFormatFlags flags = TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix |
+                TextFormatFlags.NoPadding | TextFormatFlags.VerticalCenter;
+            flags |= GetHorizontalTextFormatFlags();
+            TextRenderer.DrawText(graphics, HeaderText, Font, _headerTextRectangle, HeaderColor, flags);
+        }
+
+        private TextFormatFlags GetHorizontalTextFormatFlags()
+        {
+            switch (HeaderTextAlign)
+            {
+                case ContentAlignment.TopRight:
+                case ContentAlignment.MiddleRight:
+                case ContentAlignment.BottomRight:
+                    return TextFormatFlags.Right;
+                case ContentAlignment.TopCenter:
+                case ContentAlignment.MiddleCenter:
+                case ContentAlignment.BottomCenter:
+                    return TextFormatFlags.HorizontalCenter;
+                default:
+                    return TextFormatFlags.Left;
+            }
         }
 
         private Size MeasureHeaderText()

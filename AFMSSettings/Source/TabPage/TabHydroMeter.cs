@@ -34,6 +34,7 @@ namespace AFMSSettings
 
         private TableLayoutPanel uiTpRigth;
         private AFMSGuidePanel uiGuide;
+        private AFMSSectionPanel uiPnHydros;
         private AFMSSectionPanel uiPnDetail;
         private AFMSDataGridView uiGridDetail;
         private AFMSButton uiBtnAdd;
@@ -91,25 +92,39 @@ namespace AFMSSettings
             uiGridDetail.DataBindingComplete += BindingDetailComplete;
             uiGridDetail.Margin = Padding.Empty;
 
+            uiPnHydros = new AFMSSectionPanel();
+            uiPnHydros.HeaderText = "유속계 정보";
+            uiPnHydros.Dock = DockStyle.Fill;
+            uiPnHydros.HeaderBackColor = DllColorHelper.HexToColor("#F5F8F6");
+            uiPnHydros.HeaderLineColor = DllColorHelper.HexToColor("#244B37");
+            uiPnHydros.BorderRadius = 8;
+            uiPnHydros.Padding = Padding.Empty;
+            uiPnHydros.Margin = new Padding(10, 0, 0, 0);
+            uiPnHydros.HeaderHorizontalPadding = 0;
+            uiPnHydros.HeaderLineThickness = 0F;
+            uiPnHydros.ContentLayout.Margin = Padding.Empty;
+            uiPnHydros.ContentLayout.Padding = Padding.Empty;
+
             uiPnDetail = new AFMSSectionPanel();
             uiPnDetail.HeaderText = "측선 정보 상세";
-            uiPnDetail.HeaderLabel.TextAlign = ContentAlignment.MiddleRight;
-            uiPnDetail.HeaderBarPosition = AFMSHeaderBarPosition.Right;
             uiPnDetail.Dock = DockStyle.Fill;
-            uiPnDetail.HeaderBackColor = DllColorHelper.HexToColor("#F5F8F6");
-            uiPnDetail.HeaderLineColor = DllColorHelper.HexToColor("#244B37");
-            uiPnDetail.BorderRadius = 8;
-            uiPnDetail.Padding = Padding.Empty;
-            uiPnDetail.Margin = new Padding(50, 0, 0, 0);
+            uiPnDetail.HeaderBackColor = uiPnHydros.HeaderBackColor;
+            uiPnDetail.HeaderLineColor = uiPnHydros.HeaderLineColor;
+            uiPnDetail.BorderRadius = uiPnHydros.BorderRadius;
+            uiPnDetail.Padding = uiPnHydros.Padding;
+            uiPnDetail.Margin = Padding.Empty;
             uiPnDetail.HeaderHorizontalPadding = 0;
             uiPnDetail.HeaderLineThickness = 0F;
             uiPnDetail.ContentLayout.Margin = Padding.Empty;
-            uiPnDetail.ContentLayout.Padding = new Padding(0, 0, 0, 0);
-            //uiPnDetail.SetTableItem(1,1);
+            uiPnDetail.ContentLayout.Padding = Padding.Empty;
+
+            uiGridMain.Margin = Padding.Empty;
+
+            uiPnHydros.ContentLayout.Controls.Add(uiGridMain);
             uiPnDetail.ContentLayout.Controls.Add(uiGridDetail);
             uiTpRigth.Controls.Add(uiPnDetail, 0, 0);
 
-            CtlMain = uiGridMain;
+            CtlMain = uiPnHydros;
             CtlSub = uiTpRigth;
 
             uiGridMain.CellClick += UiGridMain_CellClick;
