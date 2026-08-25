@@ -1,8 +1,8 @@
 namespace AFMSDll
 {
-    public sealed class DischargeMidSection : DischargeBase
+    public sealed class QMidSection : _QBase
     {
-        public DischargeMidSection()
+        public QMidSection()
             : base(DischargeMethod.MidSection)
         {
         }

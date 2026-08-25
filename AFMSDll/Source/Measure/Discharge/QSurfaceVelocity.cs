@@ -1,6 +1,6 @@
 namespace AFMSDll.Source.Measure.Discharge
 {
-    public sealed class DischargeSurface : DischargeBase
+    public sealed class QSurfaceVelocity : _QBase
     {
         public const string VER1_ATTR_NODE1 = "Max Vi";
         public const string VER1_ATTR_NODE2 = "a";
@@ -8,7 +8,7 @@ namespace AFMSDll.Source.Measure.Discharge
 
         private DiscVerSurfaceVelo Version;
 
-        public DischargeSurface(): base(DischargeMethod.SurfaceVelo)
+        public QSurfaceVelocity(): base(DischargeMethod.SurfaceVelo)
         {
         }
 

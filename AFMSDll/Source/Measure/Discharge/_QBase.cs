@@ -1,6 +1,10 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+
 namespace AFMSDll
 {
-    public abstract class DischargeBase
+    public abstract class _QBase
     {
         public int Id { get; set; } = -1;
         public int HydroMeterId { get; set; } = -1;
@@ -12,7 +16,7 @@ namespace AFMSDll
         public int MethodConfigId { get; set; } = -1;
         public CrossSection CrossSection { get; } = new();
 
-        protected DischargeBase(DischargeMethod method)
+        protected _QBase(DischargeMethod method)
         {
             Method = method;
         }

@@ -154,15 +154,15 @@ namespace AFMSSettings
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 64F));
             layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             curveName = new Label { Dock = DockStyle.Fill, Font = new Font(DLLStyle.DEFAULT_FONT_SYLTE, 10F, FontStyle.Bold), ForeColor = DllColorHelper.HexToColor("#138052"), TextAlign = ContentAlignment.MiddleLeft };
-            AFMSMathLabel formula = DischargeRating.GetExample(DiscVerRatingCurve.Ver00);
+            AFMSMathLabel formula = QRatingCurve.GetExample(DiscVerRatingCurve.Ver00);
             formula.Dock = DockStyle.Fill;
             formula.TextAlign = ContentAlignment.MiddleCenter;
             grid = new AFMSDataGridView { Dock = DockStyle.Fill, AutoGenerateColumns = false, ReadOnly = true, AllowUserToAddRows = false, AFMSHeaderHeight = 34, AFMSRowHeight = 32, BorderRadius = 6 };
             AddDetailColumn(grid, "NO", "No.", 12F);
-            AddDetailColumn(grid, DischargeRating.VER1_ATTR_MAX_H, "최대 수위", 26F, "0.000");
-            AddDetailColumn(grid, DischargeRating.VER1_ATTR_NODE1, DischargeRating.VER1_ATTR_NODE1, 20F, "0.0000");
-            AddDetailColumn(grid, DischargeRating.VER1_ATTR_NODE2, DischargeRating.VER1_ATTR_NODE2, 20F, "0.0000");
-            AddDetailColumn(grid, DischargeRating.VER1_ATTR_NODE3, DischargeRating.VER1_ATTR_NODE3, 22F, "0.0000");
+            AddDetailColumn(grid, QRatingCurve.VER1_ATTR_MAX_H, "최대 수위", 26F, "0.000");
+            AddDetailColumn(grid, QRatingCurve.VER1_ATTR_NODE1, QRatingCurve.VER1_ATTR_NODE1, 20F, "0.0000");
+            AddDetailColumn(grid, QRatingCurve.VER1_ATTR_NODE2, QRatingCurve.VER1_ATTR_NODE2, 20F, "0.0000");
+            AddDetailColumn(grid, QRatingCurve.VER1_ATTR_NODE3, QRatingCurve.VER1_ATTR_NODE3, 22F, "0.0000");
             layout.Controls.Add(curveName, 0, 0); layout.Controls.Add(formula, 0, 1); layout.Controls.Add(grid, 0, 2);
             return panel;
         }

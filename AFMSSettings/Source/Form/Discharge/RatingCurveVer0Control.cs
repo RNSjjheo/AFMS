@@ -12,10 +12,10 @@ namespace AFMSSettings.Source.Form.Discharge
     {
         private const int MAX_SECTION_COUNT = 10;
         private const string COL_NO = "NO";
-        private const string COL_MAX_H = DischargeRating.VER1_ATTR_MAX_H;
-        private const string COL_NODE1 = DischargeRating.VER1_ATTR_NODE1;
-        private const string COL_NODE2 = DischargeRating.VER1_ATTR_NODE2;
-        private const string COL_NODE3 = DischargeRating.VER1_ATTR_NODE3;
+        private const string COL_MAX_H = QRatingCurve.VER1_ATTR_MAX_H;
+        private const string COL_NODE1 = QRatingCurve.VER1_ATTR_NODE1;
+        private const string COL_NODE2 = QRatingCurve.VER1_ATTR_NODE2;
+        private const string COL_NODE3 = QRatingCurve.VER1_ATTR_NODE3;
 
         private readonly AFMSDataGridView _uiGrid;
         private readonly AFMSNumberBox _uiMaxWaterLevel;
@@ -38,7 +38,7 @@ namespace AFMSSettings.Source.Form.Discharge
             main.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F));
             Controls.Add(main);
 
-            AFMSMathLabel formula = DischargeRating.GetExample(DiscVerRatingCurve.Ver00);
+            AFMSMathLabel formula = QRatingCurve.GetExample(DiscVerRatingCurve.Ver00);
             formula.Dock = DockStyle.Fill;
             formula.TextAlign = ContentAlignment.MiddleCenter;
 
