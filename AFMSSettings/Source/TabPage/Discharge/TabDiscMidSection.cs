@@ -16,6 +16,7 @@ namespace AFMSSettings
         private AFMSDataGridView uiGridVertical;
 
         public TabDiscMidSection()
+            : base(true)
         {
             Text = "중간단면적법";
             BackColor = Color.White;

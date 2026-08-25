@@ -20,7 +20,7 @@ namespace AFMSSettings
         public AFMSButton uiButtonInput;
         public AFMSGuidePanel? uiLatestDataGuide;
 
-        protected _TabDischargeBase(bool showLatestDataGuide = true)
+        protected _TabDischargeBase(bool showLatestDataGuide)
         {
             this.Enter += _TabDischargeBase_Enter;
             uiTpMain = new TableLayoutPanel();

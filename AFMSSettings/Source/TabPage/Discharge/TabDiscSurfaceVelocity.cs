@@ -41,6 +41,7 @@ namespace AFMSSettings
         public event Action<SurfaceVelocityConfig>? ConfigInputCompleted;
 
         public TabDiscSurfaceVelocity()
+            : base(true)
         {
             Text = "지표유속법";
             BackColor = Color.White;
