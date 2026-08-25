@@ -3,7 +3,7 @@ using System;
 
 namespace AFMSSettings
 {
-    public sealed class SurfaceVelocityVer0Control : UserControl
+    public sealed class SurfaceVeloVer0Control : UserControl
     {
         public const string ATTR_FORMAT = "0.00";
         private const int MAX_ATTR_COUNT = 10;
@@ -25,7 +25,7 @@ namespace AFMSSettings
 
         private AFMSSectionPanel uiGpRange;
         private AFMSSectionPanel uiGpUncert;
-        public SurfaceVelocityVer0Control()
+        public SurfaceVeloVer0Control()
         {
             uiTpMainRow = new TableLayoutPanel();
             uiTpMainRow.Dock = DockStyle.Fill;

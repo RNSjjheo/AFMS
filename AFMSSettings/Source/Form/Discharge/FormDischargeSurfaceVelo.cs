@@ -11,19 +11,19 @@ namespace AFMSSettings.Source.Form.Discharge
     {
         private sealed class VersionOption
         {
-            public VersionOption(string name, SurfaceVelocityVer0Control control)
+            public VersionOption(string name, SurfaceVeloVer0Control control)
             {
                 Name = name;
                 Control = control;
             }
 
             public string Name { get; }
-            public SurfaceVelocityVer0Control Control { get; }
+            public SurfaceVeloVer0Control Control { get; }
 
             public override string ToString() => Name;
         }
 
-        private readonly SurfaceVelocityVer0Control _version0Control;
+        private readonly SurfaceVeloVer0Control _version0Control;
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
         public int HydroId { get; set; } = -1;
@@ -38,7 +38,7 @@ namespace AFMSSettings.Source.Form.Discharge
             Text = "지표유속법 설정";
             ClientSize = new Size(480, 720);
 
-            _version0Control = new SurfaceVelocityVer0Control();
+            _version0Control = new SurfaceVeloVer0Control();
             AddVersion(new VersionOption("Type1", _version0Control));
         }
 
