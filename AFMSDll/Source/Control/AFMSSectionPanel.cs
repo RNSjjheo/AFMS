@@ -524,7 +524,10 @@ namespace AFMSDll
                 _headerTextRectangle = _headerLabel.Bounds;
             }
 
-            _contentLayout.SetBounds(0, contentTop, ClientSize.Width, Math.Max(0, ClientSize.Height - contentTop));
+            int contentInset = BorderThickness > 0F ? (int)Math.Ceiling(BorderThickness) : 0;
+            int contentWidth = Math.Max(0, ClientSize.Width - (contentInset * 2));
+            int contentHeight = Math.Max(0, ClientSize.Height - contentTop - contentInset);
+            _contentLayout.SetBounds(contentInset, contentTop, contentWidth, contentHeight);
         }
 
         private void DrawHeaderDecoration(Graphics graphics)
