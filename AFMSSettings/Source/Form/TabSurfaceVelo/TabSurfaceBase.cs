@@ -82,12 +82,14 @@ namespace AFMSSettings
 
             uiGpRange = GreateHeaderGroupBox();
             uiGpRange.HeaderText = "입력범위";
-            uiGpRange.Padding = new Padding(8, 4, 8, 6);
+            uiGpRange.Padding = Padding.Empty;
+            uiGpRange.ContentPadding = new Padding(8, 4, 8, 6);
             uiGpRange.Margin = new Padding(0, 0, 4, 0);
 
             uiGpUncert = GreateHeaderGroupBox();
             uiGpUncert.HeaderText = "불확도";
-            uiGpUncert.Padding = new Padding(8, 4, 8, 6);
+            uiGpUncert.Padding = Padding.Empty;
+            uiGpUncert.ContentPadding = new Padding(8, 4, 8, 6);
             uiGpUncert.Margin = new Padding(4, 0, 0, 0);
 
             rangelayout.Controls.Add(uiGpRange, 0, 0);
@@ -143,7 +145,7 @@ namespace AFMSSettings
             layout.Controls.Add(lbMax, 0, 2);
             layout.Controls.Add(uiNumberCellMax, 1, 2);
 
-            uiGpRange.Controls.Add(layout);
+            uiGpRange.ContentLayout.Controls.Add(layout);
         }
 
         private void SetupUncertainty()
@@ -171,7 +173,7 @@ namespace AFMSSettings
             layout.Controls.Add(mathVidx, 0, 2);
             layout.Controls.Add(uiNumberVindex, 1, 2);
 
-            uiGpUncert.Controls.Add(layout);
+            uiGpUncert.ContentLayout.Controls.Add(layout);
         }
 
         private static AFMSMathLabel CreateUncertaintyMathLabel(string subscript)
