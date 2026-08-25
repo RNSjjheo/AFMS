@@ -341,6 +341,20 @@ namespace AFMSDll
         public Label HeaderLabel => _headerLabel;
 
         [Browsable(false)]
+        public override Rectangle DisplayRectangle
+        {
+            get
+            {
+                int lineHeight = HeaderLineThickness > 0F ? (int)Math.Ceiling(HeaderLineThickness) : 0;
+                int x = Padding.Left;
+                int y = HeaderHeight + lineHeight + Padding.Top;
+                int width = Math.Max(0, ClientSize.Width - Padding.Horizontal);
+                int height = Math.Max(0, ClientSize.Height - y - Padding.Bottom);
+                return new Rectangle(x, y, width, height);
+            }
+        }
+
+        [Browsable(false)]
         [EditorBrowsable(EditorBrowsableState.Never)]
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         [DefaultValue(BorderStyle.None)]
@@ -388,6 +402,14 @@ namespace AFMSDll
         {
             base.OnResize(e);
             LayoutInternalControls();
+        }
+
+        protected override void OnPaddingChanged(EventArgs e)
+        {
+            base.OnPaddingChanged(e);
+            PerformLayout();
+            LayoutInternalControls();
+            Invalidate();
         }
 
         protected override void OnFontChanged(EventArgs e)

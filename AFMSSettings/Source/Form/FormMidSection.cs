@@ -322,6 +322,7 @@ namespace AFMSSettings
         {
             AFMSSectionPanel group = new AFMSSectionPanel();
             group.Dock = DockStyle.Fill;
+            group.SectionStyle = AFMSSectionStyle.OutlineTitle;
             group.HeaderText = headerText;
             group.HeaderColor = DllColorHelper.HexToColor("#02925D");
             group.HeaderHeight = 42;

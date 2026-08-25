@@ -162,6 +162,7 @@ namespace AFMSSettings
         private static AFMSSectionPanel CreateHeaderGroupBox()
         {
             AFMSSectionPanel item = new AFMSSectionPanel();
+            item.SectionStyle = AFMSSectionStyle.OutlineTitle;
             item.HeaderColor = DllColorHelper.HexToColor("#02925D");
             item.HeaderHeight = 40;
             item.HeaderHorizontalPadding = 14;
