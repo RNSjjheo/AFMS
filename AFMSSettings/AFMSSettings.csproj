@@ -11,6 +11,15 @@
 	<PropertyGroup>
 		<NoWarn>$(NoWarn);CS8765;CS8767</NoWarn>
 	</PropertyGroup>
+
+	<ItemGroup>
+	  <Compile Remove="Source\Form\MidSection\**" />
+	  <Compile Remove="Source\Form\SurfaceVelocity\**" />
+	  <EmbeddedResource Remove="Source\Form\MidSection\**" />
+	  <EmbeddedResource Remove="Source\Form\SurfaceVelocity\**" />
+	  <None Remove="Source\Form\MidSection\**" />
+	  <None Remove="Source\Form\SurfaceVelocity\**" />
+	</ItemGroup>
 	
   <ItemGroup>
     <ProjectReference Include="..\AFMSDll\AFMSDll.csproj" />
@@ -20,11 +29,6 @@
     <Reference Include="RnsLibrary">
       <HintPath>..\Dll\RnsLibrary.dll</HintPath>
     </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Source\Form\MidSection\" />
-    <Folder Include="Source\Form\SurfaceVelocity\" />
   </ItemGroup>
 
 </Project>
