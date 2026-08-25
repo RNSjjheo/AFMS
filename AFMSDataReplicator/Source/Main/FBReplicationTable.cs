@@ -42,34 +42,59 @@ namespace AFMSDataReplicator
             Initialize();
         }
 
-        public void CheckForeignKey()
+        public bool DropTargetForeignKeys()
         {
             const string CONSTRAINT_NAME = "CONSTRAINT_NAME";
-            const string CONSTRAINT_TYPE = "CONSTRAINT_TYPE";
-            const string INDEX_NAME = "INDEX_NAME";
-            string sql = $"SELECT  TRIM(RC.RDB$CONSTRAINT_NAME) AS {CONSTRAINT_NAME},";
-            sql += "\n" + $"TRIM(RC.RDB$CONSTRAINT_TYPE) AS {CONSTRAINT_TYPE},";
-            sql += "\n" + $"TRIM(RC.RDB$INDEX_NAME) AS {INDEX_NAME}";
+            string sql = $"SELECT TRIM(RC.RDB$CONSTRAINT_NAME) AS {CONSTRAINT_NAME}";
             sql += "\n" + $"FROM RDB$RELATION_CONSTRAINTS RC";
-            sql += "\n" + $"WHERE RC.RDB$RELATION_NAME = '{TableName}'\r\nORDER BY RC.RDB${CONSTRAINT_NAME}";
+            sql += "\n" + $"WHERE RC.RDB$RELATION_NAME = '{TableName.Replace("'", "''")}'";
+            sql += "\n" + $"AND RC.RDB$CONSTRAINT_TYPE = 'FOREIGN KEY'";
+            sql += "\n" + $"ORDER BY RC.RDB$CONSTRAINT_NAME";
 
-            targetDb.RunQuery(sql);
+            string error = targetDb.RunQuery(sql);
 
             Logs.Clear();
-            foreach (DataRow row in targetDb.Results.Rows)
+
+            if (!string.IsNullOrEmpty(error))
             {
-                string log = "";
-                log += row[CONSTRAINT_NAME].ToString() + ", ";
-                log += row[CONSTRAINT_TYPE].ToString() + ", ";
-                log += row[INDEX_NAME].ToString();
-
-                Logs.Add(log);
-
-                if (row[CONSTRAINT_TYPE].ToString() == "FOREIGN KEY")
-                {
-                    Logs.Add($"외래키 삭제 => ALTER TABLE {TableName} DROP CONSTRAINT {row[CONSTRAINT_NAME].ToString()}");
-                }
+                Logs.Add($"ERROR [{TableName}] 로컬 외래키 조회 실패");
+                Logs.Add(error);
+                return false;
             }
+
+            List<string> constraints = targetDb.Results.Rows
+                .Cast<DataRow>()
+                .Select(row => row[CONSTRAINT_NAME]?.ToString()?.Trim() ?? string.Empty)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .ToList();
+
+            if (constraints.Count == 0)
+            {
+                Logs.Add($"[{TableName}] 로컬 외래키 없음");
+                return true;
+            }
+
+            foreach (string constraint in constraints)
+            {
+                string dropSql = $"ALTER TABLE {QuoteIdentifier(TableName)} DROP CONSTRAINT {QuoteIdentifier(constraint)}";
+                error = targetDb.RunNonQuery(dropSql);
+
+                if (!string.IsNullOrEmpty(error))
+                {
+                    Logs.Add($"ERROR [{TableName}] 로컬 외래키 삭제 실패 - {constraint}");
+                    Logs.Add(error);
+                    return false;
+                }
+
+                Logs.Add($"[{TableName}] 로컬 외래키 삭제 완료 - {constraint}");
+            }
+
+            return true;
+        }
+
+        private static string QuoteIdentifier(string identifier)
+        {
+            return $"\"{identifier.Replace("\"", "\"\"")}\"";
         }
 
         private void Initialize()

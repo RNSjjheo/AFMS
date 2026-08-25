@@ -186,8 +186,14 @@ namespace AFMSDataReplicator
         {
             Log.Info($"[{table.TableName}] 데이터 복제 유효성 확인");
 
-            table.CheckForeignKey();
+            bool foreignKeysDropped = table.DropTargetForeignKeys();
             PrintReplicateLog(table);
+
+            if (!foreignKeysDropped)
+            {
+                Log.Info($"[{table.TableName}] 로컬 외래키를 제거하지 못해 복제를 시작하지 않습니다.");
+                return;
+            }
 
             if (!table.CompareResult.IsValid || !string.IsNullOrEmpty(table.ErrorMsg))
             {
