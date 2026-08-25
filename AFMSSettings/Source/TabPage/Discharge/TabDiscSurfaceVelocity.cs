@@ -110,21 +110,21 @@ namespace AFMSSettings
 
             DataGridViewTextBoxColumn colMaxVi = new DataGridViewTextBoxColumn();
             colMaxVi.Name = "MAX_VI";
-            colMaxVi.HeaderText = QSurfaceVelo.VER1_ATTR_NODE1;
+            colMaxVi.HeaderText = DischargeSurface.VER1_ATTR_NODE1;
             colMaxVi.FillWeight = 28F;
             colMaxVi.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             colMaxVi.DefaultCellStyle.Format = "0.00";
 
             DataGridViewTextBoxColumn colA = new DataGridViewTextBoxColumn();
             colA.Name = "COEFF_A";
-            colA.HeaderText = QSurfaceVelo.VER1_ATTR_NODE2;
+            colA.HeaderText = DischargeSurface.VER1_ATTR_NODE2;
             colA.FillWeight = 27F;
             colA.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             colA.DefaultCellStyle.Format = "0.00";
 
             DataGridViewTextBoxColumn colC = new DataGridViewTextBoxColumn();
             colC.Name = "COEFF_C";
-            colC.HeaderText = QSurfaceVelo.VER1_ATTR_NODE3;
+            colC.HeaderText = DischargeSurface.VER1_ATTR_NODE3;
             colC.FillWeight = 27F;
             colC.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             colC.DefaultCellStyle.Format = "0.00";
@@ -303,9 +303,9 @@ namespace AFMSSettings
             {
                 attrs.Add(new Dictionary<string, double?>
                 {
-                    [QSurfaceVelo.VER1_ATTR_NODE1] = coefficient.MaxVi,
-                    [QSurfaceVelo.VER1_ATTR_NODE2] = coefficient.A,
-                    [QSurfaceVelo.VER1_ATTR_NODE3] = coefficient.C
+                    [DischargeSurface.VER1_ATTR_NODE1] = coefficient.MaxVi,
+                    [DischargeSurface.VER1_ATTR_NODE2] = coefficient.A,
+                    [DischargeSurface.VER1_ATTR_NODE3] = coefficient.C
                 });
             }
 
@@ -323,9 +323,9 @@ namespace AFMSSettings
 
                 foreach (Dictionary<string, double?> attr in attrs)
                 {
-                    attr.TryGetValue(QSurfaceVelo.VER1_ATTR_NODE1, out double? maxVi);
-                    attr.TryGetValue(QSurfaceVelo.VER1_ATTR_NODE2, out double? a);
-                    attr.TryGetValue(QSurfaceVelo.VER1_ATTR_NODE3, out double? c);
+                    attr.TryGetValue(DischargeSurface.VER1_ATTR_NODE1, out double? maxVi);
+                    attr.TryGetValue(DischargeSurface.VER1_ATTR_NODE2, out double? a);
+                    attr.TryGetValue(DischargeSurface.VER1_ATTR_NODE3, out double? c);
                     config.Coefficients.Add(new SurfaceVelocityCoefficient { MaxVi = maxVi, A = a, C = c });
                 }
             }
@@ -352,7 +352,7 @@ namespace AFMSSettings
         {
             uiPanelExample.Controls.Clear();
 
-            AFMSMathLabel example = QSurfaceVelo.GetExample(version);
+            AFMSMathLabel example = DischargeSurface.GetExample(version);
             example.Dock = DockStyle.Fill;
             example.Margin = Padding.Empty;
             example.Padding = Padding.Empty;

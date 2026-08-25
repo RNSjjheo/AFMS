@@ -39,6 +39,7 @@ namespace AFMSSettings.Source.Form.Discharge
             nameLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
             Label formula = CreateLabel("Q = a(h − h₀)ᵇ");
+
             formula.Font = new Font("Cambria Math", 17F, FontStyle.Italic);
 
             Label guide = CreateLabel("ⓘ  적용 수위의 최댓값이 작은 구간부터 순서대로 입력해주세요.");
