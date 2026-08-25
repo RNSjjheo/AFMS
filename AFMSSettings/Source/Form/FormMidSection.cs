@@ -2,12 +2,11 @@ using AFMSDll;
 using System;
 using System.ComponentModel;
 using System.Data;
-using System.Drawing;
 using System.Windows.Forms;
 
 namespace AFMSSettings
 {
-    public class FormMidSection : AFMSForm
+    public class FormMidSection : _FormDischargeBase
     {
         public sealed class MidSectionConfig
         {
@@ -18,12 +17,21 @@ namespace AFMSSettings
             public double ConversionFactor { get; set; }
         }
 
-        private TableLayoutPanel uiTpMainRow;
-        private AFMSButton uiButtonSave;
-        private AFMSButton uiButtonCancel;
-        private AFMSComboBox uiCbVersion;
-        private AMFSHiddenTabControl uiTabMain;
-        private TabMidSectionVer0 uiTabPageVer0;
+        private sealed class VersionOption
+        {
+            public VersionOption(string name, MidSectionVer0Control control)
+            {
+                Name = name;
+                Control = control;
+            }
+
+            public string Name { get; }
+            public MidSectionVer0Control Control { get; }
+
+            public override string ToString() => Name;
+        }
+
+        private readonly MidSectionVer0Control _version0Control;
 
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
         public int HydroId { get; set; } = -1;
@@ -35,138 +43,29 @@ namespace AFMSSettings
 
         public FormMidSection()
         {
-            Text = "중간단면적법 설정 입력";
-            StartPosition = FormStartPosition.CenterParent;
-            FormBorderStyle = FormBorderStyle.None;
-            ShowMinimizeButton = false;
-            ShowMaximizeButton = false;
-            ShowInfoButton = false;
-            ShowInTaskbar = false;
-            BorderRadius = 8;
-            ShowWindowShadow = true;
-            ContentBackColor = Color.White;
-            ClientSize = new Size(480, 420);
-            Padding = new Padding(18);
+            Text = "중간단면적법 설정";
 
-            SetupMainLayout();
-            SetupVersion();
-            SetupButtons();
+            _version0Control = new MidSectionVer0Control();
+            AddVersion(new VersionOption("Type1", _version0Control));
         }
 
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
-            SetDefaultCellRange();
+            LoadHydroMeterContext();
         }
 
-        private void SetupMainLayout()
+        protected override void OnSelectedVersionChanged(EventArgs e)
         {
-            uiTpMainRow = new TableLayoutPanel();
-            uiTpMainRow.Dock = DockStyle.Fill;
-            uiTpMainRow.Margin = Padding.Empty;
-            uiTpMainRow.Padding = new Padding(5);
-            uiTpMainRow.ColumnCount = 1;
-            uiTpMainRow.RowCount = 3;
-            uiTpMainRow.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            uiTpMainRow.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
-            uiTpMainRow.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            uiTpMainRow.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
-            Controls.Add(uiTpMainRow);
+            base.OnSelectedVersionChanged(e);
+
+            if (SelectedVersion is VersionOption option)
+                SetDetailControl(option.Control);
+            else
+                ClearDetailControl();
         }
 
-        private void SetupVersion()
-        {
-            uiCbVersion = new AFMSComboBox();
-            uiCbVersion.Dock = DockStyle.Right;
-            uiCbVersion.Width = 200;
-            uiCbVersion.BorderRadius = 5;
-            uiCbVersion.BorderColor = DllColorHelper.GetCommonBorder();
-
-            uiTabPageVer0 = new TabMidSectionVer0();
-
-            uiTabMain = new AMFSHiddenTabControl();
-            uiTabMain.Dock = DockStyle.Fill;
-
-            AddVersionPage(uiTabPageVer0);
-            uiTabMain.SelectedTab = uiTabPageVer0;
-            uiCbVersion.SelectedIndexChanged += UiCbVersion_SelectedIndexChanged;
-            uiCbVersion.SelectedIndex = 0;
-
-            uiTpMainRow.Controls.Add(uiCbVersion, 0, 0);
-            uiTpMainRow.Controls.Add(uiTabMain, 0, 1);
-        }
-
-        private void AddVersionPage(TabMidSectionBase page)
-        {
-            page.Padding = Padding.Empty;
-            page.Margin = Padding.Empty;
-            page.BackColor = Color.White;
-            uiCbVersion.Items.Add(page);
-            uiTabMain.TabPages.Add(page);
-        }
-
-        private void UiCbVersion_SelectedIndexChanged(object? sender, EventArgs e)
-        {
-            if (uiCbVersion.SelectedItem is not TabMidSectionBase page) return;
-            uiTabMain.SelectedTab = page;
-        }
-
-        private void SetupButtons()
-        {
-            uiButtonSave = CreateButton("저장", true);
-            uiButtonCancel = CreateButton("취소", false);
-            uiButtonSave.Click += UiButtonSave_Click;
-            uiButtonCancel.Click += UiButtonCancel_Click;
-
-            TableLayoutPanel layout = new TableLayoutPanel();
-            layout.Dock = DockStyle.Fill;
-            layout.Margin = Padding.Empty;
-            layout.Padding = Padding.Empty;
-            layout.ColumnCount = 4;
-            layout.RowCount = 1;
-            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
-            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
-            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
-            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
-            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            layout.Controls.Add(uiButtonCancel, 2, 0);
-            layout.Controls.Add(uiButtonSave, 3, 0);
-
-            CancelButton = uiButtonCancel;
-            uiTpMainRow.Controls.Add(layout, 0, 2);
-        }
-
-        private void SetDefaultCellRange()
-        {
-            if (HydroId < 0) return;
-
-            QueryBuilderSelect query = new QueryBuilderSelect();
-            query.Table = FbtAFMSHydroMeter.TABLE_NAME;
-            query.Add(FbtAFMSHydroMeter.COL_TRANSECT_CNT);
-            query.Where(FbtAFMSHydroMeter.COL_ID, "=", HydroId);
-
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
-            DataTable table = db.Execute(query, out string error);
-
-            if (!string.IsNullOrEmpty(error) || table.Rows.Count == 0) return;
-
-            object value = table.Rows[0][FbtAFMSHydroMeter.COL_TRANSECT_CNT];
-            if (value == DBNull.Value) return;
-
-            int transectCount = Convert.ToInt32(value);
-            if (transectCount < 1) return;
-
-            foreach (TabPage tabPage in uiTabMain.TabPages)
-            {
-                if (tabPage is not TabMidSectionBase page) continue;
-
-                page.uiNumberCellMin.Maximum = transectCount;
-                page.uiNumberCellMax.Maximum = transectCount;
-                page.uiNumberCellMax.SetValue(transectCount);
-            }
-        }
-
-        private void UiButtonSave_Click(object? sender, EventArgs e)
+        protected override void OnSaveRequested(EventArgs e)
         {
             if (HydroId < 0)
             {
@@ -174,10 +73,9 @@ namespace AFMSSettings
                 return;
             }
 
-            MidSectionConfig? config = CreateConfig();
-            if (config == null) return;
-
-            config.HydroId = HydroId;
+            if (SelectedVersion is not VersionOption option ||
+                !option.Control.TryCreateConfig(HydroId, out MidSectionConfig config))
+                return;
 
             if (SaveHandler != null)
             {
@@ -190,74 +88,33 @@ namespace AFMSSettings
             }
 
             ResultConfig = config;
-            DialogResult = DialogResult.OK;
-            Close();
+            CompleteSave();
         }
 
-        private void UiButtonCancel_Click(object? sender, EventArgs e)
+        private void LoadHydroMeterContext()
         {
-            DialogResult = DialogResult.Cancel;
-            Close();
-        }
+            if (HydroId < 0) return;
 
-        private MidSectionConfig? CreateConfig()
-        {
-            if (uiTabMain.SelectedTab is not TabMidSectionBase page) return null;
+            QueryBuilderSelect query = new QueryBuilderSelect();
+            query.Table = FbtAFMSHydroMeter.TABLE_NAME;
+            query.Add(FbtAFMSHydroMeter.COL_DEVICE_NAME);
+            query.Add(FbtAFMSHydroMeter.COL_TRANSECT_CNT);
+            query.Where(FbtAFMSHydroMeter.COL_ID, "=", HydroId);
 
-            if (!page.uiNumberCellMin.IntValue.HasValue || !page.uiNumberCellMax.IntValue.HasValue)
-            {
-                MessageBox.Show("MIN과 MAX를 입력해주세요.", "입력 확인", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return null;
-            }
+            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            DataTable table = db.Execute(query, out string error);
 
-            if (page.uiNumberCellMin.IntValue.Value > page.uiNumberCellMax.IntValue.Value)
-            {
-                MessageBox.Show("MIN은 MAX보다 클 수 없습니다.", "입력 확인", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return null;
-            }
+            if (!string.IsNullOrEmpty(error) || table.Rows.Count == 0) return;
 
-            if (!page.uiNumberConversionFactor.DoubleValue.HasValue)
-            {
-                MessageBox.Show("환산계수를 입력해주세요.", "입력 확인", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                page.uiNumberConversionFactor.Focus();
-                return null;
-            }
+            DataRow row = table.Rows[0];
+            if (row[FbtAFMSHydroMeter.COL_DEVICE_NAME] != DBNull.Value)
+                HydroMeterName = Convert.ToString(row[FbtAFMSHydroMeter.COL_DEVICE_NAME]) ?? string.Empty;
 
-            MidSectionConfig config = new MidSectionConfig();
-            config.DisVer = (int)page.Version;
-            config.CellMin = page.uiNumberCellMin.IntValue.Value;
-            config.CellMax = page.uiNumberCellMax.IntValue.Value;
-            config.ConversionFactor = Math.Round(page.uiNumberConversionFactor.DoubleValue.Value, 2, MidpointRounding.AwayFromZero);
-            return config;
-        }
+            if (row[FbtAFMSHydroMeter.COL_TRANSECT_CNT] == DBNull.Value) return;
 
-        private static AFMSButton CreateButton(string text, bool primary)
-        {
-            AFMSButton button = new AFMSButton();
-            button.Dock = DockStyle.Fill;
-            button.Margin = new Padding(8, 0, 0, 0);
-            button.Text = text;
-            button.BorderRadius = 5;
-
-            if (primary)
-            {
-                button.BackColor = DllColorHelper.HexToColor("#02925D");
-                button.HoverBackColor = DllColorHelper.HexToColor("#027F51");
-                button.PressedBackColor = DllColorHelper.HexToColor("#026D46");
-                button.ForeColor = Color.White;
-                button.BorderThickness = 0F;
-            }
-            else
-            {
-                button.BackColor = Color.White;
-                button.HoverBackColor = DllColorHelper.HexToColor("#F3F6F4");
-                button.PressedBackColor = DllColorHelper.HexToColor("#E7ECE9");
-                button.ForeColor = DllColorHelper.HexToColor("#4C5751");
-                button.BorderColor = DllColorHelper.HexToColor("#C9D2CD");
-                button.BorderThickness = 1F;
-            }
-
-            return button;
+            int transectCount = Convert.ToInt32(row[FbtAFMSHydroMeter.COL_TRANSECT_CNT]);
+            if (transectCount > 0)
+                _version0Control.SetCellRangeMaximum(transectCount);
         }
     }
 }
