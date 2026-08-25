@@ -22,4 +22,9 @@
     </Reference>
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Source\Form\MidSection\" />
+    <Folder Include="Source\Form\SurfaceVelocity\" />
+  </ItemGroup>
+
 </Project>
