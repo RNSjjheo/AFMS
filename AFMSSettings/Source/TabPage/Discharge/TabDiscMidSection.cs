@@ -64,7 +64,7 @@ namespace AFMSSettings
                 return;
             }
 
-            using FormMidSection form = new FormMidSection();
+            using FormDischargeMidSection form = new FormDischargeMidSection();
             form.HydroId = _hydroId;
             form.SaveHandler = SaveConfig;
 
@@ -285,7 +285,7 @@ namespace AFMSSettings
             return string.Empty;
         }
 
-        private static string SaveConfig(FormMidSection.MidSectionConfig config)
+        private static string SaveConfig(FormDischargeMidSection.MidSectionConfig config)
         {
             DateTime now = DateTime.Now;
 

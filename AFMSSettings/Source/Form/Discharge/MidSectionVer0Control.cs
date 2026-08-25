@@ -57,9 +57,9 @@ namespace AFMSSettings
             _uiNumberCellMax.SetValue(maximum);
         }
 
-        public bool TryCreateConfig(int hydroId, out FormMidSection.MidSectionConfig config)
+        public bool TryCreateConfig(int hydroId, out FormDischargeMidSection.MidSectionConfig config)
         {
-            config = new FormMidSection.MidSectionConfig();
+            config = new FormDischargeMidSection.MidSectionConfig();
 
             if (!_uiNumberCellMin.IntValue.HasValue || !_uiNumberCellMax.IntValue.HasValue)
             {

@@ -6,7 +6,7 @@ using System.Windows.Forms;
 
 namespace AFMSSettings
 {
-    public class FormMidSection : _FormDischargeBase
+    public class FormDischargeMidSection : _FormDischargeBase
     {
         public sealed class MidSectionConfig
         {
@@ -41,7 +41,7 @@ namespace AFMSSettings
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
         public Func<MidSectionConfig, string>? SaveHandler { get; set; }
 
-        public FormMidSection()
+        public FormDischargeMidSection()
         {
             Text = "중간단면적법 설정";
 
