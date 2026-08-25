@@ -10,7 +10,7 @@ namespace AFMSDll
         public double Uncertainty { get; set; }
         public DischargeMethod Method { get; }
         public int MethodConfigId { get; set; } = -1;
-
+        public CrossSection CrossSection { get; } = new();
 
         protected DischargeBase(DischargeMethod method)
         {
