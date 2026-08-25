@@ -1,6 +1,8 @@
 using AFMSDll;
 using System;
 using System.Drawing;
+using System.Globalization;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace AFMSSettings.Source.Form.Discharge
@@ -47,6 +49,7 @@ namespace AFMSSettings.Source.Form.Discharge
             _uiA = CreateNumberBox(COL_NODE1);
             _uiB = CreateNumberBox(COL_NODE2);
             _uiC = CreateNumberBox(COL_NODE3);
+            _uiMaxWaterLevel.InnerTextBox.KeyDown += UiMaxWaterLevel_KeyDown;
 
             main.Controls.Add(formula, 0, 0);
             main.Controls.Add(_uiGrid, 0, 1);
@@ -142,6 +145,87 @@ namespace AFMSSettings.Source.Form.Discharge
 
             _uiGrid.Rows.Add(_uiGrid.Rows.Count + 1, maxH, _uiA.DoubleValue, _uiB.DoubleValue, _uiC.DoubleValue);
             foreach (AFMSNumberBox input in inputs) input.Text = string.Empty;
+        }
+
+        private void UiMaxWaterLevel_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (!e.Control || e.KeyCode != Keys.V) return;
+
+            string clipboardText;
+            try
+            {
+                if (!Clipboard.ContainsText()) return;
+                clipboardText = Clipboard.GetText(TextDataFormat.UnicodeText);
+            }
+            catch (ExternalException)
+            {
+                MessageBox.Show("클립보드 데이터를 읽을 수 없습니다. 다시 시도해주세요.", "붙여넣기 오류", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                return;
+            }
+
+            bool multipleCells = clipboardText.IndexOfAny(['\t', '\r', '\n']) >= 0;
+            if (!multipleCells) return;
+
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+
+            if (!TryParseExcelValues(clipboardText, out double[] values))
+            {
+                MessageBox.Show(
+                    "Excel에서 최대 수위, a, b, c 순서의 숫자 셀 4개를 복사해주세요.",
+                    "붙여넣기 형식 확인",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
+            _uiMaxWaterLevel.SetValue(values[0]);
+            _uiA.SetValue(values[1]);
+            _uiB.SetValue(values[2]);
+            _uiC.SetValue(values[3]);
+            _uiC.Focus();
+        }
+
+        private static bool TryParseExcelValues(string text, out double[] values)
+        {
+            values = Array.Empty<double>();
+            string normalized = text.TrimEnd('\r', '\n');
+            string[] rows = normalized.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+            string[] cells;
+
+            if (rows.Length == 1)
+            {
+                cells = rows[0].Split('\t');
+            }
+            else if (rows.Length == 4)
+            {
+                cells = new string[4];
+                for (int i = 0; i < rows.Length; i++)
+                {
+                    if (rows[i].Contains('\t')) return false;
+                    cells[i] = rows[i];
+                }
+            }
+            else
+            {
+                return false;
+            }
+
+            if (cells.Length != 4) return false;
+
+            values = new double[4];
+            for (int i = 0; i < cells.Length; i++)
+            {
+                string cell = cells[i].Trim();
+                if (double.TryParse(cell, NumberStyles.Float, CultureInfo.InvariantCulture, out values[i])) continue;
+                if (double.TryParse(cell, NumberStyles.Float, CultureInfo.CurrentCulture, out values[i])) continue;
+                values = Array.Empty<double>();
+                return false;
+            }
+
+            return true;
         }
 
         private void UiGrid_CellDoubleClick(object? sender, DataGridViewCellEventArgs e)
