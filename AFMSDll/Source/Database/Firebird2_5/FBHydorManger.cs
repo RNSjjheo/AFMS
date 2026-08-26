@@ -67,56 +67,6 @@ namespace AFMSDll
             }
         }
 
-        public static void SyncDischagreConfig()
-        {
-            string sql = $"SELECT H.{FbtAFMSHydroMeter.COL_ID}";
-            sql += "\n" + $"FROM {FbtAFMSHydroMeter.TABLE_NAME} H";
-            sql += "\n" + $"LEFT JOIN {FbtAFMSDischargeConfig.TABLE_NAME} D ON D.{FbtAFMSDischargeConfig.COL_ID} = H.{FbtAFMSHydroMeter.COL_ID}";
-            sql += "\n" + $"WHERE D.{FbtAFMSDischargeConfig.COL_ID} IS NULL";
-            sql += "\n" + $"ORDER BY H.{FbtAFMSHydroMeter.COL_ID}";
-
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
-            string error = db.RunQuery(sql);
-            if (!string.IsNullOrEmpty(error)) return;
-
-            foreach (DataRow row in db.Results.Rows)
-            {
-                int id = Convert.ToInt32(row[FbtAFMSHydroMeter.COL_ID]);
-                InsertEmptyDischargeConfig(db, id);
-            }
-        }
-
-        private static void InsertEmptyDischargeConfig(FBDatabase db, int id)
-        {
-            List<string> columns = new List<string>();
-            List<string> values = new List<string>();
-
-            columns.Add(FbtAFMSDischargeConfig.COL_ID);
-            values.Add(id.ToString());
-
-            columns.Add(FbtAFMSDischargeConfig.COL_MEASURE_DATE);
-            values.Add($"'{DateTime.Now:yyyyMMdd}'");
-
-            columns.Add(FbtAFMSDischargeConfig.COL_MEASURE_TIME);
-            values.Add($"'{DateTime.Now:HHmmss}'");
-
-            columns.Add(FbtAFMSDischargeConfig.COL_HYDRO_ID);
-            values.Add($"{id}");
-
-            foreach (DischargeMethod method in Enum.GetValues(typeof(DischargeMethod)))
-            {
-                if (method == DischargeMethod.None) continue;
-
-                columns.Add(FbtAFMSDischargeConfig.GetMethodColumn(method));
-                values.Add("0");
-            }
-
-            string sql = $"INSERT INTO {FbtAFMSDischargeConfig.TABLE_NAME} ({string.Join(", ", columns)})";
-            sql += "\n" + $"VALUES ({string.Join(", ", values)})";
-
-            db.RunNonQuery(sql);
-        }
-
         private static bool IsSyncHydroMeter(string value)
         {
             if (!Enum.TryParse(value, true, out HydroMeterType hydroMeterType)) return false;

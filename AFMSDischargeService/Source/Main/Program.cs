@@ -32,11 +32,11 @@ namespace AFMSDischargeService
                 });
 
             builder.Configuration
-                .AddJsonFile("AFMSDischargeService.settings.json", optional: false, reloadOnChange: true)
+                .AddJsonFile("AFMSDischargeService.settings.json", optional: false, reloadOnChange: false)
                 .AddJsonFile(
                     $"AFMSDischargeService.settings.{builder.Environment.EnvironmentName}.json",
                     optional: true,
-                    reloadOnChange: true);
+                    reloadOnChange: false);
 
             builder.Services.AddWindowsService(options =>
             {

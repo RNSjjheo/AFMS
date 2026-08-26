@@ -167,7 +167,6 @@ namespace AFMSDll
         {
             FBHydorManger.SyncAdd();
             FBHydorManger.SyncRemove();
-            FBHydorManger.SyncDischagreConfig();
         }
 
         public bool IsExistExtraEmptyData()

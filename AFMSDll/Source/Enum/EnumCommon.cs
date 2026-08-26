@@ -98,6 +98,13 @@ namespace AFMSDll
         Ver00 = 0,
     }
 
+    public enum MeasurementDeviceType
+    {
+        None = 0,
+        VelocityMeter = 1,
+        WaterLevelGauge = 2
+    }
+
     public enum DiscVerVelocityDistribution
     {
         Ver00 = 0,

@@ -40,18 +40,18 @@ namespace AFMSDischargeService
             calculators.Clear();
 
             string sql = $"SELECT C.{FbtAFMSDischargeConfig.COL_ID},";
-            sql += $" C.{FbtAFMSDischargeConfig.COL_HYDRO_ID},";
-            sql += $" C.{FbtAFMSDischargeConfig.COL_MID_SECTION},";
-            sql += $" C.{FbtAFMSDischargeConfig.COL_RATING_CURVE},";
-            sql += $" C.{FbtAFMSDischargeConfig.COL_SURFACE_VELOCITY},";
-            sql += $" C.{FbtAFMSDischargeConfig.COL_VELOCITY_DISTRIBUTION}";
+            sql += $" C.{FbtAFMSDischargeConfig.COL_DEVICE_TYPE},";
+            sql += $" C.{FbtAFMSDischargeConfig.COL_DEVICE_ID},";
+            sql += $" C.{FbtAFMSDischargeConfig.COL_DISCHARGE_METHOD}";
             sql += $" FROM {FbtAFMSDischargeConfig.TABLE_NAME} C";
             sql += $" WHERE C.{FbtAFMSDischargeConfig.COL_ID} = (";
             sql += $"SELECT MAX(C2.{FbtAFMSDischargeConfig.COL_ID})";
             sql += $" FROM {FbtAFMSDischargeConfig.TABLE_NAME} C2";
-            sql += $" WHERE C2.{FbtAFMSDischargeConfig.COL_HYDRO_ID}";
-            sql += $" = C.{FbtAFMSDischargeConfig.COL_HYDRO_ID})";
-            sql += $" ORDER BY C.{FbtAFMSDischargeConfig.COL_HYDRO_ID}";
+            sql += $" WHERE C2.{FbtAFMSDischargeConfig.COL_DEVICE_TYPE} = C.{FbtAFMSDischargeConfig.COL_DEVICE_TYPE}";
+            sql += $" AND C2.{FbtAFMSDischargeConfig.COL_DEVICE_ID} = C.{FbtAFMSDischargeConfig.COL_DEVICE_ID}";
+            sql += $" AND C2.{FbtAFMSDischargeConfig.COL_DISCHARGE_METHOD} = C.{FbtAFMSDischargeConfig.COL_DISCHARGE_METHOD})";
+            sql += $" AND C.{FbtAFMSDischargeConfig.COL_ENABLED} = 1";
+            sql += $" ORDER BY C.{FbtAFMSDischargeConfig.COL_DEVICE_TYPE}, C.{FbtAFMSDischargeConfig.COL_DEVICE_ID}";
 
             using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
             DataTable table = db.Execute(sql, out string error);
@@ -62,37 +62,88 @@ namespace AFMSDischargeService
             {
                 stoppingToken.ThrowIfCancellationRequested();
 
-                int dischargeConfigId = Convert.ToInt32(row[FbtAFMSDischargeConfig.COL_ID]);
-                int hydroId = Convert.ToInt32(row[FbtAFMSDischargeConfig.COL_HYDRO_ID]);
+                if (!Enum.TryParse(Convert.ToString(row[FbtAFMSDischargeConfig.COL_DEVICE_TYPE]), true,
+                        out MeasurementDeviceType deviceType) ||
+                    !Enum.TryParse(Convert.ToString(row[FbtAFMSDischargeConfig.COL_DISCHARGE_METHOD]), true,
+                        out DischargeMethod method)) continue;
 
-                AddCalculatorIfEnabled(row, FbtAFMSDischargeConfig.COL_MID_SECTION,
-                    new QMidSection(), dischargeConfigId, hydroId);
-                AddCalculatorIfEnabled(row, FbtAFMSDischargeConfig.COL_RATING_CURVE,
-                    new QRatingCurve(), dischargeConfigId, hydroId);
-                AddCalculatorIfEnabled(row, FbtAFMSDischargeConfig.COL_SURFACE_VELOCITY,
-                    new QSurfaceVelocity(), dischargeConfigId, hydroId);
-                AddCalculatorIfEnabled(row, FbtAFMSDischargeConfig.COL_VELOCITY_DISTRIBUTION,
-                    new QVelocityDistribution(), dischargeConfigId, hydroId);
+                _QBase? calculator = CreateCalculator(method);
+                if (calculator == null || !IsSupportedDevice(method, deviceType)) continue;
+
+                calculator.DischargeConfigId = Convert.ToInt32(row[FbtAFMSDischargeConfig.COL_ID]);
+                calculator.DeviceType = deviceType;
+                calculator.DeviceId = Convert.ToInt32(row[FbtAFMSDischargeConfig.COL_DEVICE_ID]);
+                calculator.MethodConfigId = GetLatestMethodConfigId(db, method, deviceType, calculator.DeviceId);
+                if (calculator.MethodConfigId < 0) continue;
+                calculators.Add(calculator);
+
+                logger.LogInformation(
+                    "유량 산정 객체 추가: {DeviceType} {DeviceId}, 산정법 {Method}",
+                    calculator.DeviceType,
+                    calculator.DeviceId,
+                    calculator.Method);
             }
         }
 
-        private void AddCalculatorIfEnabled(
-            DataRow row,
-            string columnName,
-            _QBase calculator,
-            int dischargeConfigId,
-            int hydroId)
+        private static _QBase? CreateCalculator(DischargeMethod method)
         {
-            if (row[columnName] == DBNull.Value || Convert.ToInt32(row[columnName]) != 1) return;
+            return method switch
+            {
+                DischargeMethod.MidSection => new QMidSection(),
+                DischargeMethod.RatingCurve => new QRatingCurve(),
+                DischargeMethod.SurfaceVelo => new QSurfaceVelocity(),
+                DischargeMethod.VeloDist => new QVelocityDistribution(),
+                _ => null
+            };
+        }
 
-            calculator.DischargeConfigId = dischargeConfigId;
-            calculator.HydroMeterId = hydroId;
-            calculators.Add(calculator);
+        private static bool IsSupportedDevice(DischargeMethod method, MeasurementDeviceType deviceType)
+        {
+            return method == DischargeMethod.RatingCurve
+                ? deviceType == MeasurementDeviceType.WaterLevelGauge
+                : deviceType == MeasurementDeviceType.VelocityMeter;
+        }
 
-            logger.LogInformation(
-                "유량 산정 객체 추가: 유속계 {HydroId}, 산정법 {Method}",
-                hydroId,
-                calculator.Method);
+        private static int GetLatestMethodConfigId(
+            FBDatabase db,
+            DischargeMethod method,
+            MeasurementDeviceType deviceType,
+            int deviceId)
+        {
+            string tableName;
+            string? deviceColumn;
+
+            switch (method)
+            {
+                case DischargeMethod.MidSection:
+                    tableName = FbtAFMSDiscAttrMidSection.TABLE_NAME;
+                    deviceColumn = FbtAFMSDiscAttrMidSection.COL_HYDRO_ID;
+                    break;
+                case DischargeMethod.SurfaceVelo:
+                    tableName = FbtAFMSDiscAttrSurfaceVelo.TABLE_NAME;
+                    deviceColumn = FbtAFMSDiscAttrSurfaceVelo.COL_HYDRO_ID;
+                    break;
+                case DischargeMethod.VeloDist:
+                    tableName = FbtAFMSDiscAttrVelocityDistribution.TABLE_NAME;
+                    deviceColumn = FbtAFMSDiscAttrVelocityDistribution.COL_HYDRO_ID;
+                    break;
+                case DischargeMethod.RatingCurve:
+                    tableName = FbtAFMSDiscAttrRatingCurve.TABLE_NAME;
+                    deviceColumn = null;
+                    break;
+                default:
+                    return -1;
+            }
+
+            string sql = $"SELECT MAX({FbtAFMSDischargeConfig.COL_ID}) FROM {tableName}";
+            if (deviceType == MeasurementDeviceType.VelocityMeter && deviceColumn != null)
+                sql += $" WHERE {deviceColumn} = {deviceId}";
+
+            DataTable table = db.Execute(sql, out string error);
+            if (!string.IsNullOrEmpty(error) || table.Rows.Count == 0 || table.Rows[0][0] == DBNull.Value)
+                return -1;
+
+            return Convert.ToInt32(table.Rows[0][0]);
         }
     }
 }

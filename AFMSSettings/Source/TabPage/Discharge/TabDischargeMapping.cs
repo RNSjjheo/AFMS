@@ -1,289 +1,91 @@
-﻿using AFMSDll;
-using System;
+using AFMSDll;
 using System.Collections.Generic;
 using System.Data;
 using System.Drawing;
-using System.Text.Json;
+using System.Linq;
 using System.Windows.Forms;
 
 namespace AFMSSettings
 {
     public class TabDischargeMapping : _TabDischargeBase
     {
-        private const string COL_HYDRO_ID = "HYDRO_ID";
+        private const string COL_DEVICE_TYPE = "DEVICE_TYPE";
+        private const string COL_DEVICE_ID = "DEVICE_ID";
+        private const string COL_TRANSECT_COUNT = "TRANSECT_COUNT";
         private const string COL_ROW_NO = "ROW_NO";
-        private const string COL_FLOWMETER = "FLOWMETER";
+        private const string COL_DEVICE_KIND = "DEVICE_KIND";
+        private const string COL_DEVICE_NAME = "DEVICE_NAME";
+        private const int SYSTEM_WATER_LEVEL_DEVICE_ID = 0;
 
-        private readonly List<DischargeMethod> _DischargeMethods = new List<DischargeMethod>();
-        private readonly Dictionary<int, Dictionary<DischargeMethod, bool>> _OriginalValues = new Dictionary<int, Dictionary<DischargeMethod, bool>>();
-        private readonly HashSet<int> _SurfaceConfiguredHydroIds = new HashSet<int>();
-        private readonly HashSet<int> _MidSectionConfiguredHydroIds = new HashSet<int>();
-        private readonly Dictionary<int, TransectSetting> _TransectSettings = new Dictionary<int, TransectSetting>();
-        private bool _HasRatingCurveConfig;
-
-        private sealed class TransectSetting
-        {
-            public int Count { get; set; }
-            public string DistanceDatas { get; set; } = string.Empty;
-        }
-
+        private readonly List<DischargeMethod> _methods = new();
+        private readonly Dictionary<string, Dictionary<DischargeMethod, bool>> _originalValues = new();
+        private readonly Dictionary<string, int> _methodConfigIds = new();
+        private readonly HashSet<int> _surfaceConfiguredHydroIds = new();
+        private readonly HashSet<int> _midSectionConfiguredHydroIds = new();
+        private readonly HashSet<int> _velocityDistributionConfiguredHydroIds = new();
+        private readonly Dictionary<int, int> _transectCounts = new();
+        private bool _hasRatingCurveConfig;
         private AFMSGuidePanel uiGuide;
 
-        public TabDischargeMapping()
-            : base(false)
+        public TabDischargeMapping() : base(false)
         {
             Text = "유량 산정 선택";
             BackColor = Color.White;
             Padding = Padding.Empty;
 
-            SetupDischargeMethods();
+            foreach (DischargeMethod method in Enum.GetValues(typeof(DischargeMethod)))
+                if (method != DischargeMethod.None) _methods.Add(method);
+
             SetupLayout();
             SetupGrid();
             SetupMethodCheckBoxes();
 
             uiTpMain.SetRowSpan(uiGridMain, 2);
             uiTpMain.SetRowSpan(uiGuide, 2);
-
             uiTpMain.Controls.Remove(uiButtonInput);
         }
 
-        public bool HasChanges
-        {
-            get
-            {
-                foreach (DataGridViewRow row in uiGridMain.Rows)
-                {
-                    if (!row.IsNewRow && IsRowChanged(row)) return true;
-                }
+        public bool HasChanges => uiGridMain.Rows.Cast<DataGridViewRow>()
+            .Any(row => !row.IsNewRow && IsRowChanged(row));
 
-                return false;
-            }
-        }
-
-        private void AddGridRow(DataRow dataRow, int rowNo)
-        {
-            int hydroId = Convert.ToInt32(dataRow[COL_HYDRO_ID]);
-            int transectCount = dataRow[FbtAFMSHydroMeter.COL_TRANSECT_CNT] == DBNull.Value
-                ? 0
-                : Convert.ToInt32(dataRow[FbtAFMSHydroMeter.COL_TRANSECT_CNT]);
-            string deviceName = Convert.ToString(dataRow[FbtAFMSHydroMeter.COL_DEVICE_NAME])?.Trim() ?? string.Empty;
-
-            int rowIndex = uiGridMain.Rows.Add();
-            DataGridViewRow gridRow = uiGridMain.Rows[rowIndex];
-
-            gridRow.Cells[COL_HYDRO_ID].Value = hydroId;
-            gridRow.Cells[FbtAFMSHydroMeter.COL_TRANSECT_CNT].Value = transectCount;
-            gridRow.Cells[COL_ROW_NO].Value = rowNo;
-            gridRow.Cells[COL_FLOWMETER].Value = deviceName;
-
-            Dictionary<DischargeMethod, bool> original = new Dictionary<DischargeMethod, bool>();
-
-            foreach (DischargeMethod method in _DischargeMethods)
-            {
-                string dbColumn = FbtAFMSDischargeConfig.GetMethodColumn(method);
-                bool isAvailable = IsMethodAvailable(hydroId, transectCount, method);
-                bool isChecked = isAvailable && dataRow[dbColumn] != DBNull.Value && Convert.ToInt32(dataRow[dbColumn]) == 1;
-                string gridColumn = GetGridMethodColumnName(method);
-
-                gridRow.Cells[gridColumn].Value = isChecked;
-                uiGridMain.SetAFMSCheckBoxVisible(rowIndex, gridColumn, isAvailable);
-                original[method] = isChecked;
-            }
-
-            _OriginalValues[hydroId] = original;
-        }
         public void LoadData()
         {
             uiGridMain.Rows.Clear();
             uiGridMain.ClearAFMSCheckBoxCellVisibility();
-            _OriginalValues.Clear();
+            _originalValues.Clear();
 
-            QueryBuilderSelect query = new QueryBuilderSelect();
+            using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
+            LoadMethodAvailability(db);
+            Dictionary<string, bool> configured = LoadLatestSelections(db);
+
+            QueryBuilderSelect query = new();
             query.Table = FbtAFMSHydroMeter.TABLE_NAME;
-
-            query.AsAlias(FbtAFMSHydroMeter.COL_ID, COL_HYDRO_ID);
+            query.Add(FbtAFMSHydroMeter.COL_ID);
             query.Add(FbtAFMSHydroMeter.COL_DEVICE_NAME);
             query.Add(FbtAFMSHydroMeter.COL_DEVICE_NO);
             query.Add(FbtAFMSHydroMeter.COL_TRANSECT_CNT);
-
-            foreach (DischargeMethod method in _DischargeMethods) query.AddB(FbtAFMSDischargeConfig.GetMethodColumn(method));
-
-            query.LeftJoinB.Table = FbtAFMSDischargeConfig.TABLE_NAME;
-            query.LeftJoinB.AddRaw(
-                $"B.{FbtAFMSDischargeConfig.COL_ID} = (" +
-                $"SELECT MAX(B2.{FbtAFMSDischargeConfig.COL_ID}) " +
-                $"FROM {FbtAFMSDischargeConfig.TABLE_NAME} B2 " +
-                $"WHERE B2.{FbtAFMSDischargeConfig.COL_HYDRO_ID} = A.{FbtAFMSHydroMeter.COL_ID})");
             query.OrderBy(FbtAFMSHydroMeter.COL_ID);
 
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
-            LoadMethodAvailability(db);
-            DataTable table = db.Execute(query.Sql, out string error);
-
+            DataTable hydros = db.Execute(query, out string error);
             if (!string.IsNullOrEmpty(error)) return;
 
             int rowNo = 1;
+            foreach (DataRow row in hydros.Rows)
+            {
+                int id = Convert.ToInt32(row[FbtAFMSHydroMeter.COL_ID]);
+                int transectCount = row[FbtAFMSHydroMeter.COL_TRANSECT_CNT] == DBNull.Value
+                    ? 0
+                    : Convert.ToInt32(row[FbtAFMSHydroMeter.COL_TRANSECT_CNT]);
+                string name = Convert.ToString(row[FbtAFMSHydroMeter.COL_DEVICE_NAME])?.Trim() ?? $"유속계 {id}";
 
-            foreach (DataRow row in table.Rows) AddGridRow(row, rowNo++);
+                AddDeviceRow(rowNo++, MeasurementDeviceType.VelocityMeter, id, transectCount, "유속계", name, configured);
+            }
+
+            AddDeviceRow(rowNo, MeasurementDeviceType.WaterLevelGauge, SYSTEM_WATER_LEVEL_DEVICE_ID,
+                0, "수위계", "시스템 수위계", configured);
 
             uiGridMain.ClearSelection();
             uiGridMain.RefreshAFMSCheckBoxes();
-        }
-
-        private void LoadMethodAvailability(FBDatabase db)
-        {
-            _SurfaceConfiguredHydroIds.Clear();
-            _MidSectionConfiguredHydroIds.Clear();
-            _TransectSettings.Clear();
-            _HasRatingCurveConfig = false;
-
-            LoadConfiguredSurfaceHydroIds(db);
-            LoadConfiguredHydroIds(db, FbtAFMSDiscAttrMidSection.TABLE_NAME, FbtAFMSDiscAttrMidSection.COL_HYDRO_ID, _MidSectionConfiguredHydroIds);
-            LoadLatestTransectSettings(db);
-
-            string ratingSql = $"SELECT FIRST 1 {FbtAFMSDiscAttrRatingCurve.COL_ID} FROM {FbtAFMSDiscAttrRatingCurve.TABLE_NAME}";
-            DataTable ratingTable = db.Execute(ratingSql, out string ratingError);
-            _HasRatingCurveConfig = string.IsNullOrEmpty(ratingError) && ratingTable.Rows.Count > 0;
-        }
-
-        private void LoadConfiguredSurfaceHydroIds(FBDatabase db)
-        {
-            QueryBuilderSelect query = new QueryBuilderSelect();
-            query.Table = FbtAFMSDiscAttrSurfaceVelo.TABLE_NAME;
-            query.Add(FbtAFMSDiscAttrSurfaceVelo.COL_DIS_VER);
-            query.Add(FbtAFMSDiscAttrSurfaceVelo.COL_HYDRO_ID);
-            query.Add(FbtAFMSDiscAttrSurfaceVelo.COL_CELL_RANGE_MIN);
-            query.Add(FbtAFMSDiscAttrSurfaceVelo.COL_CELL_RANGE_MAX);
-            query.Add(FbtAFMSDiscAttrSurfaceVelo.COL_UCERT_V_ST);
-            query.Add(FbtAFMSDiscAttrSurfaceVelo.COL_UCERT_V_INDEX);
-            query.Add(FbtAFMSDiscAttrSurfaceVelo.COL_COEFF_COUNT);
-            query.Add(FbtAFMSDiscAttrSurfaceVelo.COL_DIS_ATTR);
-            query.WhereRaw(
-                $"A.{FbtAFMSDiscAttrSurfaceVelo.COL_ID} = (" +
-                $"SELECT MAX(B.{FbtAFMSDiscAttrSurfaceVelo.COL_ID}) FROM {FbtAFMSDiscAttrSurfaceVelo.TABLE_NAME} B " +
-                $"WHERE B.{FbtAFMSDiscAttrSurfaceVelo.COL_HYDRO_ID} = A.{FbtAFMSDiscAttrSurfaceVelo.COL_HYDRO_ID})");
-
-            DataTable table = db.Execute(query, out string error);
-            if (!string.IsNullOrEmpty(error)) return;
-
-            foreach (DataRow row in table.Rows)
-            {
-                if (!IsValidSurfaceConfig(row)) continue;
-                _SurfaceConfiguredHydroIds.Add(Convert.ToInt32(row[FbtAFMSDiscAttrSurfaceVelo.COL_HYDRO_ID]));
-            }
-        }
-
-        private static bool IsValidSurfaceConfig(DataRow row)
-        {
-            try
-            {
-                if (row[FbtAFMSDiscAttrSurfaceVelo.COL_DIS_VER] == DBNull.Value ||
-                    row[FbtAFMSDiscAttrSurfaceVelo.COL_HYDRO_ID] == DBNull.Value ||
-                    row[FbtAFMSDiscAttrSurfaceVelo.COL_CELL_RANGE_MIN] == DBNull.Value ||
-                    row[FbtAFMSDiscAttrSurfaceVelo.COL_CELL_RANGE_MAX] == DBNull.Value ||
-                    row[FbtAFMSDiscAttrSurfaceVelo.COL_UCERT_V_ST] == DBNull.Value ||
-                    row[FbtAFMSDiscAttrSurfaceVelo.COL_UCERT_V_INDEX] == DBNull.Value ||
-                    row[FbtAFMSDiscAttrSurfaceVelo.COL_COEFF_COUNT] == DBNull.Value ||
-                    row[FbtAFMSDiscAttrSurfaceVelo.COL_DIS_ATTR] == DBNull.Value) return false;
-
-                int version = Convert.ToInt32(row[FbtAFMSDiscAttrSurfaceVelo.COL_DIS_VER]);
-                int cellMin = Convert.ToInt32(row[FbtAFMSDiscAttrSurfaceVelo.COL_CELL_RANGE_MIN]);
-                int cellMax = Convert.ToInt32(row[FbtAFMSDiscAttrSurfaceVelo.COL_CELL_RANGE_MAX]);
-                int coefficientCount = Convert.ToInt32(row[FbtAFMSDiscAttrSurfaceVelo.COL_COEFF_COUNT]);
-                double uncertaintyVst = Convert.ToDouble(row[FbtAFMSDiscAttrSurfaceVelo.COL_UCERT_V_ST]);
-                double uncertaintyVindex = Convert.ToDouble(row[FbtAFMSDiscAttrSurfaceVelo.COL_UCERT_V_INDEX]);
-
-                if (!Enum.IsDefined(typeof(DiscVerSurfaceVelo), version) || cellMin < 1 || cellMax < cellMin ||
-                    coefficientCount < 1 || !double.IsFinite(uncertaintyVst) || !double.IsFinite(uncertaintyVindex)) return false;
-
-                string attributes = Convert.ToString(row[FbtAFMSDiscAttrSurfaceVelo.COL_DIS_ATTR])?.Trim() ?? string.Empty;
-                if (string.IsNullOrWhiteSpace(attributes)) return false;
-
-                using JsonDocument document = JsonDocument.Parse(attributes);
-                JsonElement coefficients = document.RootElement;
-
-                if (coefficients.ValueKind != JsonValueKind.Array || coefficients.GetArrayLength() != coefficientCount) return false;
-
-                foreach (JsonElement coefficient in coefficients.EnumerateArray())
-                {
-                    if (coefficient.ValueKind != JsonValueKind.Object ||
-                        !TryGetFiniteDouble(coefficient, QSurfaceVelocity.VER1_ATTR_NODE1) ||
-                        !TryGetFiniteDouble(coefficient, QSurfaceVelocity.VER1_ATTR_NODE2) ||
-                        !TryGetFiniteDouble(coefficient, QSurfaceVelocity.VER1_ATTR_NODE3)) return false;
-                }
-
-                return true;
-            }
-            catch (Exception ex) when (ex is JsonException || ex is InvalidCastException || ex is FormatException ||
-                                       ex is OverflowException || ex is InvalidOperationException)
-            {
-                return false;
-            }
-        }
-
-        private static bool TryGetFiniteDouble(JsonElement item, string propertyName)
-        {
-            return item.TryGetProperty(propertyName, out JsonElement value) &&
-                   value.TryGetDouble(out double number) && double.IsFinite(number);
-        }
-
-        private static void LoadConfiguredHydroIds(FBDatabase db, string tableName, string hydroIdColumn, HashSet<int> target)
-        {
-            DataTable table = db.Execute($"SELECT DISTINCT {hydroIdColumn} FROM {tableName}", out string error);
-            if (!string.IsNullOrEmpty(error)) return;
-
-            foreach (DataRow row in table.Rows)
-            {
-                if (row[hydroIdColumn] != DBNull.Value) target.Add(Convert.ToInt32(row[hydroIdColumn]));
-            }
-        }
-
-        private void LoadLatestTransectSettings(FBDatabase db)
-        {
-            QueryBuilderSelect query = new QueryBuilderSelect();
-            query.Table = FbtAFMSHydroTransect.TABLE_NAME;
-            query.Add(FbtAFMSHydroTransect.COL_HYDRO_ID);
-            query.Add(FbtAFMSHydroTransect.COL_TRANSECT_COUNT);
-            query.Add(FbtAFMSHydroTransect.COL_DISTANCE_DATAS);
-            query.WhereRaw(
-                $"A.{FbtAFMSHydroTransect.COL_ID} = (" +
-                $"SELECT MAX(B.{FbtAFMSHydroTransect.COL_ID}) FROM {FbtAFMSHydroTransect.TABLE_NAME} B " +
-                $"WHERE B.{FbtAFMSHydroTransect.COL_HYDRO_ID} = A.{FbtAFMSHydroTransect.COL_HYDRO_ID})");
-
-            DataTable table = db.Execute(query, out string error);
-            if (!string.IsNullOrEmpty(error)) return;
-
-            foreach (DataRow row in table.Rows)
-            {
-                if (row[FbtAFMSHydroTransect.COL_HYDRO_ID] == DBNull.Value) continue;
-
-                int hydroId = Convert.ToInt32(row[FbtAFMSHydroTransect.COL_HYDRO_ID]);
-                _TransectSettings[hydroId] = new TransectSetting
-                {
-                    Count = row[FbtAFMSHydroTransect.COL_TRANSECT_COUNT] == DBNull.Value ? 0 : Convert.ToInt32(row[FbtAFMSHydroTransect.COL_TRANSECT_COUNT]),
-                    DistanceDatas = Convert.ToString(row[FbtAFMSHydroTransect.COL_DISTANCE_DATAS])?.Trim() ?? string.Empty
-                };
-            }
-        }
-
-        private bool IsMethodAvailable(int hydroId, int transectCount, DischargeMethod method)
-        {
-            return method switch
-            {
-                DischargeMethod.SurfaceVelo => _SurfaceConfiguredHydroIds.Contains(hydroId),
-                DischargeMethod.MidSection => _MidSectionConfiguredHydroIds.Contains(hydroId) && HasValidTransectSetting(hydroId, transectCount),
-                DischargeMethod.RatingCurve => _HasRatingCurveConfig,
-                _ => false
-            };
-        }
-
-        private bool HasValidTransectSetting(int hydroId, int expectedCount)
-        {
-            if (expectedCount <= 0 || !_TransectSettings.TryGetValue(hydroId, out TransectSetting setting) ||
-                setting.Count != expectedCount || string.IsNullOrWhiteSpace(setting.DistanceDatas)) return false;
-
-            return TransectBuilder.TryBuild(setting.DistanceDatas, out TransectCollection transects) &&
-                   transects.Count == expectedCount;
         }
 
         public string SaveChanges(out int savedCount)
@@ -294,49 +96,203 @@ namespace AFMSSettings
             {
                 if (row.IsNewRow || !IsRowChanged(row)) continue;
 
-                int hydroId = Convert.ToInt32(row.Cells[COL_HYDRO_ID].Value);
-                int id = FBProvider.Instance.GetNextID(FbtAFMSDischargeConfig.TABLE_NAME);
-                DateTime now = DateTime.Now;
-                List<string> columns = new List<string> { FbtAFMSDischargeConfig.COL_ID, FbtAFMSDischargeConfig.COL_MEASURE_DATE, FbtAFMSDischargeConfig.COL_MEASURE_TIME, FbtAFMSDischargeConfig.COL_HYDRO_ID };
-                List<string> values = new List<string> { id.ToString(), $"'{now:yyyyMMdd}'", $"'{now:HHmmss}'", hydroId.ToString() };
+                MeasurementDeviceType deviceType = GetDeviceType(row);
+                int deviceId = Convert.ToInt32(row.Cells[COL_DEVICE_ID].Value);
+                string deviceKey = GetDeviceKey(deviceType, deviceId);
+                Dictionary<DischargeMethod, bool> original = _originalValues[deviceKey];
+                bool rowSaved = false;
 
-                foreach (DischargeMethod method in _DischargeMethods)
+                foreach (DischargeMethod method in _methods)
                 {
-                    columns.Add(FbtAFMSDischargeConfig.GetMethodColumn(method));
-                    values.Add(GetCurrentValue(row, method) ? "1" : "0");
+                    bool enabled = GetCurrentValue(row, method);
+                    if (original.TryGetValue(method, out bool oldValue) && oldValue == enabled) continue;
+
+                    int id = FBProvider.Instance.GetNextID(FbtAFMSDischargeConfig.TABLE_NAME);
+                    DateTime now = DateTime.Now;
+                    string methodConfigKey = GetMethodKey(deviceType, deviceId, method);
+                    string methodConfigId = _methodConfigIds.TryGetValue(methodConfigKey, out int configId)
+                        ? configId.ToString()
+                        : "NULL";
+
+                    string sql = $"INSERT INTO {FbtAFMSDischargeConfig.TABLE_NAME} (";
+                    sql += $"{FbtAFMSDischargeConfig.COL_ID}, {FbtAFMSDischargeConfig.COL_MEASURE_DATE}, ";
+                    sql += $"{FbtAFMSDischargeConfig.COL_MEASURE_TIME}, {FbtAFMSDischargeConfig.COL_DEVICE_TYPE}, ";
+                    sql += $"{FbtAFMSDischargeConfig.COL_DEVICE_ID}, {FbtAFMSDischargeConfig.COL_DISCHARGE_METHOD}, ";
+                    sql += $"{FbtAFMSDischargeConfig.COL_METHOD_CONFIG_ID}, {FbtAFMSDischargeConfig.COL_ENABLED}) VALUES (";
+                    sql += $"{id}, '{now:yyyyMMdd}', '{now:HHmmss}', '{deviceType}', {deviceId}, '{method}', ";
+                    sql += $"{methodConfigId}, {(enabled ? 1 : 0)})";
+
+                    using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
+                    string error = db.RunNonQuery(sql);
+                    if (!string.IsNullOrEmpty(error)) return error;
+
+                    original[method] = enabled;
+                    rowSaved = true;
                 }
 
-                string sql = $"INSERT INTO {FbtAFMSDischargeConfig.TABLE_NAME} ({string.Join(", ", columns)})";
-                sql += "\n" + $"VALUES ({string.Join(", ", values)})";
-
-                using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
-                string error = db.RunNonQuery(sql);
-                if (!string.IsNullOrEmpty(error)) return error;
-
-                _OriginalValues[hydroId] = CaptureCurrentValues(row);
-                savedCount++;
+                if (rowSaved) savedCount++;
             }
 
             return string.Empty;
         }
 
-        private void SetupDischargeMethods()
+        private void AddDeviceRow(
+            int rowNo,
+            MeasurementDeviceType deviceType,
+            int deviceId,
+            int transectCount,
+            string deviceKind,
+            string deviceName,
+            Dictionary<string, bool> configured)
         {
-            _DischargeMethods.Clear();
-            foreach (DischargeMethod method in Enum.GetValues(typeof(DischargeMethod))) if (method != DischargeMethod.None) _DischargeMethods.Add(method);
+            int rowIndex = uiGridMain.Rows.Add();
+            DataGridViewRow row = uiGridMain.Rows[rowIndex];
+            row.Cells[COL_DEVICE_TYPE].Value = deviceType.ToString();
+            row.Cells[COL_DEVICE_ID].Value = deviceId;
+            row.Cells[COL_TRANSECT_COUNT].Value = transectCount;
+            row.Cells[COL_ROW_NO].Value = rowNo;
+            row.Cells[COL_DEVICE_KIND].Value = deviceKind;
+            row.Cells[COL_DEVICE_NAME].Value = deviceName;
+
+            Dictionary<DischargeMethod, bool> original = new();
+            foreach (DischargeMethod method in _methods)
+            {
+                bool available = IsMethodAvailable(deviceType, deviceId, transectCount, method);
+                bool enabled = available && configured.TryGetValue(GetMethodKey(deviceType, deviceId, method), out bool value) && value;
+                string columnName = GetGridMethodColumnName(method);
+
+                row.Cells[columnName].Value = enabled;
+                uiGridMain.SetAFMSCheckBoxVisible(rowIndex, columnName, available);
+                original[method] = enabled;
+            }
+
+            _originalValues[GetDeviceKey(deviceType, deviceId)] = original;
+        }
+
+        private Dictionary<string, bool> LoadLatestSelections(FBDatabase db)
+        {
+            Dictionary<string, bool> result = new();
+            string sql = $"SELECT C.{FbtAFMSDischargeConfig.COL_DEVICE_TYPE}, C.{FbtAFMSDischargeConfig.COL_DEVICE_ID},";
+            sql += $" C.{FbtAFMSDischargeConfig.COL_DISCHARGE_METHOD}, C.{FbtAFMSDischargeConfig.COL_ENABLED}";
+            sql += $" FROM {FbtAFMSDischargeConfig.TABLE_NAME} C WHERE C.{FbtAFMSDischargeConfig.COL_ID} = (";
+            sql += $"SELECT MAX(C2.{FbtAFMSDischargeConfig.COL_ID}) FROM {FbtAFMSDischargeConfig.TABLE_NAME} C2";
+            sql += $" WHERE C2.{FbtAFMSDischargeConfig.COL_DEVICE_TYPE} = C.{FbtAFMSDischargeConfig.COL_DEVICE_TYPE}";
+            sql += $" AND C2.{FbtAFMSDischargeConfig.COL_DEVICE_ID} = C.{FbtAFMSDischargeConfig.COL_DEVICE_ID}";
+            sql += $" AND C2.{FbtAFMSDischargeConfig.COL_DISCHARGE_METHOD} = C.{FbtAFMSDischargeConfig.COL_DISCHARGE_METHOD})";
+
+            DataTable table = db.Execute(sql, out string error);
+            if (!string.IsNullOrEmpty(error)) return result;
+
+            foreach (DataRow row in table.Rows)
+            {
+                if (!Enum.TryParse(Convert.ToString(row[FbtAFMSDischargeConfig.COL_DEVICE_TYPE]), true, out MeasurementDeviceType type) ||
+                    !Enum.TryParse(Convert.ToString(row[FbtAFMSDischargeConfig.COL_DISCHARGE_METHOD]), true, out DischargeMethod method)) continue;
+
+                int deviceId = Convert.ToInt32(row[FbtAFMSDischargeConfig.COL_DEVICE_ID]);
+                result[GetMethodKey(type, deviceId, method)] = Convert.ToInt32(row[FbtAFMSDischargeConfig.COL_ENABLED]) == 1;
+            }
+
+            return result;
+        }
+
+        private void LoadMethodAvailability(FBDatabase db)
+        {
+            _surfaceConfiguredHydroIds.Clear();
+            _midSectionConfiguredHydroIds.Clear();
+            _velocityDistributionConfiguredHydroIds.Clear();
+            _methodConfigIds.Clear();
+            _transectCounts.Clear();
+
+            LoadLatestMethodConfigIds(db, FbtAFMSDiscAttrSurfaceVelo.TABLE_NAME,
+                FbtAFMSDiscAttrSurfaceVelo.COL_HYDRO_ID, DischargeMethod.SurfaceVelo, _surfaceConfiguredHydroIds);
+            LoadLatestMethodConfigIds(db, FbtAFMSDiscAttrMidSection.TABLE_NAME,
+                FbtAFMSDiscAttrMidSection.COL_HYDRO_ID, DischargeMethod.MidSection, _midSectionConfiguredHydroIds);
+            LoadLatestMethodConfigIds(db, FbtAFMSDiscAttrVelocityDistribution.TABLE_NAME,
+                FbtAFMSDiscAttrVelocityDistribution.COL_HYDRO_ID, DischargeMethod.VeloDist, _velocityDistributionConfiguredHydroIds);
+
+            string ratingSql = $"SELECT FIRST 1 {FbtAFMSDiscAttrRatingCurve.COL_ID} FROM {FbtAFMSDiscAttrRatingCurve.TABLE_NAME} ORDER BY {FbtAFMSDiscAttrRatingCurve.COL_ID} DESC";
+            DataTable rating = db.Execute(ratingSql, out string ratingError);
+            _hasRatingCurveConfig = string.IsNullOrEmpty(ratingError) && rating.Rows.Count > 0;
+            if (_hasRatingCurveConfig)
+            {
+                _methodConfigIds[GetMethodKey(MeasurementDeviceType.WaterLevelGauge,
+                    SYSTEM_WATER_LEVEL_DEVICE_ID, DischargeMethod.RatingCurve)] = Convert.ToInt32(rating.Rows[0][0]);
+            }
+
+            string transectSql = $"SELECT A.{FbtAFMSHydroTransect.COL_HYDRO_ID}, A.{FbtAFMSHydroTransect.COL_TRANSECT_COUNT}";
+            transectSql += $" FROM {FbtAFMSHydroTransect.TABLE_NAME} A WHERE A.{FbtAFMSHydroTransect.COL_ID} = (";
+            transectSql += $"SELECT MAX(B.{FbtAFMSHydroTransect.COL_ID}) FROM {FbtAFMSHydroTransect.TABLE_NAME} B";
+            transectSql += $" WHERE B.{FbtAFMSHydroTransect.COL_HYDRO_ID} = A.{FbtAFMSHydroTransect.COL_HYDRO_ID})";
+            DataTable transects = db.Execute(transectSql, out string transectError);
+            if (string.IsNullOrEmpty(transectError))
+            {
+                foreach (DataRow row in transects.Rows)
+                    _transectCounts[Convert.ToInt32(row[0])] = Convert.ToInt32(row[1]);
+            }
+        }
+
+        private void LoadLatestMethodConfigIds(FBDatabase db, string tableName, string hydroColumn,
+            DischargeMethod method, HashSet<int> configuredIds)
+        {
+            string sql = $"SELECT A.{FbtAFMSDischargeConfig.COL_ID}, A.{hydroColumn} FROM {tableName} A";
+            sql += $" WHERE A.{FbtAFMSDischargeConfig.COL_ID} = (SELECT MAX(B.{FbtAFMSDischargeConfig.COL_ID})";
+            sql += $" FROM {tableName} B WHERE B.{hydroColumn} = A.{hydroColumn})";
+            DataTable table = db.Execute(sql, out string error);
+            if (!string.IsNullOrEmpty(error)) return;
+
+            foreach (DataRow row in table.Rows)
+            {
+                int hydroId = Convert.ToInt32(row[hydroColumn]);
+                configuredIds.Add(hydroId);
+                _methodConfigIds[GetMethodKey(MeasurementDeviceType.VelocityMeter, hydroId, method)] = Convert.ToInt32(row[0]);
+            }
+        }
+
+        private bool IsMethodAvailable(MeasurementDeviceType type, int deviceId, int transectCount, DischargeMethod method)
+        {
+            if (type == MeasurementDeviceType.WaterLevelGauge)
+                return method == DischargeMethod.RatingCurve && _hasRatingCurveConfig;
+            if (type != MeasurementDeviceType.VelocityMeter || method == DischargeMethod.RatingCurve) return false;
+
+            return method switch
+            {
+                DischargeMethod.SurfaceVelo => _surfaceConfiguredHydroIds.Contains(deviceId),
+                DischargeMethod.MidSection => _midSectionConfiguredHydroIds.Contains(deviceId) &&
+                    _transectCounts.TryGetValue(deviceId, out int count) && count == transectCount && count > 0,
+                DischargeMethod.VeloDist => _velocityDistributionConfiguredHydroIds.Contains(deviceId),
+                _ => false
+            };
+        }
+
+        private bool IsRowChanged(DataGridViewRow row)
+        {
+            MeasurementDeviceType type = GetDeviceType(row);
+            int deviceId = Convert.ToInt32(row.Cells[COL_DEVICE_ID].Value);
+            if (!_originalValues.TryGetValue(GetDeviceKey(type, deviceId), out Dictionary<DischargeMethod, bool>? original)) return true;
+
+            return _methods.Any(method => original.GetValueOrDefault(method) != GetCurrentValue(row, method));
+        }
+
+        private bool GetCurrentValue(DataGridViewRow row, DischargeMethod method)
+        {
+            MeasurementDeviceType type = GetDeviceType(row);
+            int deviceId = Convert.ToInt32(row.Cells[COL_DEVICE_ID].Value);
+            int transectCount = Convert.ToInt32(row.Cells[COL_TRANSECT_COUNT].Value ?? 0);
+            return IsMethodAvailable(type, deviceId, transectCount, method) &&
+                   uiGridMain.GetAFMSChecked(row.Index, GetGridMethodColumnName(method));
         }
 
         private void SetupLayout()
         {
-            uiGuide = new AFMSGuidePanel();
-            uiGuide.Dock = DockStyle.Fill;
-            uiGuide.BackColor = DllColorHelper.HexToColor("#FAFDFA");
-            uiGuide.Title = "설정 안내";
-            uiGuide.Add(GuideLevelType.Level0, "유속계별 설정이 1개 이상 등록된 유량산정법만 표시됩니다.");
-            uiGuide.Add(GuideLevelType.Level0, "중간단면적법은 측선 수와 실제 측선 거리 설정이 모두 일치해야 표시됩니다.");
-            uiGuide.Add(GuideLevelType.Level0, "체크 변경만으로 DB에 저장되지 않습니다.");
-            uiGuide.Add(GuideLevelType.Level0, "상단의 저장 버튼을 누르면 변경된 유속계만 새 설정 이력으로 저장됩니다.");
-
+            uiGuide = new AFMSGuidePanel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = DllColorHelper.HexToColor("#FAFDFA"),
+                Title = "설정 안내"
+            };
+            uiGuide.Add(GuideLevelType.Level0, "유속계에는 유속 기반 산정법만 표시됩니다.");
+            uiGuide.Add(GuideLevelType.Level0, "수위계에는 수위-유량 관계법만 표시됩니다.");
+            uiGuide.Add(GuideLevelType.Level0, "변경된 설정은 유량 서비스를 재시작한 후 반영됩니다.");
             CtlSub = uiGuide;
         }
 
@@ -345,127 +301,67 @@ namespace AFMSSettings
             uiGridMain.AutoGenerateColumns = false;
             uiGridMain.ShowCellToolTips = false;
             uiGridMain.Columns.Clear();
-
-            DataGridViewTextBoxColumn colHydroId = new DataGridViewTextBoxColumn { Name = COL_HYDRO_ID, Visible = false };
-            DataGridViewTextBoxColumn colTransectCount = new DataGridViewTextBoxColumn { Name = FbtAFMSHydroMeter.COL_TRANSECT_CNT, Visible = false };
-            DataGridViewTextBoxColumn colNo = new DataGridViewTextBoxColumn { Name = COL_ROW_NO, HeaderText = "번호", FillWeight = 10F, ReadOnly = true };
-            DataGridViewTextBoxColumn colFlowmeter = new DataGridViewTextBoxColumn { Name = COL_FLOWMETER, HeaderText = "유속계", FillWeight = 25F, ReadOnly = true };
-            colNo.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            colFlowmeter.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft;
-            colFlowmeter.DefaultCellStyle.Font = new Font("맑은 고딕", 9F, FontStyle.Bold);
-            colFlowmeter.DefaultCellStyle.Padding = new Padding(18, 0, 8, 0);
-
-            uiGridMain.Columns.Add(colHydroId);
-            uiGridMain.Columns.Add(colTransectCount);
-            uiGridMain.Columns.Add(colNo);
-            uiGridMain.Columns.Add(colFlowmeter);
-            foreach (DischargeMethod method in _DischargeMethods) uiGridMain.Columns.Add(CreateMethodColumn(method));
-
+            uiGridMain.Columns.Add(new DataGridViewTextBoxColumn { Name = COL_DEVICE_TYPE, Visible = false });
+            uiGridMain.Columns.Add(new DataGridViewTextBoxColumn { Name = COL_DEVICE_ID, Visible = false });
+            uiGridMain.Columns.Add(new DataGridViewTextBoxColumn { Name = COL_TRANSECT_COUNT, Visible = false });
+            uiGridMain.Columns.Add(new DataGridViewTextBoxColumn { Name = COL_ROW_NO, HeaderText = "번호", FillWeight = 9F, ReadOnly = true });
+            uiGridMain.Columns.Add(new DataGridViewTextBoxColumn { Name = COL_DEVICE_KIND, HeaderText = "장비 유형", FillWeight = 14F, ReadOnly = true });
+            uiGridMain.Columns.Add(new DataGridViewTextBoxColumn { Name = COL_DEVICE_NAME, HeaderText = "측정장비", FillWeight = 25F, ReadOnly = true });
+            foreach (DischargeMethod method in _methods) uiGridMain.Columns.Add(CreateMethodColumn(method));
             uiGridMain.AFMSHeaderHeight = 42;
             uiGridMain.AFMSRowHeight = 54;
             uiGridMain.BorderRadius = 8;
         }
 
-        protected override void OnVisibleChanged(EventArgs e)
+        private DataGridViewTextBoxColumn CreateMethodColumn(DischargeMethod method) => new()
         {
-            base.OnVisibleChanged(e);
-
-            if (!Visible || uiGridMain == null || !IsHandleCreated) return;
-
-            BeginInvoke(new Action(() =>
-            {
-                if (IsDisposed || !Visible) return;
-
-                uiGridMain.PerformLayout();
-                uiGridMain.RefreshAFMSCheckBoxes();
-            }));
-        }
-
-        private DataGridViewTextBoxColumn CreateMethodColumn(DischargeMethod method)
-        {
-            return new DataGridViewTextBoxColumn
-            {
-                Name = GetGridMethodColumnName(method),
-                HeaderText = string.Empty,
-                FillWeight = 65F / Math.Max(1, _DischargeMethods.Count),
-                ReadOnly = true,
-                Tag = method,
-                DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter }
-            };
-        }
+            Name = GetGridMethodColumnName(method),
+            HeaderText = string.Empty,
+            FillWeight = 52F / Math.Max(1, _methods.Count),
+            ReadOnly = true,
+            Tag = method,
+            DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter }
+        };
 
         private void SetupMethodCheckBoxes()
         {
-            foreach (DischargeMethod method in _DischargeMethods) uiGridMain.SetAFMSCheckBoxColumn(GetGridMethodColumnName(method), EnumPaser.GetKorString(method));
+            foreach (DischargeMethod method in _methods)
+                uiGridMain.SetAFMSCheckBoxColumn(GetGridMethodColumnName(method), EnumPaser.GetKorString(method));
             uiGridMain.AFMSCheckBoxCellVisibleEvaluator = IsMethodCheckBoxVisible;
         }
 
         private bool IsMethodCheckBoxVisible(int rowIndex, int columnIndex)
         {
             if (rowIndex < 0 || rowIndex >= uiGridMain.Rows.Count ||
-                columnIndex < 0 || columnIndex >= uiGridMain.Columns.Count ||
                 uiGridMain.Columns[columnIndex].Tag is not DischargeMethod method) return false;
-
             DataGridViewRow row = uiGridMain.Rows[rowIndex];
-            if (row.Cells[COL_HYDRO_ID].Value == null || row.Cells[COL_HYDRO_ID].Value == DBNull.Value) return false;
-
-            int hydroId = Convert.ToInt32(row.Cells[COL_HYDRO_ID].Value);
-            int transectCount = row.Cells[FbtAFMSHydroMeter.COL_TRANSECT_CNT].Value == null ||
-                                row.Cells[FbtAFMSHydroMeter.COL_TRANSECT_CNT].Value == DBNull.Value
-                ? 0
-                : Convert.ToInt32(row.Cells[FbtAFMSHydroMeter.COL_TRANSECT_CNT].Value);
-
-            return IsMethodAvailable(hydroId, transectCount, method);
+            return IsMethodAvailable(GetDeviceType(row), Convert.ToInt32(row.Cells[COL_DEVICE_ID].Value),
+                Convert.ToInt32(row.Cells[COL_TRANSECT_COUNT].Value ?? 0), method);
         }
 
-        private bool IsRowChanged(DataGridViewRow row)
-        {
-            int hydroId = Convert.ToInt32(row.Cells[COL_HYDRO_ID].Value);
-            if (!_OriginalValues.TryGetValue(hydroId, out Dictionary<DischargeMethod, bool> original)) return true;
+        private static MeasurementDeviceType GetDeviceType(DataGridViewRow row) =>
+            Enum.TryParse(Convert.ToString(row.Cells[COL_DEVICE_TYPE].Value), out MeasurementDeviceType type)
+                ? type
+                : MeasurementDeviceType.None;
 
-            foreach (DischargeMethod method in _DischargeMethods)
+        private static string GetDeviceKey(MeasurementDeviceType type, int id) => $"{type}:{id}";
+        private static string GetMethodKey(MeasurementDeviceType type, int id, DischargeMethod method) => $"{type}:{id}:{method}";
+        private static string GetGridMethodColumnName(DischargeMethod method) => $"METHOD_{(int)method}";
+
+        protected override void OnVisibleChanged(EventArgs e)
+        {
+            base.OnVisibleChanged(e);
+            if (!Visible || uiGridMain == null || !IsHandleCreated) return;
+            BeginInvoke(new Action(() =>
             {
-                bool oldValue = original.TryGetValue(method, out bool value) && value;
-                if (oldValue != GetCurrentValue(row, method)) return true;
-            }
-
-            return false;
+                if (IsDisposed || !Visible) return;
+                uiGridMain.PerformLayout();
+                uiGridMain.RefreshAFMSCheckBoxes();
+            }));
         }
 
-        private Dictionary<DischargeMethod, bool> CaptureCurrentValues(DataGridViewRow row)
-        {
-            Dictionary<DischargeMethod, bool> values = new Dictionary<DischargeMethod, bool>();
-            foreach (DischargeMethod method in _DischargeMethods) values[method] = GetCurrentValue(row, method);
-            return values;
-        }
-
-        private bool GetCurrentValue(DataGridViewRow row, DischargeMethod method)
-        {
-            int hydroId = Convert.ToInt32(row.Cells[COL_HYDRO_ID].Value);
-            int transectCount = Convert.ToInt32(row.Cells[FbtAFMSHydroMeter.COL_TRANSECT_CNT].Value ?? 0);
-            if (!IsMethodAvailable(hydroId, transectCount, method)) return false;
-
-            return uiGridMain.GetAFMSChecked(row.Index, GetGridMethodColumnName(method));
-        }
-
-        private static string GetGridMethodColumnName(DischargeMethod method)
-        {
-            return $"METHOD_{(int)method}";
-        }
-
-        public override void BindingComplete(object? sender, DataGridViewBindingCompleteEventArgs e)
-        {
-            throw new NotImplementedException();
-        }
-
-        protected override void UiButtonInput_Click(object? sender, EventArgs e)
-        {
-            throw new NotImplementedException();
-        }
-
-        protected override void _TabDischargeBase_Enter(object? sender, EventArgs e)
-        {
-            LoadData();
-        }
+        public override void BindingComplete(object? sender, DataGridViewBindingCompleteEventArgs e) { }
+        protected override void UiButtonInput_Click(object? sender, EventArgs e) { }
+        protected override void _TabDischargeBase_Enter(object? sender, EventArgs e) => LoadData();
     }
 }

@@ -7,7 +7,8 @@ namespace AFMSDll
     public abstract class _QBase
     {
         public int Id { get; set; } = -1;
-        public int HydroMeterId { get; set; } = -1;
+        public MeasurementDeviceType DeviceType { get; set; } = MeasurementDeviceType.None;
+        public int DeviceId { get; set; } = -1;
         public int DischargeConfigId { get; set; } = -1;
         public DateOnly MeasureDate { get; set; }
         public TimeOnly MeasureTime { get; set; }

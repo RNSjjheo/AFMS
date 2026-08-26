@@ -39,7 +39,6 @@ namespace AFMSSettings
 
             this.Text = "설정";
 
-            //SetupDischargeConfig.Sync();
 
             afmsTabControl1.TabHeight = 40;
             afmsTabControl1.TabPages.Add(new TabHydroMeter());

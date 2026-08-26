@@ -9,14 +9,16 @@ namespace AFMSSettings
 
     public class TabDischarge : _TabBase
     {
-        private sealed class HydroComboItem
+        private sealed class DeviceComboItem
         {
+            public MeasurementDeviceType DeviceType { get; }
             public int Id { get; }
             public string DeviceName { get; }
             public int DeviceNo { get; }
 
-            public HydroComboItem(int id, string deviceName, int deviceNo)
+            public DeviceComboItem(MeasurementDeviceType deviceType, int id, string deviceName, int deviceNo)
             {
+                DeviceType = deviceType;
                 Id = id;
                 DeviceName = deviceName;
                 DeviceNo = deviceNo;
@@ -92,7 +94,7 @@ namespace AFMSSettings
             uiComboHydro.BorderRadius = 6;
             uiComboHydro.BorderThickness = 1.5F;
             uiComboHydro.Margin = PADDING;
-            uiComboHydro.PlaceholderText = "유속계 선택";
+            uiComboHydro.PlaceholderText = "측정장비 선택";
 
             uiButtonAccept = new AFMSButton();
             uiButtonAccept.Dock = DockStyle.Fill;
@@ -179,6 +181,7 @@ namespace AFMSSettings
         private void UiComboMethod_SelectedIndexChanged(object? sender, EventArgs e)
         {
             ClearDetailPanels();
+            SelectCompatibleDevice();
             SelectMethodPage();
         }
 
@@ -187,7 +190,10 @@ namespace AFMSSettings
             ClearDetailPanels();
 
             // AFMS_DIS_ATTR_SURFACE_VELO.HYDRO_ID 연결 위치
-            int hydroId = uiComboHydro.SelectedItem is HydroComboItem item ? item.Id : -1;
+            int hydroId = uiComboHydro.SelectedItem is DeviceComboItem item &&
+                          item.DeviceType == MeasurementDeviceType.VelocityMeter
+                ? item.Id
+                : -1;
             uiTabPageSurfaceVelo.SetHydroId(hydroId);
             uiTabPageMidSection.SetHydroId(hydroId);
             uiTabPageVeloDist.SetHydroId(hydroId);
@@ -214,15 +220,15 @@ namespace AFMSSettings
                 {
                     case DischargeMethod.SurfaceVelo:
                         uiTabMain.SelectedTab = uiTabPageSurfaceVelo;
-                        uiTabPageSurfaceVelo.SetHydroId(uiComboHydro.SelectedItem is HydroComboItem item ? item.Id : -1);
+                        uiTabPageSurfaceVelo.SetHydroId(GetSelectedVelocityMeterId());
                         break;
                     case DischargeMethod.MidSection:
                         uiTabMain.SelectedTab = uiTabPageMidSection;
-                        uiTabPageMidSection.SetHydroId(uiComboHydro.SelectedItem is HydroComboItem midSectionItem ? midSectionItem.Id : -1);
+                        uiTabPageMidSection.SetHydroId(GetSelectedVelocityMeterId());
                         break;
                     case DischargeMethod.VeloDist:
                         uiTabMain.SelectedTab = uiTabPageVeloDist;
-                        uiTabPageVeloDist.SetHydroId(uiComboHydro.SelectedItem is HydroComboItem veloDistItem ? veloDistItem.Id : -1);
+                        uiTabPageVeloDist.SetHydroId(GetSelectedVelocityMeterId());
                         break;
                     case DischargeMethod.RatingCurve:
                         uiTabMain.SelectedTab = uiTabPageRatingCurve;
@@ -230,7 +236,7 @@ namespace AFMSSettings
                         break;
                 }
 
-                uiTpThis.ColumnStyles[2].Width = method == DischargeMethod.RatingCurve ? 0 : COLUMN_1_WIDTH;
+                uiTpThis.ColumnStyles[2].Width = COLUMN_1_WIDTH;
 
                 return;
             }
@@ -249,16 +255,19 @@ namespace AFMSSettings
 
             if (savedCount == 0)
             {
-                MessageBox.Show("변경된 유속계 설정이 없습니다.", "유량산정", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("변경된 측정장비 설정이 없습니다.", "유량산정", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            MessageBox.Show($"{savedCount}개의 유속계 설정을 저장했습니다.", "유량산정", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MessageBox.Show($"{savedCount}개의 측정장비 설정을 저장했습니다.", "유량산정", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void LoadHydroCombo()
         {
-            int selectedHydroId = uiComboHydro.SelectedItem is HydroComboItem selectedItem ? selectedItem.Id : -1;
+            MeasurementDeviceType selectedDeviceType = uiComboHydro.SelectedItem is DeviceComboItem selectedItem
+                ? selectedItem.DeviceType
+                : MeasurementDeviceType.None;
+            int selectedHydroId = uiComboHydro.SelectedItem is DeviceComboItem currentItem ? currentItem.Id : -1;
 
             uiComboHydro.ClearItems();
 
@@ -274,25 +283,65 @@ namespace AFMSSettings
 
             int selectedIndex = -1;
 
-            foreach (DataRow row in db.Results.Rows)
+            foreach (DataRow row in table.Rows)
             {
                 int id = row[FbtAFMSHydroMeter.COL_ID].ToInt();
                 string deviceName = row[FbtAFMSHydroMeter.COL_DEVICE_NAME].ToText();
                 int deviceNo = row[FbtAFMSHydroMeter.COL_DEVICE_NO].ToInt();
 
-                uiComboHydro.Add(new HydroComboItem(id, deviceName, deviceNo));
+                uiComboHydro.Add(new DeviceComboItem(MeasurementDeviceType.VelocityMeter, id, deviceName, deviceNo));
 
-                if (id == selectedHydroId) selectedIndex = uiComboHydro.Items.Count - 1;
+                if (selectedDeviceType == MeasurementDeviceType.VelocityMeter && id == selectedHydroId)
+                    selectedIndex = uiComboHydro.Items.Count - 1;
             }
+
+            uiComboHydro.Add(new DeviceComboItem(
+                MeasurementDeviceType.WaterLevelGauge,
+                0,
+                "시스템 수위계",
+                0));
+            if (selectedDeviceType == MeasurementDeviceType.WaterLevelGauge)
+                selectedIndex = uiComboHydro.Items.Count - 1;
 
             if (selectedIndex >= 0) uiComboHydro.SelectedIndex = selectedIndex;
             else if (uiComboHydro.Items.Count > 0) uiComboHydro.SelectedIndex = 0;
+        }
+
+        private void SelectCompatibleDevice()
+        {
+            string methodText = uiComboMethod.SelectedItem?.ToString() ?? string.Empty;
+            bool needsWaterLevel = string.Equals(
+                methodText,
+                EnumPaser.GetKorString(DischargeMethod.RatingCurve),
+                StringComparison.Ordinal);
+
+            for (int i = 0; i < uiComboHydro.Items.Count; i++)
+            {
+                if (uiComboHydro.Items[i] is not DeviceComboItem item) continue;
+                bool compatible = needsWaterLevel
+                    ? item.DeviceType == MeasurementDeviceType.WaterLevelGauge
+                    : item.DeviceType == MeasurementDeviceType.VelocityMeter;
+                if (!compatible) continue;
+
+                uiComboHydro.SelectedIndex = i;
+                return;
+            }
+        }
+
+        private int GetSelectedVelocityMeterId()
+        {
+            return uiComboHydro.SelectedItem is DeviceComboItem item &&
+                   item.DeviceType == MeasurementDeviceType.VelocityMeter
+                ? item.Id
+                : -1;
         }
 
         protected override void ThisPageEntered(object? sender, EventArgs e)
         {
             uiTabPageMapping.LoadData();
             LoadHydroCombo();
+            SelectCompatibleDevice();
+            SelectMethodPage();
         }
     }
 }

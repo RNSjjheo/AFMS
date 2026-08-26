@@ -7,11 +7,11 @@ namespace AFMSDll
     public class FbtAFMSDischargeConfig : _FBTableBase
     {
         public const string TABLE_NAME = "AFMS_DISCHARGE_CONFIG";
-        public const string COL_HYDRO_ID = "HYDRO_ID";
-        public const string COL_MID_SECTION = "MID_SECTION";
-        public const string COL_RATING_CURVE = "RATING_CURVE";
-        public const string COL_SURFACE_VELOCITY = "SURFACE_VELOCITY";//SurfaceVelocity
-        public const string COL_VELOCITY_DISTRIBUTION= "VELOCITY_DISTRIBUTION";  //VelocityDistribution
+        public const string COL_DEVICE_TYPE = "DEVICE_TYPE";
+        public const string COL_DEVICE_ID = "DEVICE_ID";
+        public const string COL_DISCHARGE_METHOD = "DISCHARGE_METHOD";
+        public const string COL_METHOD_CONFIG_ID = "METHOD_CONFIG_ID";
+        public const string COL_ENABLED = "ENABLED";
         public override string GetTableName()
         {
             return TABLE_NAME;
@@ -23,14 +23,11 @@ namespace AFMSDll
             sql += "\n" + $"{COL_ID} INTEGER NOT NULL,";
             sql += "\n" + $"{COL_MEASURE_DATE} VARCHAR(8) NOT NULL,";
             sql += "\n" + $"{COL_MEASURE_TIME} VARCHAR(8) NOT NULL,";
-            sql += "\n" + $"{COL_HYDRO_ID} INTEGER NOT NULL,";
-
-            foreach (DischargeMethod method in Enum.GetValues(typeof(DischargeMethod)))
-            {
-                if (method == DischargeMethod.None) continue;
-                sql += "\n" + $"{GetMethodColumn(method)} INTEGER,";
-            }
-
+            sql += "\n" + $"{COL_DEVICE_TYPE} VARCHAR(30) NOT NULL,";
+            sql += "\n" + $"{COL_DEVICE_ID} INTEGER NOT NULL,";
+            sql += "\n" + $"{COL_DISCHARGE_METHOD} VARCHAR(32) NOT NULL,";
+            sql += "\n" + $"{COL_METHOD_CONFIG_ID} INTEGER,";
+            sql += "\n" + $"{COL_ENABLED} INTEGER DEFAULT 1 NOT NULL,";
             sql += "\n" + $"CONSTRAINT PK_{TABLE_NAME} PRIMARY KEY({COL_ID})";
             sql += "\n" + ")";
 
@@ -39,35 +36,40 @@ namespace AFMSDll
 
         public override string CheckNewColumn(FBDatabase db)
         {
-            foreach (DischargeMethod method in Enum.GetValues(typeof(DischargeMethod)))
+            string result;
+
+            if (!HasColumn(db, COL_DEVICE_TYPE))
             {
-                if (method == DischargeMethod.None) continue;
+                result = AddColumn(db, COL_DEVICE_TYPE, "VARCHAR(30)");
+                if (!string.IsNullOrEmpty(result)) return result;
+            }
 
-                string columnName = GetMethodColumn(method);
-                if (HasColumn(db, columnName)) continue;
+            if (!HasColumn(db, COL_DEVICE_ID))
+            {
+                result = AddColumn(db, COL_DEVICE_ID, "INTEGER");
+                if (!string.IsNullOrEmpty(result)) return result;
+            }
 
-                string result = AddColumn(db, columnName, "INTEGER");
+            if (!HasColumn(db, COL_DISCHARGE_METHOD))
+            {
+                result = AddColumn(db, COL_DISCHARGE_METHOD, "VARCHAR(32)");
+                if (!string.IsNullOrEmpty(result)) return result;
+            }
+
+            if (!HasColumn(db, COL_METHOD_CONFIG_ID))
+            {
+                result = AddColumn(db, COL_METHOD_CONFIG_ID, "INTEGER");
+                if (!string.IsNullOrEmpty(result)) return result;
+            }
+
+            if (!HasColumn(db, COL_ENABLED))
+            {
+                result = AddColumn(db, COL_ENABLED, "INTEGER DEFAULT 1");
                 if (!string.IsNullOrEmpty(result)) return result;
             }
 
             return "";
         }
 
-        public static string GetMethodColumn(DischargeMethod method)
-        {
-            switch (method)
-            {
-                case DischargeMethod.MidSection:
-                    return COL_MID_SECTION;
-                case DischargeMethod.RatingCurve:
-                    return COL_RATING_CURVE;
-                case DischargeMethod.SurfaceVelo:
-                    return COL_SURFACE_VELOCITY;
-                case DischargeMethod.VeloDist:
-                    return COL_VELOCITY_DISTRIBUTION;
-            }
-
-            return "";
-        }
     }
 }
