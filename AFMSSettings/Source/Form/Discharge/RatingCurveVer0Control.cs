@@ -5,7 +5,7 @@ using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
-namespace AFMSSettings.Source.Form.Discharge
+namespace AFMSSettings
 {
     public sealed class RatingCurveVer0Control : UserControl
     {
