@@ -8,5 +8,11 @@ namespace AFMSDll
     {
         public CrossSectionPointCollection Points { get; } = new();
         public TransectCollection Transects { get; } = new();
+
+        public void CalculateTransectAreas(double waterLevel)
+        {
+            Points.WaterLevel = waterLevel;
+            Transects.CalculateSectionAreas(Points, waterLevel);
+        }
     }
 }
