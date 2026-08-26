@@ -62,6 +62,8 @@ namespace AFMSDll
         private readonly Dictionary<string, bool> _checkBoxCellVisibility = new Dictionary<string, bool>();
         private readonly List<AFMSMergedHeaderSetting> _mergedHeaders = new List<AFMSMergedHeaderSetting>();
         private bool _syncingCheckBox;
+        private bool _rebuildingCheckBoxes;
+        private bool _updatingCheckBoxBounds;
         private bool _adjustingScrollBars;
         private bool _scrollBarUpdatePending;
         private VScrollBar? _attachedVerticalScrollBar;
@@ -629,58 +631,69 @@ namespace AFMSDll
 
         private void UpdateAFMSCheckBoxBounds()
         {
-            if (!IsHandleCreated || _checkBoxColumns.Count == 0) return;
+            if (!IsHandleCreated || _checkBoxColumns.Count == 0 ||
+                _rebuildingCheckBoxes || _updatingCheckBoxBounds) return;
 
-            CreateAFMSCheckBoxes();
+            _updatingCheckBoxBounds = true;
 
-            Rectangle displayArea = new Rectangle(0, ColumnHeadersHeight, ClientSize.Width, Math.Max(0, ClientSize.Height - ColumnHeadersHeight));
-
-            foreach (KeyValuePair<string, AFMSCheckBox> pair in _checkBoxControls)
+            try
             {
-                AFMSCheckBox checkBox = pair.Value;
-                if (checkBox.Tag is not Point cell || cell.Y < 0 || cell.Y >= Rows.Count || cell.X < 0 || cell.X >= Columns.Count)
+                CreateAFMSCheckBoxes();
+
+                Rectangle displayArea = new Rectangle(0, ColumnHeadersHeight, ClientSize.Width, Math.Max(0, ClientSize.Height - ColumnHeadersHeight));
+
+                foreach (KeyValuePair<string, AFMSCheckBox> pair in new List<KeyValuePair<string, AFMSCheckBox>>(_checkBoxControls))
                 {
-                    checkBox.Visible = false;
-                    continue;
+                    AFMSCheckBox checkBox = pair.Value;
+                    if (checkBox.IsDisposed) continue;
+                    if (checkBox.Tag is not Point cell || cell.Y < 0 || cell.Y >= Rows.Count || cell.X < 0 || cell.X >= Columns.Count)
+                    {
+                        checkBox.Visible = false;
+                        continue;
+                    }
+
+                    if (!_checkBoxColumns.TryGetValue(cell.X, out AFMSCheckBoxColumnSetting setting) || !Columns[cell.X].Visible || !Rows[cell.Y].Visible)
+                    {
+                        checkBox.Visible = false;
+                        continue;
+                    }
+
+                    if (!IsAFMSCheckBoxCellVisible(cell.Y, cell.X, pair.Key))
+                    {
+                        checkBox.Visible = false;
+                        continue;
+                    }
+
+                    Rectangle cellRect = GetCellDisplayRectangle(cell.X, cell.Y, true);
+                    Rectangle visibleRect = Rectangle.Intersect(cellRect, displayArea);
+
+                    if (visibleRect.Width <= 0 || visibleRect.Height <= 0)
+                    {
+                        checkBox.Visible = false;
+                        continue;
+                    }
+
+                    int x = cellRect.Left + setting.HorizontalMargin;
+                    int y = cellRect.Top + setting.VerticalMargin;
+                    int width = Math.Max(0, cellRect.Width - (setting.HorizontalMargin * 2));
+                    int height = Math.Max(0, cellRect.Height - (setting.VerticalMargin * 2));
+
+                    if (width <= 0 || height <= 0)
+                    {
+                        checkBox.Visible = false;
+                        continue;
+                    }
+
+                    checkBox.BackColor = _showSelectedRowHighlight && Rows[cell.Y].Selected ? _selectedBackColor : _rowBackColor;
+                    checkBox.Bounds = new Rectangle(x, y, width, height);
+                    checkBox.Visible = true;
+                    checkBox.BringToFront();
+                    checkBox.Invalidate();
                 }
-
-                if (!_checkBoxColumns.TryGetValue(cell.X, out AFMSCheckBoxColumnSetting setting) || !Columns[cell.X].Visible || !Rows[cell.Y].Visible)
-                {
-                    checkBox.Visible = false;
-                    continue;
-                }
-
-                if (!IsAFMSCheckBoxCellVisible(cell.Y, cell.X, pair.Key))
-                {
-                    checkBox.Visible = false;
-                    continue;
-                }
-
-                Rectangle cellRect = GetCellDisplayRectangle(cell.X, cell.Y, true);
-                Rectangle visibleRect = Rectangle.Intersect(cellRect, displayArea);
-
-                if (visibleRect.Width <= 0 || visibleRect.Height <= 0)
-                {
-                    checkBox.Visible = false;
-                    continue;
-                }
-
-                int x = cellRect.Left + setting.HorizontalMargin;
-                int y = cellRect.Top + setting.VerticalMargin;
-                int width = Math.Max(0, cellRect.Width - (setting.HorizontalMargin * 2));
-                int height = Math.Max(0, cellRect.Height - (setting.VerticalMargin * 2));
-
-                if (width <= 0 || height <= 0)
-                {
-                    checkBox.Visible = false;
-                    continue;
-                }
-
-                checkBox.BackColor = _showSelectedRowHighlight && Rows[cell.Y].Selected ? _selectedBackColor : _rowBackColor;
-                checkBox.Bounds = new Rectangle(x, y, width, height);
-                checkBox.Visible = true;
-                checkBox.BringToFront();
-                checkBox.Invalidate();
+            }
+            finally
+            {
+                _updatingCheckBoxBounds = false;
             }
         }
 
@@ -715,15 +728,29 @@ namespace AFMSDll
 
         private void RebuildAFMSCheckBoxes()
         {
-            foreach (AFMSCheckBox checkBox in _checkBoxControls.Values)
+            if (_rebuildingCheckBoxes) return;
+
+            _rebuildingCheckBoxes = true;
+
+            try
             {
-                Controls.Remove(checkBox);
-                checkBox.CheckedChanged -= AFMSCheckBox_CheckedChanged;
-                checkBox.Dispose();
+                List<AFMSCheckBox> controls = new List<AFMSCheckBox>(_checkBoxControls.Values);
+                _checkBoxControls.Clear();
+
+                foreach (AFMSCheckBox checkBox in controls)
+                {
+                    Controls.Remove(checkBox);
+                    checkBox.CheckedChanged -= AFMSCheckBox_CheckedChanged;
+                    checkBox.Dispose();
+                }
+
+                CreateAFMSCheckBoxes();
+            }
+            finally
+            {
+                _rebuildingCheckBoxes = false;
             }
 
-            _checkBoxControls.Clear();
-            CreateAFMSCheckBoxes();
             UpdateAFMSCheckBoxBounds();
         }
 
