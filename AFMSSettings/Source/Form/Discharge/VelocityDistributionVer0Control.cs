@@ -62,7 +62,6 @@ namespace AFMSSettings
                 new FitModeOption(VelocityDistributionFitMode.AutoCommonBeta, "최심점·공통 β 자동"),
                 new FitModeOption(VelocityDistributionFitMode.Manual, "수동 설정"));
             _fitMode.SelectedIndex = 0;
-            _fitMode.SelectedIndexChanged += FitMode_SelectedIndexChanged;
 
             _phi.Minimum = 0.501;
             _phi.Maximum = 0.999;
@@ -82,7 +81,6 @@ namespace AFMSSettings
             _minimumPositiveCount.SetValue(2);
             _betaLeft.SetValue(1.0);
             _betaRight.SetValue(1.0);
-            UpdateManualInputState();
         }
 
         public DiscVerVelocityDistribution Version => DiscVerVelocityDistribution.Ver00;
@@ -128,30 +126,15 @@ namespace AFMSSettings
                 return false;
             }
 
-            VelocityDistributionFitMode fitMode = GetFitMode();
-            if (fitMode == VelocityDistributionFitMode.Manual &&
-                (!_flowCenterX.DoubleValue.HasValue || !_betaLeft.DoubleValue.HasValue || !_betaRight.DoubleValue.HasValue))
-            {
-                MessageBox.Show("수동 적합값을 모두 입력해주세요.", "입력 확인", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return false;
-            }
-
             config.HydroId = hydroId;
             config.DisVer = (int)Version;
             config.Phi = _phi.DoubleValue.Value;
             config.HorizontalGridM = _horizontalGrid.DoubleValue.Value;
             config.VerticalGridM = _verticalGrid.DoubleValue.Value;
             config.MaxVelocityDepthRatio = _maxVelocityDepthRatio.DoubleValue.Value;
-            config.FitMode = fitMode;
+            config.FitMode = VelocityDistributionFitMode.AutoAsymmetric;
             config.MinimumPositiveMeasurements = _minimumPositiveCount.IntValue.Value;
             config.TransectNos.AddRange(selectedNos);
-
-            if (fitMode == VelocityDistributionFitMode.Manual)
-            {
-                config.FlowCenterX = _flowCenterX.DoubleValue;
-                config.BetaLeft = _betaLeft.DoubleValue;
-                config.BetaRight = _betaRight.DoubleValue;
-            }
 
             return true;
         }
@@ -162,11 +145,16 @@ namespace AFMSSettings
             layout.Dock = DockStyle.Fill;
             layout.Margin = Padding.Empty;
             layout.ColumnCount = 2;
-            layout.RowCount = 6;
+            layout.RowCount = 7;
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 66F));
-            for (int i = 1; i < 6; i++) layout.RowStyles.Add(new RowStyle(SizeType.Absolute, i == 4 ? 32F : 68F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 68F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 68F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 68F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 0F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 0F));
+            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 0F));
 
             AFMSMathLabel example = QVelocityDistribution.GetExample();
             example.Dock = DockStyle.Fill;
@@ -176,11 +164,15 @@ namespace AFMSSettings
             layout.SetColumnSpan(example, 2);
 
             layout.Controls.Add(CreateField("엔트로피 계수 φ", _phi), 0, 1);
-            layout.Controls.Add(CreateField("적합 방식", _fitMode), 1, 1);
-            layout.Controls.Add(CreateField("횡방향 격자 간격 (m)", _horizontalGrid), 0, 2);
-            layout.Controls.Add(CreateField("수직방향 격자 간격 (m)", _verticalGrid), 1, 2);
-            layout.Controls.Add(CreateField("최대유속 발생 수심비", _maxVelocityDepthRatio), 0, 3);
-            layout.Controls.Add(CreateField("최소 양의 유속 측선 수", _minimumPositiveCount), 1, 3);
+            layout.Controls.Add(CreateField("횡방향 격자 간격 (m)", _horizontalGrid), 1, 1);
+            layout.Controls.Add(CreateField("수직방향 격자 간격 (m)", _verticalGrid), 0, 2);
+            layout.Controls.Add(CreateField("최대유속 발생 수심비", _maxVelocityDepthRatio), 1, 2);
+            layout.Controls.Add(CreateField("최소 양의 유속 측선 수", _minimumPositiveCount), 0, 3);
+
+            Control fitModeField = CreateField("적합 방식", _fitMode);
+            fitModeField.Visible = false;
+            layout.Controls.Add(fitModeField, 0, 4);
+            layout.SetColumnSpan(fitModeField, 2);
 
             Label manualTitle = new();
             manualTitle.Dock = DockStyle.Fill;
@@ -188,10 +180,13 @@ namespace AFMSSettings
             manualTitle.TextAlign = ContentAlignment.MiddleLeft;
             manualTitle.Font = new Font(DLLStyle.DEFAULT_FONT_SYLTE, 10F, FontStyle.Regular);
             manualTitle.ForeColor = DllColorHelper.HexToColor("#02925D");
-            layout.Controls.Add(manualTitle, 0, 4);
+            manualTitle.Visible = false;
+            layout.Controls.Add(manualTitle, 0, 5);
             layout.SetColumnSpan(manualTitle, 2);
 
-            layout.Controls.Add(CreateField("흐름 중심 위치 (m)", _flowCenterX), 0, 5);
+            Control flowCenterField = CreateField("흐름 중심 위치 (m)", _flowCenterX);
+            flowCenterField.Visible = false;
+            layout.Controls.Add(flowCenterField, 0, 6);
             TableLayoutPanel betaLayout = new();
             betaLayout.Dock = DockStyle.Fill;
             betaLayout.Margin = Padding.Empty;
@@ -200,7 +195,8 @@ namespace AFMSSettings
             betaLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             betaLayout.Controls.Add(CreateField("좌측 β", _betaLeft), 0, 0);
             betaLayout.Controls.Add(CreateField("우측 β", _betaRight), 1, 0);
-            layout.Controls.Add(betaLayout, 1, 5);
+            betaLayout.Visible = false;
+            layout.Controls.Add(betaLayout, 1, 6);
             return layout;
         }
 
@@ -272,21 +268,5 @@ namespace AFMSSettings
             return box;
         }
 
-        private VelocityDistributionFitMode GetFitMode()
-        {
-            return _fitMode.SelectedItem is FitModeOption option
-                ? option.Value
-                : VelocityDistributionFitMode.AutoAsymmetric;
-        }
-
-        private void FitMode_SelectedIndexChanged(object? sender, EventArgs e) => UpdateManualInputState();
-
-        private void UpdateManualInputState()
-        {
-            bool enabled = GetFitMode() == VelocityDistributionFitMode.Manual;
-            _flowCenterX.Enabled = enabled;
-            _betaLeft.Enabled = enabled;
-            _betaRight.Enabled = enabled;
-        }
     }
 }

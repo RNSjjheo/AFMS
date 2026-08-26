@@ -54,11 +54,7 @@ namespace AFMSSettings
             query.Add(FbtAFMSDiscAttrVelocityDistribution.COL_HORIZONTAL_GRID_M);
             query.Add(FbtAFMSDiscAttrVelocityDistribution.COL_VERTICAL_GRID_M);
             query.Add(FbtAFMSDiscAttrVelocityDistribution.COL_MAX_VELOCITY_DEPTH_RATIO);
-            query.Add(FbtAFMSDiscAttrVelocityDistribution.COL_FIT_MODE);
             query.Add(FbtAFMSDiscAttrVelocityDistribution.COL_MIN_POSITIVE_MEASUREMENTS);
-            query.Add(FbtAFMSDiscAttrVelocityDistribution.COL_FLOW_CENTER_X);
-            query.Add(FbtAFMSDiscAttrVelocityDistribution.COL_BETA_LEFT);
-            query.Add(FbtAFMSDiscAttrVelocityDistribution.COL_BETA_RIGHT);
             query.Add(FbtAFMSDiscAttrVelocityDistribution.COL_TRANSECT_NOS);
             query.Where(FbtAFMSDiscAttrVelocityDistribution.COL_HYDRO_ID, "=", _hydroId);
             query.OrderBy(FbtAFMSDiscAttrVelocityDistribution.COL_ID);
@@ -116,11 +112,7 @@ namespace AFMSSettings
             SetColumnStyle(FbtAFMSDiscAttrVelocityDistribution.COL_HORIZONTAL_GRID_M, "횡격자", 10F, "0.00");
             SetColumnStyle(FbtAFMSDiscAttrVelocityDistribution.COL_VERTICAL_GRID_M, "종격자", 10F, "0.00");
             SetColumnStyle(FbtAFMSDiscAttrVelocityDistribution.COL_MAX_VELOCITY_DEPTH_RATIO, "최대유속 수심비", 13F, "0.00");
-            SetColumnStyle(FbtAFMSDiscAttrVelocityDistribution.COL_FIT_MODE, "적합 방식", 10F);
             SetColumnStyle(FbtAFMSDiscAttrVelocityDistribution.COL_MIN_POSITIVE_MEASUREMENTS, "최소 측선", 9F);
-            SetColumnStyle(FbtAFMSDiscAttrVelocityDistribution.COL_FLOW_CENTER_X, "흐름 중심", 10F, "0.00");
-            SetColumnStyle(FbtAFMSDiscAttrVelocityDistribution.COL_BETA_LEFT, "좌 β", 8F, "0.00");
-            SetColumnStyle(FbtAFMSDiscAttrVelocityDistribution.COL_BETA_RIGHT, "우 β", 8F, "0.00");
             ClearSelection();
         }
 
