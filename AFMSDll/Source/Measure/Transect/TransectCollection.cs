@@ -58,12 +58,6 @@ namespace AFMSDll
             if (sectionStart > 0.0 || sectionEnd <= 0.0)
                 throw new ArgumentException("단면 좌표에는 좌안 거리 0과 그보다 큰 우안 거리가 포함되어야 합니다.");
 
-            for (int i = 1; i < section.Count; i++)
-            {
-                if (section[i - 1].LeftBankDistance == section[i].LeftBankDistance)
-                    throw new ArgumentException("같은 좌안 거리를 가진 단면 좌표가 중복되어 있습니다.");
-            }
-
             for (int i = 0; i < transects.Count; i++)
             {
                 double center = transects[i].CenterLeftBankDistance;
@@ -78,22 +72,25 @@ namespace AFMSDll
             List<CrossSectionPoint> section, double start, double end, double waterLevel)
         {
             CrossSectionPointCollection result = new CrossSectionPointCollection { WaterLevel = waterLevel };
-            result.Add(new CrossSectionPoint(start, InterpolateElevation(section, start)));
+            result.Add(new CrossSectionPoint(start, InterpolateElevation(section, start, useLastExactPoint: true)));
             result.AddRange(section.Where(point =>
                 point.LeftBankDistance > start && point.LeftBankDistance < end));
-            result.Add(new CrossSectionPoint(end, InterpolateElevation(section, end)));
+            result.Add(new CrossSectionPoint(end, InterpolateElevation(section, end, useLastExactPoint: false)));
             return result;
         }
 
-        private static double InterpolateElevation(List<CrossSectionPoint> section, double distance)
+        private static double InterpolateElevation(
+            List<CrossSectionPoint> section, double distance, bool useLastExactPoint = true)
         {
-            CrossSectionPoint? exact = section.FirstOrDefault(point => point.LeftBankDistance == distance);
+            IEnumerable<CrossSectionPoint> exactPoints = section.Where(point => point.LeftBankDistance == distance);
+            CrossSectionPoint? exact = useLastExactPoint ? exactPoints.LastOrDefault() : exactPoints.FirstOrDefault();
             if (exact != null) return exact.Elevation;
 
             for (int i = 0; i < section.Count - 1; i++)
             {
                 CrossSectionPoint left = section[i];
                 CrossSectionPoint right = section[i + 1];
+                if (right.LeftBankDistance <= left.LeftBankDistance) continue;
                 if (distance <= left.LeftBankDistance || distance >= right.LeftBankDistance) continue;
 
                 double ratio = (distance - left.LeftBankDistance) /

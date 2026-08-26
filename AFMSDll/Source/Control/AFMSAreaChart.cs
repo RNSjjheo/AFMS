@@ -8,15 +8,34 @@ using System.Windows.Forms;
 
 namespace AFMSDll
 {
+    public sealed class AFMSChartTransectMarker
+    {
+        public int No { get; }
+        public double LeftBankDistance { get; }
+
+        public AFMSChartTransectMarker(int no, double leftBankDistance)
+        {
+            No = no;
+            LeftBankDistance = leftBankDistance;
+        }
+    }
+
     public enum AFMSChartIntervalMode
     {
         DivisionCount,
         FixedInterval
     }
 
+    public enum AFMSChartAspectMode
+    {
+        Fit,
+        EqualScale
+    }
+
     public class AFMSAreaChart : Control
     {
         private CrossSectionPointCollection _points = new CrossSectionPointCollection();
+        private readonly List<AFMSChartTransectMarker> _transectMarkers = new();
 
         private double? _xMin;
         private double? _xMax;
@@ -30,6 +49,7 @@ namespace AFMSDll
         private int _yDivisionCount = 8;
         private double _xInterval = 10.0;
         private double _yInterval = 1.0;
+        private AFMSChartAspectMode _aspectMode = AFMSChartAspectMode.Fit;
         [Browsable(false)]
         public CrossSectionPointCollection Data => _points;
 
@@ -58,6 +78,25 @@ namespace AFMSDll
         public void ClearWaterLevel()
         {
             _points.ClearWaterLevel();
+            Invalidate();
+        }
+
+        public void SetTransectMarkers(IEnumerable<AFMSChartTransectMarker>? markers)
+        {
+            _transectMarkers.Clear();
+            if (markers != null) _transectMarkers.AddRange(markers);
+            Invalidate();
+        }
+
+        public void ClearTransectMarkers()
+        {
+            _transectMarkers.Clear();
+            Invalidate();
+        }
+
+        public void SetAspectMode(AFMSChartAspectMode mode)
+        {
+            _aspectMode = mode;
             Invalidate();
         }
 
@@ -181,6 +220,7 @@ namespace AFMSDll
 
             NormalizeRange(ref minX, ref maxX);
             NormalizeRange(ref minY, ref maxY);
+            ApplyAspectMode(plotRect, ref minX, ref maxX, ref minY, ref maxY);
 
             PointF[] profilePoints = CreateProfilePoints(plotRect, minX, maxX, minY, maxY);
 
@@ -195,7 +235,58 @@ namespace AFMSDll
 
             g.Restore(clipState);
 
+            DrawTransectMarkers(g, plotRect, minX, maxX);
             DrawAxisTitles(g, plotRect);
+        }
+
+        private void ApplyAspectMode(Rectangle rect, ref double minX, ref double maxX, ref double minY, ref double maxY)
+        {
+            if (_aspectMode != AFMSChartAspectMode.EqualScale || rect.Width <= 0 || rect.Height <= 0) return;
+
+            double xScale = (maxX - minX) / rect.Width;
+            double yScale = (maxY - minY) / rect.Height;
+
+            if (xScale > yScale)
+            {
+                double center = (minY + maxY) / 2.0;
+                double range = xScale * rect.Height;
+                minY = center - (range / 2.0);
+                maxY = center + (range / 2.0);
+            }
+            else
+            {
+                double center = (minX + maxX) / 2.0;
+                double range = yScale * rect.Width;
+                minX = center - (range / 2.0);
+                maxX = center + (range / 2.0);
+            }
+        }
+
+        private void DrawTransectMarkers(Graphics g, Rectangle rect, double minX, double maxX)
+        {
+            if (_transectMarkers.Count == 0) return;
+
+            float markerY = rect.Top + (rect.Height * 0.1F);
+            using Pen linePen = new Pen(Color.FromArgb(50, 1, 125, 67), 1.5F)
+            {
+                DashStyle = DashStyle.Dash
+            };
+            using SolidBrush markerBrush = new SolidBrush(Color.FromArgb(1, 125, 67));
+            using SolidBrush labelBrush = new SolidBrush(Color.FromArgb(35, 70, 55));
+            using Font labelFont = new System.Drawing.Font("Segoe UI", 8F, FontStyle.Bold);
+
+            foreach (AFMSChartTransectMarker marker in _transectMarkers)
+            {
+                if (marker.LeftBankDistance < minX || marker.LeftBankDistance > maxX) continue;
+
+                float x = ConvertX(marker.LeftBankDistance, rect, minX, maxX);
+                g.DrawLine(linePen, x, markerY, x, rect.Bottom);
+                g.FillEllipse(markerBrush, x - 4F, markerY - 4F, 8F, 8F);
+
+                string label = $"{marker.No}";
+                SizeF labelSize = g.MeasureString(label, labelFont);
+                g.DrawString(label, labelFont, labelBrush, x - (labelSize.Width / 2F), markerY - labelSize.Height - 5F);
+            }
         }
 
         private PointF[] CreateProfilePoints(Rectangle rect, double minX, double maxX, double minY, double maxY)
