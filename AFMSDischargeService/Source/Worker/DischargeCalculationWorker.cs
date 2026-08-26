@@ -15,18 +15,32 @@ namespace AFMSDischargeService
             LoadCalculators(stoppingToken);
             InitializeCalculators(stoppingToken);
 
-            logger.LogInformation("서비스 시작 설정을 기준으로 유량 산정 객체 {Count}개를 준비했습니다.", calculators.Count);
+            LogCalculatorList();
+            LogCurrentTargets("서비스 시작");
+            DateTime nextTargetLogAt = GetNextTenMinuteBoundary(DateTime.Now);
 
             try
             {
                 while (!stoppingToken.IsCancellationRequested)
                 {
+                    DateTime now = DateTime.Now;
+                    if (now >= nextTargetLogAt)
+                    {
+                        LogCurrentTargets("10분 정시");
+                        do
+                        {
+                            nextTargetLogAt = nextTargetLogAt.AddMinutes(10);
+                        }
+                        while (nextTargetLogAt <= now);
+                    }
+
                     bool calculationCompleted = false;
                     using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
 
                     foreach (_QBase calculator in calculators)
                     {
                         stoppingToken.ThrowIfCancellationRequested();
+                        if (!calculator.IsImplemented) continue;
                         if (!calculator.PrepareNextCalculation(db)) continue;
                         LogReadyMeasurement(calculator);
                         if (!calculator.CalculateAndMoveNext(db)) continue;
@@ -35,12 +49,79 @@ namespace AFMSDischargeService
                     }
 
                     if (!calculationCompleted)
-                        await Task.Delay(PollInterval, stoppingToken);
+                    {
+                        TimeSpan delay = nextTargetLogAt - DateTime.Now;
+                        if (delay > PollInterval) delay = PollInterval;
+                        if (delay > TimeSpan.Zero)
+                            await Task.Delay(delay, stoppingToken);
+                    }
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
             }
+        }
+
+        private void LogCalculatorList()
+        {
+            logger.LogInformation(
+                "서비스 시작 설정을 기준으로 유량 산정 객체 {Count}개를 준비했습니다.",
+                calculators.Count);
+
+            for (int index = 0; index < calculators.Count; index++)
+            {
+                _QBase calculator = calculators[index];
+                QConfiguration config = calculator.Configuration;
+                logger.LogInformation(
+                    "유량 산정 객체 [{Index}/{Count}]: {DeviceType} {DeviceId} ({DeviceName}), 산정법 {MethodName} ({Method})",
+                    index + 1,
+                    calculators.Count,
+                    config.DeviceType,
+                    config.DeviceId,
+                    calculator.Measurement.DeviceName,
+                    EnumPaser.GetKorString(config.Method),
+                    config.Method);
+            }
+        }
+
+        private void LogCurrentTargets(string reason)
+        {
+            foreach (_QBase calculator in calculators)
+            {
+                QConfiguration config = calculator.Configuration;
+                QMeasurementContext measurement = calculator.Measurement;
+                QCalculationContext calculation = calculator.Calculation;
+                string sourceKey = measurement.HasSource
+                    ? $"{measurement.SourceDate:yyyy-MM-dd} {measurement.SourceTime:HH:mm:ss}"
+                    : "없음";
+                string slotKey = calculation.SlotId >= 0
+                    ? $"{calculation.SlotDate:yyyy-MM-dd} {calculation.SlotTime:HH:mm:ss}"
+                    : "없음";
+
+                logger.LogInformation(
+                    "유량 산정 조회 위치({Reason}): {DeviceType} {DeviceId} ({DeviceName}), 산정법 {Method}, 원시자료 키 {SourceKey}, 슬롯 키 {SlotKey}",
+                    reason,
+                    config.DeviceType,
+                    config.DeviceId,
+                    measurement.DeviceName,
+                    config.Method,
+                    sourceKey,
+                    slotKey);
+            }
+        }
+
+        private static DateTime GetNextTenMinuteBoundary(DateTime now)
+        {
+            int minute = (now.Minute / 10) * 10;
+            DateTime boundary = new(
+                now.Year,
+                now.Month,
+                now.Day,
+                now.Hour,
+                minute,
+                0,
+                now.Kind);
+            return boundary.AddMinutes(10);
         }
 
         private void LogCalculationCompleted(_QBase calculator)
@@ -114,8 +195,7 @@ namespace AFMSDischargeService
                         out DischargeMethod method)) continue;
 
                 _QBase? calculator = CreateCalculator(method);
-                if (calculator == null || !calculator.IsImplemented ||
-                    !IsSupportedDevice(method, deviceType)) continue;
+                if (calculator == null || !IsSupportedDevice(method, deviceType)) continue;
 
                 calculator.Configuration.DischargeConfigId = Convert.ToInt32(row[FbtAFMSDischargeConfig.COL_ID]);
                 calculator.Configuration.DeviceType = deviceType;

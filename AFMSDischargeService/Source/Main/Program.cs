@@ -44,6 +44,7 @@ namespace AFMSDischargeService
                 options.ServiceName = PROCESS_NAME;
             });
 
+            builder.Logging.ClearProviders();
             builder.Logging.AddProvider(new RnsLogLoggerProvider());
 
             // 초기 슬롯 준비가 끝난 뒤 다음 HostedService가 시작되도록 가장 먼저 등록합니다.
