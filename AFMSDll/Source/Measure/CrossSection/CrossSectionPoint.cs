@@ -6,17 +6,17 @@ namespace AFMSDll
 {
     public class CrossSectionPoint
     {
-        public double X;
-        public double Y;
+        public double LeftBankDistance;
+        public double BedElevation;
 
         public CrossSectionPoint()
         {
         }
 
-        public CrossSectionPoint(double x, double y)
+        public CrossSectionPoint(double leftbank, double elevation)
         {
-            X = x;
-            Y = y;
+            LeftBankDistance = leftbank;
+            BedElevation = elevation;
         }
     }
 }

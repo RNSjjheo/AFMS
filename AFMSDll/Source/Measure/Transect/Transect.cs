@@ -9,9 +9,10 @@ namespace AFMSDll
         public CrossSectionPointCollection AreaFull = new();
         public CrossSectionPointCollection AreaThis = new();
         public int Id;
-        public double PosX;
-        public double Width;
-        public double Level;
+        public double LeftBankDistance { get; set; }
+        public double Elevation { get; set; }
+        public double SurfaceWidth;
+
         public double SectionArea;
     }
 }
