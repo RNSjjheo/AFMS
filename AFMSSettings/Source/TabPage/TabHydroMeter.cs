@@ -2,8 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace AFMSSettings
 {
@@ -18,21 +16,6 @@ namespace AFMSSettings
         private const string COL_DISTANCE_DATAS = FbtAFMSHydroTransect.COL_DISTANCE_DATAS;
         private const string COL_TRANSECT_NO = "측선 번호";
         private const string COL_TRANSECT_DISTANCE = "좌안에서의 거리(m)";
-
-        private sealed class TransectJsonData
-        {
-            [JsonPropertyName("transects")]
-            public List<TransectJsonItem> Transects { get; set; } = new List<TransectJsonItem>();
-        }
-
-        private sealed class TransectJsonItem
-        {
-            [JsonPropertyName("no")]
-            public int No { get; set; }
-
-            [JsonPropertyName("distance")]
-            public double Distance { get; set; }
-        }
 
         private TableLayoutPanel uiTpRigth;
         private AFMSGuidePanel uiGuide;
@@ -240,23 +223,16 @@ namespace AFMSSettings
                 return;
             }
 
-            try
+            if (TransectBuilder.TryBuild(json, out TransectCollection transects))
             {
-                TransectJsonData? transectData = JsonSerializer.Deserialize<TransectJsonData>(json);
-                if (transectData == null || transectData.Transects.Count == 0)
-                {
-                    ClearDetail();
-                    return;
-                }
-
                 DataTable table = CreateTransectDetailTable();
-                foreach (TransectJsonItem transect in transectData.Transects) table.Rows.Add(transect.No, transect.Distance);
+                foreach (Transect transect in transects)
+                    table.Rows.Add(transect.No, transect.CenterLeftBankDistance);
                 uiGridDetail.DataSource = table;
+                return;
             }
-            catch (JsonException)
-            {
-                ClearDetail();
-            }
+
+            ClearDetail();
         }
 
         private DataTable CreateTransectDetailTable()

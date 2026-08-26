@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
-using System.Text.Json;
 using System.Windows.Forms;
 
 namespace AFMSSettings
@@ -267,9 +266,8 @@ namespace AFMSSettings
         private string SaveTransect(List<double> distances)
         {
             DateTime now = DateTime.Now;
-            List<object> transects = new List<object>(distances.Count);
-            for (int i = 0; i < distances.Count; i++) transects.Add(new { no = i + 1, distance = distances[i] });
-            string json = JsonSerializer.Serialize(new { transects });
+            TransectCollection transects = TransectBuilder.Build(distances);
+            string json = TransectBuilder.GetJson(transects);
 
             QueryBuilderInsert query = new QueryBuilderInsert();
             query.Table = FbtAFMSHydroTransect.TABLE_NAME;

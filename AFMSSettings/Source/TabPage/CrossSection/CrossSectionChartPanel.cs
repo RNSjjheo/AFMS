@@ -1,7 +1,5 @@
 using AFMSDll;
 using System.Data;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 
 namespace AFMSSettings
 {
@@ -23,21 +21,6 @@ namespace AFMSSettings
             }
 
             public override string ToString() => Name;
-        }
-
-        private sealed class TransectJsonData
-        {
-            [JsonPropertyName("transects")]
-            public List<TransectJsonItem> Transects { get; set; } = new();
-        }
-
-        private sealed class TransectJsonItem
-        {
-            [JsonPropertyName("no")]
-            public int No { get; set; }
-
-            [JsonPropertyName("distance")]
-            public double Distance { get; set; }
         }
 
         private readonly AFMSAreaChart _chart;
@@ -136,7 +119,7 @@ namespace AFMSSettings
                     if (row[COL_HYDRO_ID] == DBNull.Value || row[COL_TRANSECTS] == DBNull.Value) continue;
 
                     string json = Convert.ToString(row[COL_TRANSECTS])?.Trim() ?? string.Empty;
-                    if (!TryReadTransects(json, out _)) continue;
+                    if (!TransectBuilder.TryBuild(json, out _)) continue;
 
                     string deviceName = Convert.ToString(row[COL_HYDRO_NAME])?.Trim() ?? "유속계";
                     string deviceNo = row[COL_HYDRO_NO] == DBNull.Value
@@ -286,7 +269,7 @@ namespace AFMSSettings
         private void HydroCombo_SelectedIndexChanged(object? sender, EventArgs e)
         {
             if (_hydroCombo.SelectedItem is not HydroComboItem hydro ||
-                !TryReadTransects(hydro.TransectJson, out List<TransectJsonItem> transects))
+                !TransectBuilder.TryBuild(hydro.TransectJson, out TransectCollection transects))
             {
                 _selectedTransects.Clear();
                 _chart.ClearTransectMarkers();
@@ -295,13 +278,9 @@ namespace AFMSSettings
             }
 
             _selectedTransects.Clear();
-            _selectedTransects.AddRange(transects.Select(item => new Transect
-            {
-                No = item.No,
-                CenterLeftBankDistance = item.Distance
-            }));
-            _chart.SetTransectMarkers(transects.Select(item =>
-                new AFMSChartTransectMarker(item.No, item.Distance)));
+            _selectedTransects.AddRange(transects);
+            _chart.SetTransectMarkers(transects.Select(transect =>
+                new AFMSChartTransectMarker(transect.No, transect.CenterLeftBankDistance)));
             UpdateAreas();
         }
 
@@ -355,26 +334,5 @@ namespace AFMSSettings
             _areaStatus.Text = text;
         }
 
-        private static bool TryReadTransects(string json, out List<TransectJsonItem> transects)
-        {
-            transects = new List<TransectJsonItem>();
-            try
-            {
-                TransectJsonData? data = JsonSerializer.Deserialize<TransectJsonData>(json);
-                if (data == null || data.Transects.Count == 0) return false;
-
-                foreach (TransectJsonItem transect in data.Transects.OrderBy(item => item.No))
-                {
-                    if (transect.No < 1 || !double.IsFinite(transect.Distance) || transect.Distance < 0.0)
-                        return false;
-                    transects.Add(transect);
-                }
-                return transects.Count > 0;
-            }
-            catch (JsonException)
-            {
-                return false;
-            }
-        }
     }
 }

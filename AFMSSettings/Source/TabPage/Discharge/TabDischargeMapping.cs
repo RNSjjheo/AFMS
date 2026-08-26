@@ -283,39 +283,8 @@ namespace AFMSSettings
             if (expectedCount <= 0 || !_TransectSettings.TryGetValue(hydroId, out TransectSetting setting) ||
                 setting.Count != expectedCount || string.IsNullOrWhiteSpace(setting.DistanceDatas)) return false;
 
-            try
-            {
-                using JsonDocument document = JsonDocument.Parse(setting.DistanceDatas);
-                if (!document.RootElement.TryGetProperty("transects", out JsonElement transects) ||
-                    transects.ValueKind != JsonValueKind.Array || transects.GetArrayLength() != expectedCount) return false;
-
-                double previousDistance = double.NegativeInfinity;
-                int index = 0;
-
-                foreach (JsonElement transect in transects.EnumerateArray())
-                {
-                    index++;
-                    if (!transect.TryGetProperty("no", out JsonElement no) || no.GetInt32() != index ||
-                        !transect.TryGetProperty("distance", out JsonElement distanceElement) || !distanceElement.TryGetDouble(out double distance) ||
-                        distance <= previousDistance) return false;
-
-                    previousDistance = distance;
-                }
-
-                return index == expectedCount;
-            }
-            catch (JsonException)
-            {
-                return false;
-            }
-            catch (InvalidOperationException)
-            {
-                return false;
-            }
-            catch (FormatException)
-            {
-                return false;
-            }
+            return TransectBuilder.TryBuild(setting.DistanceDatas, out TransectCollection transects) &&
+                   transects.Count == expectedCount;
         }
 
         public string SaveChanges(out int savedCount)
