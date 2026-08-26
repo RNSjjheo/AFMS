@@ -1,15 +1,21 @@
 using System;
 using System.Collections.Generic;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace AFMSDll
 {
     public static class CrossSectionPointBuilder
     {
+        public const string JSON_NODE_DIST = "Dist";
+        public const string JSON_NODE_ELEV = "Elev";
+
+        private const string JSON_NODE_POINTS = "Points";
+        private const string JSON_NODE_WATER_LEVEL = "WaterLevel";
+
         private static readonly JsonSerializerOptions JsonOptions = new JsonSerializerOptions
         {
-            IncludeFields = true,
-            WriteIndented = true
+            WriteIndented = false
         };
 
         public static CrossSectionPointCollection Build(IEnumerable<CrossSectionPoint> source)
@@ -46,17 +52,13 @@ namespace AFMSDll
             JsonElement pointElements;
             double? waterLevel = null;
 
-            if (root.ValueKind == JsonValueKind.Array)
-            {
-                pointElements = root;
-            }
-            else if (root.ValueKind == JsonValueKind.Object &&
-                     root.TryGetProperty("Points", out JsonElement points) &&
-                     points.ValueKind == JsonValueKind.Array)
+            if (root.ValueKind == JsonValueKind.Object &&
+                root.TryGetProperty(JSON_NODE_POINTS, out JsonElement points) &&
+                points.ValueKind == JsonValueKind.Array)
             {
                 pointElements = points;
 
-                if (root.TryGetProperty("WaterLevel", out JsonElement level) &&
+                if (root.TryGetProperty(JSON_NODE_WATER_LEVEL, out JsonElement level) &&
                     level.ValueKind == JsonValueKind.Number && level.TryGetDouble(out double value))
                 {
                     waterLevel = value;
@@ -77,10 +79,10 @@ namespace AFMSDll
                 if (element.ValueKind != JsonValueKind.Object)
                     throw new JsonException("단면 좌표 형식이 올바르지 않습니다.");
 
-                double x = ReadCoordinate(element, "X", "Dist");
-                double y = ReadCoordinate(element, "Y", "Elev") - zeroPointElevation;
+                double leftBankDistance = ReadCoordinate(element, JSON_NODE_DIST);
+                double elevation = ReadCoordinate(element, JSON_NODE_ELEV) - zeroPointElevation;
 
-                result.Add(new CrossSectionPoint(x, y));
+                result.Add(new CrossSectionPoint(leftBankDistance, elevation));
             }
 
             return result;
@@ -93,18 +95,21 @@ namespace AFMSDll
             CrossSectionPointDataJson data = new CrossSectionPointDataJson
             {
                 WaterLevel = source.WaterLevel,
-                Points = source
+                Points = source.ConvertAll(point => new CrossSectionPointJson
+                {
+                    LeftBankDistance = point.LeftBankDistance,
+                    Elevation = point.Elevation
+                })
             };
 
             return JsonSerializer.Serialize(data, JsonOptions);
         }
 
-        private static double ReadCoordinate(JsonElement element, string currentName, string legacyName)
+        private static double ReadCoordinate(JsonElement element, string propertyName)
         {
-            if (TryReadFiniteDouble(element, currentName, out double value) ||
-                TryReadFiniteDouble(element, legacyName, out value)) return value;
+            if (TryReadFiniteDouble(element, propertyName, out double value)) return value;
 
-            throw new JsonException($"단면 좌표의 {currentName} 값이 없거나 올바르지 않습니다.");
+            throw new JsonException($"단면 좌표의 {propertyName} 값이 없거나 올바르지 않습니다.");
         }
 
         private static bool TryReadFiniteDouble(JsonElement element, string propertyName, out double value)
@@ -118,7 +123,16 @@ namespace AFMSDll
         private sealed class CrossSectionPointDataJson
         {
             public double? WaterLevel { get; set; }
-            public CrossSectionPointCollection Points { get; set; } = new CrossSectionPointCollection();
+            public List<CrossSectionPointJson> Points { get; set; } = new List<CrossSectionPointJson>();
+        }
+
+        private sealed class CrossSectionPointJson
+        {
+            [JsonPropertyName(JSON_NODE_DIST)]
+            public double LeftBankDistance { get; set; }
+
+            [JsonPropertyName(JSON_NODE_ELEV)]
+            public double Elevation { get; set; }
         }
     }
 }

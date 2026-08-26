@@ -169,10 +169,10 @@ namespace AFMSDll
 
             Rectangle plotRect = new Rectangle(LEFT, TOP, Math.Max(1, Width - LEFT - RIGHT), Math.Max(1, Height - TOP - BOTTOM));
 
-            double dataMinX = _points.Min(point => point.X);
-            double dataMaxX = _points.Max(point => point.X);
-            double dataMinY = _points.Min(point => point.Y);
-            double dataMaxY = _points.Max(point => point.Y);
+            double dataMinX = _points.Min(point => point.LeftBankDistance);
+            double dataMaxX = _points.Max(point => point.LeftBankDistance);
+            double dataMinY = _points.Min(point => point.Elevation);
+            double dataMaxY = _points.Max(point => point.Elevation);
 
             double minX = _xMin ?? dataMinX;
             double maxX = _xMax ?? dataMaxX;
@@ -204,8 +204,8 @@ namespace AFMSDll
 
             for (int i = 0; i < _points.Count; i++)
             {
-                float x = ConvertX(_points[i].X, rect, minX, maxX);
-                float y = ConvertY(_points[i].Y, rect, minY, maxY);
+                float x = ConvertX(_points[i].LeftBankDistance, rect, minX, maxX);
+                float y = ConvertY(_points[i].Elevation, rect, minY, maxY);
                 points[i] = new PointF(x, y);
             }
 
@@ -330,11 +330,11 @@ namespace AFMSDll
                 CrossSectionPoint p1 = _points[i];
                 CrossSectionPoint p2 = _points[i + 1];
 
-                bool p1Wet = p1.Y <= waterLevel;
-                bool p2Wet = p2.Y <= waterLevel;
+                bool p1Wet = p1.Elevation <= waterLevel;
+                bool p2Wet = p2.Elevation <= waterLevel;
 
-                float x1 = ConvertX(p1.X, rect, minX, maxX);
-                float x2 = ConvertX(p2.X, rect, minX, maxX);
+                float x1 = ConvertX(p1.LeftBankDistance, rect, minX, maxX);
+                float x2 = ConvertX(p2.LeftBankDistance, rect, minX, maxX);
 
                 if (p1Wet && p2Wet)
                 {
@@ -382,12 +382,12 @@ namespace AFMSDll
 
         private static float GetWaterIntersectionX(CrossSectionPoint p1, CrossSectionPoint p2, Rectangle rect, double minX, double maxX, double waterLevel)
         {
-            double elevDiff = p2.Y - p1.Y;
+            double elevDiff = p2.Elevation - p1.Elevation;
 
-            if (Math.Abs(elevDiff) < double.Epsilon) return ConvertX(p1.X, rect, minX, maxX);
+            if (Math.Abs(elevDiff) < double.Epsilon) return ConvertX(p1.LeftBankDistance, rect, minX, maxX);
 
-            double ratio = (waterLevel - p1.Y) / elevDiff;
-            double dist = p1.X + ((p2.X - p1.X) * ratio);
+            double ratio = (waterLevel - p1.Elevation) / elevDiff;
+            double dist = p1.LeftBankDistance + ((p2.LeftBankDistance - p1.LeftBankDistance) * ratio);
 
             return ConvertX(dist, rect, minX, maxX);
         }

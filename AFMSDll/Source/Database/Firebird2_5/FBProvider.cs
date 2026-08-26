@@ -62,7 +62,7 @@ namespace AFMSDll
             Tables.Add(new FbtWATERLEVEL());
             Tables.Add(new FbtVTHLOGGER());
             Tables.Add(new FbtSETUP());
-            Tables.Add(new FbtAFMSAreaMapPoint());
+            Tables.Add(new FbtAFMSCrossSection());
             Tables.Add(new FbtAFMSHydroMeter());
             Tables.Add(new FbtAFMSDiscAttrMidSection());
             Tables.Add(new FbtAFMSDiscAttrSurfaceVelo());

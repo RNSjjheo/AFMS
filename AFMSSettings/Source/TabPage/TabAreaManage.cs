@@ -266,15 +266,15 @@ namespace AFMSSettings
         private void UpdateMapList()
         {
             QueryBuilderSelect query = new QueryBuilderSelect();
-            query.Table = FbtAFMSAreaMapPoint.TABLE_NAME;
+            query.Table = FbtAFMSCrossSection.TABLE_NAME;
 
-            query.AsAlias(FbtAFMSAreaMapPoint.COL_ID, COL_INDEX);
-            query.AsAlias(FbtAFMSAreaMapPoint.SQL_MEASURE_DATETIME, COL_DATE);
-            query.AsAlias(FbtAFMSAreaMapPoint.COL_MAP_NAME, COL_DESC);
-            query.AsAlias(FbtAFMSAreaMapPoint.COL_POINT_COUNT, COL_POINT_CNT);
-            query.AsAlias(FbtAFMSAreaMapPoint.COL_ZERO_POINT_ELEVATION, COL_ZERO_ELEV);
-            query.AsAlias(FbtAFMSAreaMapPoint.COL_MAP_DATA, COL_DATA);
-            query.OrderBy(FbtAFMSAreaMapPoint.COL_ID);
+            query.AsAlias(FbtAFMSCrossSection.COL_ID, COL_INDEX);
+            query.AsAlias(FbtAFMSCrossSection.SQL_MEASURE_DATETIME, COL_DATE);
+            query.AsAlias(FbtAFMSCrossSection.COL_DESCRIPTION, COL_DESC);
+            query.AsAlias(FbtAFMSCrossSection.COL_POINT_COUNT, COL_POINT_CNT);
+            query.AsAlias(FbtAFMSCrossSection.COL_ZERO_POINT_ELEVATION, COL_ZERO_ELEV);
+            query.AsAlias(FbtAFMSCrossSection.COL_POINT_DATA, COL_DATA);
+            query.OrderBy(FbtAFMSCrossSection.COL_ID);
 
             using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
             DataTable table = db.Execute(query, out string error);
@@ -300,15 +300,15 @@ namespace AFMSSettings
             CrossSectionPointCollection data = _selectedAreaData;
 
             QueryBuilderInsert query = new QueryBuilderInsert();
-            query.Table = FbtAFMSAreaMapPoint.TABLE_NAME;
-            query.AutoIncrement = FbtAFMSAreaMapPoint.COL_ID;
+            query.Table = FbtAFMSCrossSection.TABLE_NAME;
+            query.AutoIncrement = FbtAFMSCrossSection.COL_ID;
 
-            query.Value(FbtAFMSAreaMapPoint.COL_MEASURE_DATE, now.ToString("yyyyMMdd"));
-            query.Value(FbtAFMSAreaMapPoint.COL_MEASURE_TIME, now.ToString("HHmmss"));
-            query.Value(FbtAFMSAreaMapPoint.COL_MAP_NAME, uiTeFileName.Text);
-            query.Value(FbtAFMSAreaMapPoint.COL_POINT_COUNT, data.Count);
-            query.Value(FbtAFMSAreaMapPoint.COL_ZERO_POINT_ELEVATION, uiNoZeroLevel.DoubleValue);
-            query.Value(FbtAFMSAreaMapPoint.COL_MAP_DATA, CrossSectionPointBuilder.GetJson(data));
+            query.Value(FbtAFMSCrossSection.COL_MEASURE_DATE, now.ToString("yyyyMMdd"));
+            query.Value(FbtAFMSCrossSection.COL_MEASURE_TIME, now.ToString("HHmmss"));
+            query.Value(FbtAFMSCrossSection.COL_DESCRIPTION, uiTeFileName.Text);
+            query.Value(FbtAFMSCrossSection.COL_POINT_COUNT, data.Count);
+            query.Value(FbtAFMSCrossSection.COL_ZERO_POINT_ELEVATION, uiNoZeroLevel.DoubleValue);
+            query.Value(FbtAFMSCrossSection.COL_POINT_DATA, CrossSectionPointBuilder.GetJson(data));
 
             using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
             db.Execute(query, out string error);
