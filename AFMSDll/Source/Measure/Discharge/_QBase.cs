@@ -123,7 +123,9 @@ namespace AFMSDll
             if (resultTable.Rows.Count > 0 && resultTable.Rows[0][0] != DBNull.Value)
                 LastCalculatedSourceTime = Convert.ToDateTime(resultTable.Rows[0][0]);
 
-            string sourceSql = $"SELECT FIRST 1 {FbtAFMSHydroMeter.COL_ID},";
+            bool hasMeasurementId = DeviceType == MeasurementDeviceType.VelocityMeter;
+            string sourceSql = "SELECT FIRST 1";
+            if (hasMeasurementId) sourceSql += $" {FbtAFMSHydroMeter.COL_ID},";
             sourceSql += $" {FbtAFMSHydroMeter.COL_MEASURE_DATE},";
             sourceSql += $" {FbtAFMSHydroMeter.COL_MEASURE_TIME}";
             sourceSql += $" FROM {MeasurementTableName}";
@@ -132,7 +134,8 @@ namespace AFMSDll
                 string lastSourceDateTime = LastCalculatedSourceTime.Value.ToString("yyyyMMdd HHmmss", CultureInfo.InvariantCulture);
                 sourceSql += $" WHERE {_FBTableBase.SQL_MEASURE_DATETIME} > '{lastSourceDateTime}'";
             }
-            sourceSql += $" ORDER BY {_FBTableBase.SQL_MEASURE_DATETIME}, {FbtAFMSHydroMeter.COL_ID}";
+            sourceSql += $" ORDER BY {_FBTableBase.SQL_MEASURE_DATETIME}";
+            if (hasMeasurementId) sourceSql += $", {FbtAFMSHydroMeter.COL_ID}";
 
             DataTable sourceTable = db.Execute(sourceSql, out error);
             if (!string.IsNullOrEmpty(error) || sourceTable.Rows.Count == 0) return false;
@@ -146,7 +149,9 @@ namespace AFMSDll
                 return false;
             }
 
-            MeasurementStartId = Convert.ToInt32(sourceRow[FbtAFMSHydroMeter.COL_ID]);
+            MeasurementStartId = hasMeasurementId
+                ? Convert.ToInt32(sourceRow[FbtAFMSHydroMeter.COL_ID])
+                : -1;
             MeasurementStartDate = parsedDate;
             MeasurementStartTime = parsedTime;
             error = string.Empty;
