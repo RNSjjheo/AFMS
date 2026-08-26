@@ -270,6 +270,7 @@ namespace AFMSSettings
             query.Value(FbtAFMSHydroMeter.COL_MEASURE_TIME, now.ToString("HHmmss"));
             query.Value(FbtAFMSHydroMeter.COL_DEVICE_NAME, hydroType.ToString());
             query.Value(FbtAFMSHydroMeter.COL_DEVICE_NO, 1);
+            query.Value(FbtAFMSHydroMeter.COL_DATA_TABLE, GetMeasurementTableName(hydroType));
             query.Value(FbtAFMSHydroMeter.COL_COMM_CONFIG, commConfig);
             query.Value(FbtAFMSHydroMeter.COL_DEVICE_ATTR, "");
             query.Value(FbtAFMSHydroMeter.COL_TRANSECT_CNT, transectCount);
@@ -278,6 +279,16 @@ namespace AFMSSettings
             using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
             db.Execute(query, out string error);
             return error;
+        }
+
+        private static string GetMeasurementTableName(HydroMeterType hydroType)
+        {
+            return hydroType switch
+            {
+                HydroMeterType.RnDMpdsCollector => FbtHYDROMETERMPDS.TABLE_NAME,
+                HydroMeterType.RnDVideoCollector => FbtHYDROMETERVIDEO.TABLE_NAME,
+                _ => string.Empty
+            };
         }
 
         private void LoadHydroMeterList()

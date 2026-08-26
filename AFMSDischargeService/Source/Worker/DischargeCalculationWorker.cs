@@ -76,6 +76,13 @@ namespace AFMSDischargeService
                 calculator.MethodConfigId = GetLatestMethodConfigId(db, method, deviceType, calculator.DeviceId);
                 if (calculator.MethodConfigId < 0) continue;
 
+                if (!calculator.TryConnectMeasurementTable(db, out string measurementTableError))
+                {
+                    throw new InvalidOperationException(
+                        $"측정 테이블 연결 실패 " +
+                        $"({calculator.DeviceType} {calculator.DeviceId}, {calculator.Method}): {measurementTableError}");
+                }
+
                 bool hasStartSlot = calculator.TryLoadStartSlot(db, out string startSlotError);
                 if (!string.IsNullOrEmpty(startSlotError))
                 {
@@ -89,10 +96,12 @@ namespace AFMSDischargeService
                 if (hasStartSlot)
                 {
                     logger.LogInformation(
-                        "유량 산정 객체 추가: {DeviceType} {DeviceId}, 산정법 {Method}, 시작 슬롯 {SlotId} ({MeasureDate} {MeasureTime})",
+                        "유량 산정 객체 추가: {DeviceType} {DeviceId} ({DeviceName}), 산정법 {Method}, 측정 테이블 {MeasurementTable}, 시작 슬롯 {SlotId} ({MeasureDate} {MeasureTime})",
                         calculator.DeviceType,
                         calculator.DeviceId,
+                        calculator.DeviceName,
                         calculator.Method,
+                        calculator.MeasurementTable!.GetTableName(),
                         calculator.SlotId,
                         calculator.MeasureDate,
                         calculator.MeasureTime);
@@ -100,10 +109,12 @@ namespace AFMSDischargeService
                 else
                 {
                     logger.LogInformation(
-                        "유량 산정 객체 추가: {DeviceType} {DeviceId}, 산정법 {Method}, 미산정 슬롯 없음",
+                        "유량 산정 객체 추가: {DeviceType} {DeviceId} ({DeviceName}), 산정법 {Method}, 측정 테이블 {MeasurementTable}, 미산정 슬롯 없음",
                         calculator.DeviceType,
                         calculator.DeviceId,
-                        calculator.Method);
+                        calculator.DeviceName,
+                        calculator.Method,
+                        calculator.MeasurementTable!.GetTableName());
                 }
             }
         }

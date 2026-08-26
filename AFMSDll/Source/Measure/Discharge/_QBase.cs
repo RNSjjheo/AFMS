@@ -10,6 +10,9 @@ namespace AFMSDll
         public int SlotId { get; private set; } = -1;
         public MeasurementDeviceType DeviceType { get; set; } = MeasurementDeviceType.None;
         public int DeviceId { get; set; } = -1;
+        public string DeviceName { get; private set; } = string.Empty;
+        public string MeasurementTableName { get; private set; } = string.Empty;
+        public _FBTableBase? MeasurementTable { get; private set; }
         public int DischargeConfigId { get; set; } = -1;
         public DateOnly MeasureDate { get; set; }
         public TimeOnly MeasureTime { get; set; }
@@ -22,6 +25,67 @@ namespace AFMSDll
         protected _QBase(DischargeMethod method)
         {
             Method = method;
+        }
+
+        /// <summary>
+        /// DeviceId에 해당하는 측정장비 종류를 확인하고 원시 측정 테이블을 연결합니다.
+        /// </summary>
+        public bool TryConnectMeasurementTable(FBDatabase db, out string error)
+        {
+            ArgumentNullException.ThrowIfNull(db);
+
+            DeviceName = string.Empty;
+            MeasurementTableName = string.Empty;
+            MeasurementTable = null;
+
+            if (DeviceType == MeasurementDeviceType.WaterLevelGauge)
+            {
+                DeviceName = "시스템 수위계";
+                MeasurementTable = new FbtWATERLEVEL();
+                MeasurementTableName = MeasurementTable.GetTableName();
+                error = string.Empty;
+                return true;
+            }
+
+            if (DeviceType != MeasurementDeviceType.VelocityMeter || DeviceId < 0)
+            {
+                error = "조회할 유속계가 설정되지 않았습니다.";
+                return false;
+            }
+
+            QueryBuilderSelect query = new();
+            query.Table = FbtAFMSHydroMeter.TABLE_NAME;
+            query.First = 1;
+            query.Add(FbtAFMSHydroMeter.COL_DEVICE_NAME);
+            query.Add(FbtAFMSHydroMeter.COL_DATA_TABLE);
+            query.Where(FbtAFMSHydroMeter.COL_ID, "=", DeviceId);
+
+            DataTable table = db.Execute(query, out error);
+            if (!string.IsNullOrEmpty(error)) return false;
+            if (table.Rows.Count == 0)
+            {
+                error = $"유속계 정보를 찾을 수 없습니다: DeviceId={DeviceId}";
+                return false;
+            }
+
+            DeviceName = Convert.ToString(table.Rows[0][FbtAFMSHydroMeter.COL_DEVICE_NAME])?.Trim() ?? string.Empty;
+            MeasurementTableName = Convert.ToString(table.Rows[0][FbtAFMSHydroMeter.COL_DATA_TABLE])?.Trim() ?? string.Empty;
+
+            if (string.Equals(MeasurementTableName, FbtHYDROMETERMPDS.TABLE_NAME, StringComparison.OrdinalIgnoreCase))
+                MeasurementTable = new FbtHYDROMETERMPDS();
+            else if (string.Equals(MeasurementTableName, FbtHYDROMETERVIDEO.TABLE_NAME, StringComparison.OrdinalIgnoreCase))
+                MeasurementTable = new FbtHYDROMETERVIDEO();
+
+            if (MeasurementTable == null)
+            {
+                error = string.IsNullOrEmpty(MeasurementTableName)
+                    ? $"유속계의 데이터 테이블이 설정되지 않았습니다: DeviceId={DeviceId}"
+                    : $"지원하지 않는 유속계 데이터 테이블입니다: {MeasurementTableName}";
+                return false;
+            }
+
+            error = string.Empty;
+            return true;
         }
 
         /// <summary>
