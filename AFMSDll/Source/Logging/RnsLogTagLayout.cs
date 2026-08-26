@@ -1,7 +1,9 @@
 using System.Text.RegularExpressions;
 using log4net;
 using log4net.Appender;
+using log4net.Core;
 using log4net.Layout;
+using log4net.Layout.Pattern;
 
 namespace AFMSDll
 {
@@ -21,7 +23,7 @@ namespace AFMSDll
         {
             if (width < 1) throw new ArgumentOutOfRangeException(nameof(width));
 
-            string fixedWidthPattern = $"%-{width}.{width}logger";
+            string fixedWidthPattern = $"%fixedlogger{{{width}}}";
             foreach (IAppender appender in LogManager.GetRepository().GetAppenders())
             {
                 if (appender is not AppenderSkeleton appenderSkeleton ||
@@ -31,10 +33,31 @@ namespace AFMSDll
                 string updatedPattern = LoggerPattern.Replace(conversionPattern, fixedWidthPattern);
                 if (updatedPattern == conversionPattern) continue;
 
+                layout.AddConverter("fixedlogger", typeof(FixedWidthLoggerPatternConverter));
                 layout.ConversionPattern = updatedPattern;
                 layout.ActivateOptions();
                 appenderSkeleton.ActivateOptions();
             }
+        }
+    }
+
+    public sealed class FixedWidthLoggerPatternConverter : PatternLayoutConverter
+    {
+        private int width = RnsLogTagLayout.DefaultWidth;
+        private bool optionRead;
+
+        protected override void Convert(TextWriter writer, LoggingEvent loggingEvent)
+        {
+            if (!optionRead)
+            {
+                if (int.TryParse(Option, out int parsedWidth) && parsedWidth > 0)
+                    width = parsedWidth;
+                optionRead = true;
+            }
+
+            string tag = loggingEvent.LoggerName ?? string.Empty;
+            if (tag.Length > width) tag = tag[..width];
+            writer.Write(tag.PadRight(width));
         }
     }
 }
