@@ -97,4 +97,16 @@ namespace AFMSDll
     {
         Ver00 = 0,
     }
+
+    public enum DiscVerVelocityDistribution
+    {
+        Ver00 = 0,
+    }
+
+    public enum VelocityDistributionFitMode
+    {
+        AutoAsymmetric = 0,
+        AutoCommonBeta = 1,
+        Manual = 2,
+    }
 }

@@ -190,6 +190,7 @@ namespace AFMSSettings
             int hydroId = uiComboHydro.SelectedItem is HydroComboItem item ? item.Id : -1;
             uiTabPageSurfaceVelo.SetHydroId(hydroId);
             uiTabPageMidSection.SetHydroId(hydroId);
+            uiTabPageVeloDist.SetHydroId(hydroId);
             SelectMethodPage();
         }
 
@@ -221,6 +222,7 @@ namespace AFMSSettings
                         break;
                     case DischargeMethod.VeloDist:
                         uiTabMain.SelectedTab = uiTabPageVeloDist;
+                        uiTabPageVeloDist.SetHydroId(uiComboHydro.SelectedItem is HydroComboItem veloDistItem ? veloDistItem.Id : -1);
                         break;
                     case DischargeMethod.RatingCurve:
                         uiTabMain.SelectedTab = uiTabPageRatingCurve;
