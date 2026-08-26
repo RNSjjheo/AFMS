@@ -8,8 +8,6 @@ namespace AFMSDll
     /// </summary>
     public sealed class RnsLogLoggerProvider : ILoggerProvider
     {
-        private static readonly ILog Log = LogManager.GetLogger("SYS");
-
         public ILogger CreateLogger(string categoryName)
         {
             int separatorIndex = categoryName.LastIndexOf('.');
@@ -17,14 +15,14 @@ namespace AFMSDll
                 ? categoryName[(separatorIndex + 1)..]
                 : categoryName;
 
-            return new RnsLogLogger(Log, shortCategoryName);
+            return new RnsLogLogger(LogManager.GetLogger(shortCategoryName));
         }
 
         public void Dispose()
         {
         }
 
-        private sealed class RnsLogLogger(ILog log, string categoryName) : ILogger
+        private sealed class RnsLogLogger(ILog log) : ILogger
         {
             public IDisposable? BeginScope<TState>(TState state) where TState : notnull
             {
@@ -55,25 +53,24 @@ namespace AFMSDll
                 if (!IsEnabled(logLevel)) return;
 
                 string message = formatter(state, exception);
-                string logMessage = $"[{categoryName}] {message}";
 
                 switch (logLevel)
                 {
                     case LogLevel.Trace:
                     case LogLevel.Debug:
-                        log.Debug(logMessage, exception);
+                        log.Debug(message, exception);
                         break;
                     case LogLevel.Information:
-                        log.Info(logMessage, exception);
+                        log.Info(message, exception);
                         break;
                     case LogLevel.Warning:
-                        log.Warn(logMessage, exception);
+                        log.Warn(message, exception);
                         break;
                     case LogLevel.Error:
-                        log.Error(logMessage, exception);
+                        log.Error(message, exception);
                         break;
                     case LogLevel.Critical:
-                        log.Fatal(logMessage, exception);
+                        log.Fatal(message, exception);
                         break;
                 }
             }
