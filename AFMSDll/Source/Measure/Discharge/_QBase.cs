@@ -10,29 +10,13 @@ namespace AFMSDll
         private readonly ILog log;
 
         public int Id { get; set; } = -1;
-        public int SlotId { get; private set; } = -1;
-        public MeasurementDeviceType DeviceType { get; set; } = MeasurementDeviceType.None;
-        public int DeviceId { get; set; } = -1;
-        public string DeviceName { get; private set; } = string.Empty;
-        public string MeasurementTableName { get; private set; } = string.Empty;
-        public _FBTableBase? MeasurementTable { get; private set; }
-        public bool HasMeasurementStart { get; private set; }
-        public int MeasurementStartId { get; private set; } = -1;
-        public DateOnly MeasurementStartDate { get; private set; }
-        public TimeOnly MeasurementStartTime { get; private set; }
-        public DateTime? LastCalculatedSourceTime { get; private set; }
-        public int DischargeConfigId { get; set; } = -1;
-        public DateOnly MeasureDate { get; set; }
-        public TimeOnly MeasureTime { get; set; }
-        public double Value { get; set; }
-        public double Uncertainty { get; set; }
-        public DischargeMethod Method { get; }
-        public int MethodConfigId { get; set; } = -1;
-        public CrossSection CrossSection { get; } = new();
+        public QConfiguration Configuration { get; }
+        public QMeasurementContext Measurement { get; } = new();
+        public QCalculationContext Calculation { get; } = new();
 
         protected _QBase(DischargeMethod method)
         {
-            Method = method;
+            Configuration = new QConfiguration(method);
             log = LogManager.GetLogger(GetType());
         }
 
@@ -48,11 +32,15 @@ namespace AFMSDll
                 return false;
             }
 
-            if (received) return SlotId >= 0;
+            if (received && Calculation.SlotId >= 0)
+            {
+                if (!TryPrepareCalculationMeasurements(db, out bool loaded)) return false;
+                if (loaded) return true;
+            }
 
-            int previousId = MeasurementStartId;
-            DateOnly previousDate = MeasurementStartDate;
-            TimeOnly previousTime = MeasurementStartTime;
+            int previousId = Measurement.SourceId;
+            DateOnly previousDate = Measurement.SourceDate;
+            TimeOnly previousTime = Measurement.SourceTime;
 
             if (!TryMoveToNextReceivedMeasurement(db, out bool moved, out error))
             {
@@ -69,13 +57,39 @@ namespace AFMSDll
                 return false;
             }
 
-            log.Info(
-                $"유량 산정 시작값 이동: {GetLogContext()}, " +
+            log.Info($"유량 산정 시작값 이동: {GetLogContext()}, " +
                 $"이전 {previousId} ({previousDate:yyyy-MM-dd} {previousTime:HH:mm:ss}), " +
-                $"변경 {MeasurementStartId} ({MeasurementStartDate:yyyy-MM-dd} {MeasurementStartTime:HH:mm:ss}), " +
-                $"슬롯 {(hasSlot ? SlotId : -1)}");
+                $"변경 {Measurement.SourceId} ({Measurement.SourceDate:yyyy-MM-dd} {Measurement.SourceTime:HH:mm:ss}), " +
+                $"슬롯 {(hasSlot ? Calculation.SlotId : -1)}");
 
-            return hasSlot;
+            if (!hasSlot) return false;
+            return TryPrepareCalculationMeasurements(db, out bool movedMeasurementLoaded) &&
+                   movedMeasurementLoaded;
+        }
+
+        private bool TryPrepareCalculationMeasurements(FBDatabase db, out bool loaded)
+        {
+            if (!TryLoadCalculationMeasurements(db, out loaded, out string error))
+            {
+                LogFailure("산정 입력자료 조회 실패", error);
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// 현재 슬롯 산정에 추가로 필요한 수위 등의 입력자료를 불러옵니다.
+        /// </summary>
+        protected virtual bool TryLoadCalculationMeasurements(
+            FBDatabase db,
+            out bool loaded,
+            out string error)
+        {
+            ArgumentNullException.ThrowIfNull(db);
+            loaded = true;
+            error = string.Empty;
+            return true;
         }
 
         private void LogFailure(string operation, string error)
@@ -85,7 +99,17 @@ namespace AFMSDll
 
         private string GetLogContext()
         {
-            return $"{DeviceType} {DeviceId} ({DeviceName}), 산정법 {Method}";
+            return $"{Configuration.DeviceType} {Configuration.DeviceId} ({Measurement.DeviceName}), 산정법 {Configuration.Method}";
+        }
+
+        /// <summary>
+        /// 산정법별 설정정보를 불러옵니다. 파생 산정 객체에서 필요한 설정 조회를 구현합니다.
+        /// </summary>
+        public virtual bool TryLoadConfiguration(FBDatabase db, out string error)
+        {
+            ArgumentNullException.ThrowIfNull(db);
+            error = string.Empty;
+            return true;
         }
 
         /// <summary>
@@ -95,20 +119,20 @@ namespace AFMSDll
         {
             ArgumentNullException.ThrowIfNull(db);
 
-            DeviceName = string.Empty;
-            MeasurementTableName = string.Empty;
-            MeasurementTable = null;
+            Measurement.DeviceName = string.Empty;
+            Measurement.TableName = string.Empty;
+            Measurement.Table = null;
 
-            if (DeviceType == MeasurementDeviceType.WaterLevelGauge)
+            if (Configuration.DeviceType == MeasurementDeviceType.WaterLevelGauge)
             {
-                DeviceName = "시스템 수위계";
-                MeasurementTable = new FbtWATERLEVEL();
-                MeasurementTableName = MeasurementTable.GetTableName();
+                Measurement.DeviceName = "시스템 수위계";
+                Measurement.Table = new FbtWATERLEVEL();
+                Measurement.TableName = Measurement.Table.GetTableName();
                 error = string.Empty;
                 return true;
             }
 
-            if (DeviceType != MeasurementDeviceType.VelocityMeter || DeviceId < 0)
+            if (Configuration.DeviceType != MeasurementDeviceType.VelocityMeter || Configuration.DeviceId < 0)
             {
                 error = "조회할 유속계가 설정되지 않았습니다.";
                 return false;
@@ -119,29 +143,29 @@ namespace AFMSDll
             query.First = 1;
             query.Add(FbtAFMSHydroMeter.COL_DEVICE_NAME);
             query.Add(FbtAFMSHydroMeter.COL_DATA_TABLE);
-            query.Where(FbtAFMSHydroMeter.COL_ID, "=", DeviceId);
+            query.Where(FbtAFMSHydroMeter.COL_ID, "=", Configuration.DeviceId);
 
             DataTable table = db.Execute(query, out error);
             if (!string.IsNullOrEmpty(error)) return false;
             if (table.Rows.Count == 0)
             {
-                error = $"유속계 정보를 찾을 수 없습니다: DeviceId={DeviceId}";
+                error = $"유속계 정보를 찾을 수 없습니다: DeviceId={Configuration.DeviceId}";
                 return false;
             }
 
-            DeviceName = Convert.ToString(table.Rows[0][FbtAFMSHydroMeter.COL_DEVICE_NAME])?.Trim() ?? string.Empty;
-            MeasurementTableName = Convert.ToString(table.Rows[0][FbtAFMSHydroMeter.COL_DATA_TABLE])?.Trim() ?? string.Empty;
+            Measurement.DeviceName = Convert.ToString(table.Rows[0][FbtAFMSHydroMeter.COL_DEVICE_NAME])?.Trim() ?? string.Empty;
+            Measurement.TableName = Convert.ToString(table.Rows[0][FbtAFMSHydroMeter.COL_DATA_TABLE])?.Trim() ?? string.Empty;
 
-            if (string.Equals(MeasurementTableName, FbtHYDROMETERMPDS.TABLE_NAME, StringComparison.OrdinalIgnoreCase))
-                MeasurementTable = new FbtHYDROMETERMPDS();
-            else if (string.Equals(MeasurementTableName, FbtHYDROMETERVIDEO.TABLE_NAME, StringComparison.OrdinalIgnoreCase))
-                MeasurementTable = new FbtHYDROMETERVIDEO();
+            if (string.Equals(Measurement.TableName, FbtHYDROMETERMPDS.TABLE_NAME, StringComparison.OrdinalIgnoreCase))
+                Measurement.Table = new FbtHYDROMETERMPDS();
+            else if (string.Equals(Measurement.TableName, FbtHYDROMETERVIDEO.TABLE_NAME, StringComparison.OrdinalIgnoreCase))
+                Measurement.Table = new FbtHYDROMETERVIDEO();
 
-            if (MeasurementTable == null)
+            if (Measurement.Table == null)
             {
-                error = string.IsNullOrEmpty(MeasurementTableName)
-                    ? $"유속계의 데이터 테이블이 설정되지 않았습니다: DeviceId={DeviceId}"
-                    : $"지원하지 않는 유속계 데이터 테이블입니다: {MeasurementTableName}";
+                error = string.IsNullOrEmpty(Measurement.TableName)
+                    ? $"유속계의 데이터 테이블이 설정되지 않았습니다: DeviceId={Configuration.DeviceId}"
+                    : $"지원하지 않는 유속계 데이터 테이블입니다: {Measurement.TableName}";
                 return false;
             }
 
@@ -157,13 +181,13 @@ namespace AFMSDll
         {
             ArgumentNullException.ThrowIfNull(db);
 
-            MeasurementStartId = -1;
-            MeasurementStartDate = default;
-            MeasurementStartTime = default;
-            HasMeasurementStart = false;
-            LastCalculatedSourceTime = null;
+            Measurement.SourceId = -1;
+            Measurement.SourceDate = default;
+            Measurement.SourceTime = default;
+            Measurement.HasSource = false;
+            Measurement.LastCalculatedSourceTime = null;
 
-            if (MeasurementTable == null || string.IsNullOrEmpty(MeasurementTableName))
+            if (Measurement.Table == null || string.IsNullOrEmpty(Measurement.TableName))
             {
                 error = "측정 테이블이 연결되지 않았습니다.";
                 return false;
@@ -171,25 +195,25 @@ namespace AFMSDll
 
             string resultSql = $"SELECT MAX({FbtAFMSDischargeResult.COL_SOURCE_TIME})";
             resultSql += $" FROM {FbtAFMSDischargeResult.TABLE_NAME}";
-            resultSql += $" WHERE {FbtAFMSDischargeResult.COL_SOURCE_DEVICE_TYPE} = '{DeviceType}'";
-            resultSql += $" AND {FbtAFMSDischargeResult.COL_SOURCE_DEVICE_ID} = {DeviceId}";
-            resultSql += $" AND {FbtAFMSDischargeResult.COL_DISCHARGE_METHOD} = '{Method}'";
+            resultSql += $" WHERE {FbtAFMSDischargeResult.COL_SOURCE_DEVICE_TYPE} = '{Configuration.DeviceType}'";
+            resultSql += $" AND {FbtAFMSDischargeResult.COL_SOURCE_DEVICE_ID} = {Configuration.DeviceId}";
+            resultSql += $" AND {FbtAFMSDischargeResult.COL_DISCHARGE_METHOD} = '{Configuration.Method}'";
 
             DataTable resultTable = db.Execute(resultSql, out error);
             if (!string.IsNullOrEmpty(error)) return false;
 
             if (resultTable.Rows.Count > 0 && resultTable.Rows[0][0] != DBNull.Value)
-                LastCalculatedSourceTime = Convert.ToDateTime(resultTable.Rows[0][0]);
+                Measurement.LastCalculatedSourceTime = Convert.ToDateTime(resultTable.Rows[0][0]);
 
-            bool hasMeasurementId = DeviceType == MeasurementDeviceType.VelocityMeter;
+            bool hasMeasurementId = Configuration.DeviceType == MeasurementDeviceType.VelocityMeter;
             string sourceSql = "SELECT FIRST 1";
             if (hasMeasurementId) sourceSql += $" {FbtAFMSHydroMeter.COL_ID},";
             sourceSql += $" {FbtAFMSHydroMeter.COL_MEASURE_DATE},";
             sourceSql += $" {FbtAFMSHydroMeter.COL_MEASURE_TIME}";
-            sourceSql += $" FROM {MeasurementTableName}";
-            if (LastCalculatedSourceTime.HasValue)
+            sourceSql += $" FROM {Measurement.TableName}";
+            if (Measurement.LastCalculatedSourceTime.HasValue)
             {
-                string lastSourceDateTime = LastCalculatedSourceTime.Value.ToString("yyyyMMdd HHmmss", CultureInfo.InvariantCulture);
+                string lastSourceDateTime = Measurement.LastCalculatedSourceTime.Value.ToString("yyyyMMdd HHmmss", CultureInfo.InvariantCulture);
                 sourceSql += $" WHERE {_FBTableBase.SQL_MEASURE_DATETIME} > '{lastSourceDateTime}'";
             }
             sourceSql += $" ORDER BY {_FBTableBase.SQL_MEASURE_DATETIME}";
@@ -207,12 +231,12 @@ namespace AFMSDll
                 return false;
             }
 
-            MeasurementStartId = hasMeasurementId
+            Measurement.SourceId = hasMeasurementId
                 ? Convert.ToInt32(sourceRow[FbtAFMSHydroMeter.COL_ID])
                 : -1;
-            MeasurementStartDate = parsedDate;
-            MeasurementStartTime = parsedTime;
-            HasMeasurementStart = true;
+            Measurement.SourceDate = parsedDate;
+            Measurement.SourceTime = parsedTime;
+            Measurement.HasSource = true;
             error = string.Empty;
             return true;
         }
@@ -227,21 +251,21 @@ namespace AFMSDll
             received = false;
             error = string.Empty;
 
-            if (MeasurementTable == null || string.IsNullOrEmpty(MeasurementTableName))
+            if (Measurement.Table == null || string.IsNullOrEmpty(Measurement.TableName))
             {
                 error = "측정 테이블이 연결되지 않았습니다.";
                 return false;
             }
 
-            if (!HasMeasurementStart)
+            if (!Measurement.HasSource)
                 return true;
 
-            if (MeasurementTable is FbtWATERLEVEL)
+            if (Measurement.Table is FbtWATERLEVEL)
                 return TryCheckWaterLevelReceived(db, out received, out error);
 
-            if (MeasurementStartId < 0) return true;
+            if (Measurement.SourceId < 0) return true;
 
-            if (MeasurementTable is FbtHYDROMETERMPDS)
+            if (Measurement.Table is FbtHYDROMETERMPDS)
             {
                 return TryCheckCellDataReceived(
                     db,
@@ -253,7 +277,7 @@ namespace AFMSDll
                     out error);
             }
 
-            if (MeasurementTable is FbtHYDROMETERVIDEO)
+            if (Measurement.Table is FbtHYDROMETERVIDEO)
             {
                 return TryCheckCellDataReceived(
                     db,
@@ -265,7 +289,7 @@ namespace AFMSDll
                     out error);
             }
 
-            error = $"수신 완료 여부를 확인할 수 없는 측정 테이블입니다: {MeasurementTableName}";
+            error = $"수신 완료 여부를 확인할 수 없는 측정 테이블입니다: {Measurement.TableName}";
             return false;
         }
 
@@ -279,7 +303,7 @@ namespace AFMSDll
             moved = false;
             error = string.Empty;
 
-            if (!HasMeasurementStart || MeasurementTable is FbtWATERLEVEL)
+            if (!Measurement.HasSource || Measurement.Table is FbtWATERLEVEL)
                 return true;
 
             string expectedCountColumn;
@@ -287,14 +311,14 @@ namespace AFMSDll
             string cellTableName;
             string parentIdColumn;
 
-            if (MeasurementTable is FbtHYDROMETERMPDS)
+            if (Measurement.Table is FbtHYDROMETERMPDS)
             {
                 expectedCountColumn = FbtHYDROMETERMPDS.COL_DEVICE_COUNT;
                 measureOkColumn = FbtHYDROMETERMPDS.COL_MEASURE_OK;
                 cellTableName = FbtHYDROMETERMPDSCELL.TABLE_NAME;
                 parentIdColumn = FbtHYDROMETERMPDSCELL.COL_MPDS_ID;
             }
-            else if (MeasurementTable is FbtHYDROMETERVIDEO)
+            else if (Measurement.Table is FbtHYDROMETERVIDEO)
             {
                 expectedCountColumn = FbtHYDROMETERVIDEO.COL_CELL_COUNT;
                 measureOkColumn = FbtHYDROMETERVIDEO.COL_MEASURE_OK;
@@ -303,14 +327,14 @@ namespace AFMSDll
             }
             else
             {
-                error = $"다음 수신 완료 자료를 확인할 수 없는 측정 테이블입니다: {MeasurementTableName}";
+                error = $"다음 수신 완료 자료를 확인할 수 없는 측정 테이블입니다: {Measurement.TableName}";
                 return false;
             }
 
-            string currentDateTime = $"{MeasurementStartDate:yyyyMMdd} {MeasurementStartTime:HHmmss}";
+            string currentDateTime = $"{Measurement.SourceDate:yyyyMMdd} {Measurement.SourceTime:HHmmss}";
             string sql = $"SELECT FIRST 1 M.{_FBTableBase.COL_ID},";
             sql += $" M.{_FBTableBase.COL_MEASURE_DATE}, M.{_FBTableBase.COL_MEASURE_TIME}";
-            sql += $" FROM {MeasurementTableName} M";
+            sql += $" FROM {Measurement.TableName} M";
             sql += $" WHERE (M.{_FBTableBase.COL_MEASURE_DATE} || ' ' || M.{_FBTableBase.COL_MEASURE_TIME}) > '{currentDateTime}'";
             sql += $" AND (M.{measureOkColumn} IS NULL OR M.{measureOkColumn} = 1)";
             sql += $" AND (SELECT COUNT(*) FROM {cellTableName} C";
@@ -329,19 +353,19 @@ namespace AFMSDll
                 return false;
             }
 
-            MeasurementStartId = Convert.ToInt32(row[_FBTableBase.COL_ID]);
-            MeasurementStartDate = parsedDate;
-            MeasurementStartTime = parsedTime;
+            Measurement.SourceId = Convert.ToInt32(row[_FBTableBase.COL_ID]);
+            Measurement.SourceDate = parsedDate;
+            Measurement.SourceTime = parsedTime;
             moved = true;
             return true;
         }
 
         private bool TryCheckWaterLevelReceived(FBDatabase db, out bool received, out string error)
         {
-            string date = MeasurementStartDate.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
-            string time = MeasurementStartTime.ToString("HHmmss", CultureInfo.InvariantCulture);
+            string date = Measurement.SourceDate.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+            string time = Measurement.SourceTime.ToString("HHmmss", CultureInfo.InvariantCulture);
             string sql = "SELECT COUNT(*)";
-            sql += $" FROM {MeasurementTableName}";
+            sql += $" FROM {Measurement.TableName}";
             sql += $" WHERE {_FBTableBase.COL_MEASURE_DATE} = '{date}'";
             sql += $" AND {_FBTableBase.COL_MEASURE_TIME} = '{time}'";
 
@@ -364,8 +388,8 @@ namespace AFMSDll
             received = false;
 
             string masterSql = $"SELECT FIRST 1 {expectedCountColumn}, {measureOkColumn}";
-            masterSql += $" FROM {MeasurementTableName}";
-            masterSql += $" WHERE {_FBTableBase.COL_ID} = {MeasurementStartId}";
+            masterSql += $" FROM {Measurement.TableName}";
+            masterSql += $" WHERE {_FBTableBase.COL_ID} = {Measurement.SourceId}";
 
             DataTable masterTable = db.Execute(masterSql, out error);
             if (!string.IsNullOrEmpty(error)) return false;
@@ -379,7 +403,7 @@ namespace AFMSDll
                 return true;
 
             string cellSql = $"SELECT COUNT(*) FROM {cellTableName}";
-            cellSql += $" WHERE {parentIdColumn} = {MeasurementStartId}";
+            cellSql += $" WHERE {parentIdColumn} = {Measurement.SourceId}";
 
             DataTable cellTable = db.Execute(cellSql, out error);
             if (!string.IsNullOrEmpty(error)) return false;
@@ -411,12 +435,12 @@ namespace AFMSDll
             sql += " WHERE NOT EXISTS (";
             sql += $"SELECT 1 FROM {FbtAFMSDischargeResult.TABLE_NAME} R";
             sql += $" WHERE R.{FbtAFMSDischargeResult.COL_SLOT_ID} = S.{FbtAFMSDischargeTimeslot.COL_ID}";
-            sql += $" AND R.{FbtAFMSDischargeResult.COL_SOURCE_DEVICE_TYPE} = '{DeviceType}'";
-            sql += $" AND R.{FbtAFMSDischargeResult.COL_SOURCE_DEVICE_ID} = {DeviceId}";
-            sql += $" AND R.{FbtAFMSDischargeResult.COL_DISCHARGE_METHOD} = '{Method}')";
-            if (HasMeasurementStart)
+            sql += $" AND R.{FbtAFMSDischargeResult.COL_SOURCE_DEVICE_TYPE} = '{Configuration.DeviceType}'";
+            sql += $" AND R.{FbtAFMSDischargeResult.COL_SOURCE_DEVICE_ID} = {Configuration.DeviceId}";
+            sql += $" AND R.{FbtAFMSDischargeResult.COL_DISCHARGE_METHOD} = '{Configuration.Method}')";
+            if (Measurement.HasSource)
             {
-                string measurementStart = $"{MeasurementStartDate:yyyyMMdd} {MeasurementStartTime:HHmmss}";
+                string measurementStart = $"{Measurement.SourceDate:yyyyMMdd} {Measurement.SourceTime:HHmmss}";
                 sql += $" AND (S.{FbtAFMSDischargeTimeslot.COL_MEASURE_DATE} || ' ' || S.{FbtAFMSDischargeTimeslot.COL_MEASURE_TIME}) >= '{measurementStart}'";
             }
             sql += $" ORDER BY S.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME}";
@@ -439,9 +463,9 @@ namespace AFMSDll
                 return false;
             }
 
-            SlotId = Convert.ToInt32(row[FbtAFMSDischargeTimeslot.COL_ID]);
-            MeasureDate = parsedDate;
-            MeasureTime = parsedTime;
+            Calculation.SlotId = Convert.ToInt32(row[FbtAFMSDischargeTimeslot.COL_ID]);
+            Calculation.SlotDate = parsedDate;
+            Calculation.SlotTime = parsedTime;
             return true;
         }
 
@@ -460,11 +484,11 @@ namespace AFMSDll
 
         private string ValidateCalculationKey()
         {
-            if (DeviceType == MeasurementDeviceType.None)
+            if (Configuration.DeviceType == MeasurementDeviceType.None)
                 return "측정장비 유형이 설정되지 않았습니다.";
-            if (DeviceId < 0)
+            if (Configuration.DeviceId < 0)
                 return "측정장비 ID가 설정되지 않았습니다.";
-            if (Method == DischargeMethod.None)
+            if (Configuration.Method == DischargeMethod.None)
                 return "유량 산정법이 설정되지 않았습니다.";
 
             return string.Empty;
@@ -472,9 +496,7 @@ namespace AFMSDll
 
         private void ClearStartSlot()
         {
-            SlotId = -1;
-            MeasureDate = default;
-            MeasureTime = default;
+            Calculation.ClearSlot();
         }
     }
 }

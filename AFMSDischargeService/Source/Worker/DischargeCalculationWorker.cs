@@ -15,9 +15,7 @@ namespace AFMSDischargeService
             LoadCalculators(stoppingToken);
             InitializeCalculators(stoppingToken);
 
-            logger.LogInformation(
-                "서비스 시작 설정을 기준으로 유량 산정 객체 {Count}개를 준비했습니다.",
-                calculators.Count);
+            logger.LogInformation("서비스 시작 설정을 기준으로 유량 산정 객체 {Count}개를 준비했습니다.", calculators.Count);
 
             using PeriodicTimer timer = new(PollInterval);
             try
@@ -43,22 +41,27 @@ namespace AFMSDischargeService
 
         private void LogReadyMeasurement(_QBase calculator)
         {
-            string key = $"{calculator.DeviceType}:{calculator.DeviceId}:{calculator.Method}:" +
-                         $"{calculator.MeasurementStartId}:{calculator.MeasurementStartDate:yyyyMMdd}:" +
-                         $"{calculator.MeasurementStartTime:HHmmss}";
+            QConfiguration config = calculator.Configuration;
+            QMeasurementContext measurement = calculator.Measurement;
+            QCalculationContext calculation = calculator.Calculation;
+
+            string key = $"{config.DeviceType}:{config.DeviceId}:{config.Method}:" +
+                         $"{measurement.SourceId}:{measurement.SourceDate:yyyyMMdd}:" +
+                         $"{measurement.SourceTime:HHmmss}";
+
             if (!loggedReadyMeasurements.Add(key)) return;
 
             logger.LogInformation(
                 "산정 가능 데이터 발견: {DeviceType} {DeviceId} ({DeviceName}), 산정법 {Method}, 측정 테이블 {MeasurementTable}, 측정값 {MeasurementId} ({MeasurementDate} {MeasurementTime}), 슬롯 {SlotId}",
-                calculator.DeviceType,
-                calculator.DeviceId,
-                calculator.DeviceName,
-                calculator.Method,
-                calculator.MeasurementTable!.GetTableName(),
-                calculator.MeasurementStartId,
-                calculator.MeasurementStartDate,
-                calculator.MeasurementStartTime,
-                calculator.SlotId);
+                config.DeviceType,
+                config.DeviceId,
+                measurement.DeviceName,
+                config.Method,
+                measurement.Table!.GetTableName(),
+                measurement.SourceId,
+                measurement.SourceDate,
+                measurement.SourceTime,
+                calculation.SlotId);
         }
 
         private void LoadCalculators(CancellationToken stoppingToken)
@@ -96,9 +99,9 @@ namespace AFMSDischargeService
                 _QBase? calculator = CreateCalculator(method);
                 if (calculator == null || !IsSupportedDevice(method, deviceType)) continue;
 
-                calculator.DischargeConfigId = Convert.ToInt32(row[FbtAFMSDischargeConfig.COL_ID]);
-                calculator.DeviceType = deviceType;
-                calculator.DeviceId = Convert.ToInt32(row[FbtAFMSDischargeConfig.COL_DEVICE_ID]);
+                calculator.Configuration.DischargeConfigId = Convert.ToInt32(row[FbtAFMSDischargeConfig.COL_ID]);
+                calculator.Configuration.DeviceType = deviceType;
+                calculator.Configuration.DeviceId = Convert.ToInt32(row[FbtAFMSDischargeConfig.COL_DEVICE_ID]);
                 calculators.Add(calculator);
             }
         }
@@ -112,18 +115,25 @@ namespace AFMSDischargeService
             {
                 stoppingToken.ThrowIfCancellationRequested();
 
-                calculator.MethodConfigId = GetLatestMethodConfigId(
+                calculator.Configuration.MethodConfigId = GetLatestMethodConfigId(
                     db,
-                    calculator.Method,
-                    calculator.DeviceType,
-                    calculator.DeviceId);
-                if (calculator.MethodConfigId < 0) continue;
+                    calculator.Configuration.Method,
+                    calculator.Configuration.DeviceType,
+                    calculator.Configuration.DeviceId);
+                if (calculator.Configuration.MethodConfigId < 0) continue;
+
+                if (!calculator.TryLoadConfiguration(db, out string configurationError))
+                {
+                    throw new InvalidOperationException(
+                        $"유량 산정 설정 조회 실패 " +
+                        $"({calculator.Configuration.DeviceType} {calculator.Configuration.DeviceId}, {calculator.Configuration.Method}): {configurationError}");
+                }
 
                 if (!calculator.TryConnectMeasurementTable(db, out string measurementTableError))
                 {
                     throw new InvalidOperationException(
                         $"측정 테이블 연결 실패 " +
-                        $"({calculator.DeviceType} {calculator.DeviceId}, {calculator.Method}): {measurementTableError}");
+                        $"({calculator.Configuration.DeviceType} {calculator.Configuration.DeviceId}, {calculator.Configuration.Method}): {measurementTableError}");
                 }
 
                 bool hasMeasurementStart = calculator.TryLoadMeasurementStart(db, out string measurementStartError);
@@ -131,7 +141,7 @@ namespace AFMSDischargeService
                 {
                     throw new InvalidOperationException(
                         $"유속 자료 시작값 조회 실패 " +
-                        $"({calculator.DeviceType} {calculator.DeviceId}, {calculator.Method}): {measurementStartError}");
+                        $"({calculator.Configuration.DeviceType} {calculator.Configuration.DeviceId}, {calculator.Configuration.Method}): {measurementStartError}");
                 }
 
                 bool hasStartSlot = calculator.TryLoadStartSlot(db, out string startSlotError);
@@ -139,26 +149,26 @@ namespace AFMSDischargeService
                 {
                     throw new InvalidOperationException(
                         $"유량 산정 시작 슬롯 조회 실패 " +
-                        $"({calculator.DeviceType} {calculator.DeviceId}, {calculator.Method}): {startSlotError}");
+                        $"({calculator.Configuration.DeviceType} {calculator.Configuration.DeviceId}, {calculator.Configuration.Method}): {startSlotError}");
                 }
 
                 initializedCalculators.Add(calculator);
 
-                string lastCalculatedSource = calculator.LastCalculatedSourceTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "없음";
+                string lastCalculatedSource = calculator.Measurement.LastCalculatedSourceTime?.ToString("yyyy-MM-dd HH:mm:ss") ?? "없음";
                 string measurementStart = hasMeasurementStart
-                    ? $"{calculator.MeasurementStartId} ({calculator.MeasurementStartDate:yyyy-MM-dd} {calculator.MeasurementStartTime:HH:mm:ss})"
+                    ? $"{calculator.Measurement.SourceId} ({calculator.Measurement.SourceDate:yyyy-MM-dd} {calculator.Measurement.SourceTime:HH:mm:ss})"
                     : "없음";
                 string slotStart = hasStartSlot
-                    ? $"{calculator.SlotId} ({calculator.MeasureDate:yyyy-MM-dd} {calculator.MeasureTime:HH:mm:ss})"
+                    ? $"{calculator.Calculation.SlotId} ({calculator.Calculation.SlotDate:yyyy-MM-dd} {calculator.Calculation.SlotTime:HH:mm:ss})"
                     : "없음";
 
                 logger.LogInformation(
                     "유량 산정 객체 시작값: {DeviceType} {DeviceId} ({DeviceName}), 산정법 {Method}, 측정 테이블 {MeasurementTable}, 마지막 산정값 {LastCalculatedSource}, 유속 시작값 {MeasurementStart}, 슬롯 시작값 {SlotStart}",
-                    calculator.DeviceType,
-                    calculator.DeviceId,
-                    calculator.DeviceName,
-                    calculator.Method,
-                    calculator.MeasurementTable!.GetTableName(),
+                    calculator.Configuration.DeviceType,
+                    calculator.Configuration.DeviceId,
+                    calculator.Measurement.DeviceName,
+                    calculator.Configuration.Method,
+                    calculator.Measurement.Table!.GetTableName(),
                     lastCalculatedSource,
                     measurementStart,
                     slotStart);
