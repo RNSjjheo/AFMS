@@ -52,9 +52,7 @@ namespace AFMSDll
             sql += "\n" + $"{COL_ERROR_CODE} VARCHAR(50),";
             sql += "\n" + $"CONSTRAINT PK_AFMS_DIS_RESULT PRIMARY KEY({COL_ID}),";
             sql += "\n" + $"CONSTRAINT UQ_AFMS_DIS_RESULT UNIQUE(";
-            sql += $"{COL_SLOT_ID}, {COL_HYDRO_ID}, {COL_DISCHARGE_METHOD}),";
-            sql += "\n" + $"CONSTRAINT FK_DIS_RESULT_SLOT FOREIGN KEY({COL_SLOT_ID})";
-            sql += $" REFERENCES {FbtAFMSDischargeTimeslot.TABLE_NAME}({COL_ID})";
+            sql += $"{COL_SLOT_ID}, {COL_HYDRO_ID}, {COL_DISCHARGE_METHOD})";
             sql += "\n" + ")";
 
             return sql;

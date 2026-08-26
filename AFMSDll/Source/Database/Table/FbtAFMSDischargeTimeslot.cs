@@ -24,6 +24,8 @@ namespace AFMSDll
         {
             string sql = $"CREATE TABLE {TABLE_NAME} (";
             sql += "\n" + $"{COL_ID} INTEGER NOT NULL,";
+            sql += "\n" + $"{COL_MEASURE_DATE} VARCHAR(8) NOT NULL,";
+            sql += "\n" + $"{COL_MEASURE_TIME} VARCHAR(8) NOT NULL,";
             sql += "\n" + $"{COL_SLOT_TIME} TIMESTAMP NOT NULL,";
             sql += "\n" + $"{COL_STATUS} VARCHAR(20) DEFAULT '{STATUS_WAITING}' NOT NULL,";
             sql += "\n" + $"{COL_CREATED_AT} TIMESTAMP DEFAULT CURRENT_TIMESTAMP NOT NULL,";
@@ -33,6 +35,25 @@ namespace AFMSDll
             sql += "\n" + ")";
 
             return sql;
+        }
+
+        public override string CheckNewColumn(FBDatabase db)
+        {
+            string result;
+
+            if (!HasColumn(db, COL_MEASURE_DATE))
+            {
+                result = AddColumn(db, COL_MEASURE_DATE, "VARCHAR(8)");
+                if (!string.IsNullOrEmpty(result)) return result;
+            }
+
+            if (!HasColumn(db, COL_MEASURE_TIME))
+            {
+                result = AddColumn(db, COL_MEASURE_TIME, "VARCHAR(8)");
+                if (!string.IsNullOrEmpty(result)) return result;
+            }
+
+            return string.Empty;
         }
     }
 }

@@ -134,6 +134,36 @@ namespace AFMSDll
             return result;
         }
 
+        public List<string> CheckDischargeTables()
+        {
+            List<string> result = new List<string>();
+            _FBTableBase[] dischargeTables =
+            {
+                new FbtAFMSDischargeTimeslot(),
+                new FbtAFMSDischargeResult()
+            };
+
+            using FBDatabase db = new FBDatabase(ConnStrBuilder);
+            foreach (_FBTableBase table in dischargeTables)
+            {
+                string tableName = table.GetTableName();
+                if (!ExistTable(tableName))
+                {
+                    db.Execute(table.GetCreateTableSql(), out string error);
+                    if (!string.IsNullOrEmpty(error))
+                    {
+                        result.Add(error);
+                        continue;
+                    }
+                }
+
+                string columnError = table.CheckNewColumn(db);
+                if (!string.IsNullOrEmpty(columnError)) result.Add(columnError);
+            }
+
+            return result;
+        }
+
         public void Sync()
         {
             FBHydorManger.SyncAdd();
