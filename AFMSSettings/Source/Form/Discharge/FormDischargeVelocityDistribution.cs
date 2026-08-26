@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 
-namespace AFMSSettings.Source.Form.Discharge
+namespace AFMSSettings
 {
     public sealed class FormDischargeVelocityDistribution : _FormDischargeBase
     {
