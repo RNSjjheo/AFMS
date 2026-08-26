@@ -15,7 +15,7 @@ namespace AFMSDll
             sql += "\n" + $"{COL_ID} INTEGER NOT NULL,";
             sql += "\n" + $"{COL_MEASURE_DATE} VARCHAR(8) NOT NULL,";
             sql += "\n" + $"{COL_MEASURE_TIME} VARCHAR(8) NOT NULL,";
-            sql += "\n" + $"{COL_DESCRIPTION} VARCHAR(64) NOT NULL,";
+            sql += "\n" + $"{COL_DESCRIPTION} VARCHAR(64) CHARACTER SET UTF8 NOT NULL,";
             sql += "\n" + $"{COL_POINT_COUNT} INTEGER NOT NULL,";
             sql += "\n" + $"{COL_ZERO_POINT_ELEVATION} DOUBLE PRECISION NOT NULL,";
             sql += "\n" + $"{COL_POINT_DATA} BLOB SUB_TYPE TEXT CHARACTER SET UTF8 NOT NULL,";
