@@ -8,6 +8,7 @@ namespace AFMSDischargeService
     {
         private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(10);
         private readonly List<_QBase> calculators = new();
+        private readonly HashSet<string> loggedReadyMeasurements = new();
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -23,17 +24,41 @@ namespace AFMSDischargeService
             {
                 while (await timer.WaitForNextTickAsync(stoppingToken))
                 {
+                    using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
+
                     foreach (_QBase calculator in calculators)
                     {
                         stoppingToken.ThrowIfCancellationRequested();
+                        if (!calculator.PrepareNextCalculation(db)) continue;
+                        LogReadyMeasurement(calculator);
 
-                        // 슬롯별 입력 자료 확인과 유량 산정은 다음 구현에서 수행합니다.
+                        // 시작값의 입력자료가 모두 수신된 산정 객체만 이후 유량 산정을 수행합니다.
                     }
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
             }
+        }
+
+        private void LogReadyMeasurement(_QBase calculator)
+        {
+            string key = $"{calculator.DeviceType}:{calculator.DeviceId}:{calculator.Method}:" +
+                         $"{calculator.MeasurementStartId}:{calculator.MeasurementStartDate:yyyyMMdd}:" +
+                         $"{calculator.MeasurementStartTime:HHmmss}";
+            if (!loggedReadyMeasurements.Add(key)) return;
+
+            logger.LogInformation(
+                "산정 가능 데이터 발견: {DeviceType} {DeviceId} ({DeviceName}), 산정법 {Method}, 측정 테이블 {MeasurementTable}, 측정값 {MeasurementId} ({MeasurementDate} {MeasurementTime}), 슬롯 {SlotId}",
+                calculator.DeviceType,
+                calculator.DeviceId,
+                calculator.DeviceName,
+                calculator.Method,
+                calculator.MeasurementTable!.GetTableName(),
+                calculator.MeasurementStartId,
+                calculator.MeasurementStartDate,
+                calculator.MeasurementStartTime,
+                calculator.SlotId);
         }
 
         private void LoadCalculators(CancellationToken stoppingToken)
