@@ -181,7 +181,7 @@ namespace AFMSSettings
         private void UiComboMethod_SelectedIndexChanged(object? sender, EventArgs e)
         {
             ClearDetailPanels();
-            SelectCompatibleDevice();
+            LoadHydroCombo();
             SelectMethodPage();
         }
 
@@ -271,6 +271,17 @@ namespace AFMSSettings
 
             uiComboHydro.ClearItems();
 
+            if (IsRatingCurveSelected())
+            {
+                uiComboHydro.Add(new DeviceComboItem(
+                    MeasurementDeviceType.WaterLevelGauge,
+                    0,
+                    "시스템 수위계",
+                    0));
+                uiComboHydro.SelectedIndex = 0;
+                return;
+            }
+
             QueryBuilderSelect query = new QueryBuilderSelect();
             query.Table = FbtAFMSHydroMeter.TABLE_NAME;
             query.Add(FbtAFMSHydroMeter.COL_ID);
@@ -295,37 +306,17 @@ namespace AFMSSettings
                     selectedIndex = uiComboHydro.Items.Count - 1;
             }
 
-            uiComboHydro.Add(new DeviceComboItem(
-                MeasurementDeviceType.WaterLevelGauge,
-                0,
-                "시스템 수위계",
-                0));
-            if (selectedDeviceType == MeasurementDeviceType.WaterLevelGauge)
-                selectedIndex = uiComboHydro.Items.Count - 1;
-
             if (selectedIndex >= 0) uiComboHydro.SelectedIndex = selectedIndex;
             else if (uiComboHydro.Items.Count > 0) uiComboHydro.SelectedIndex = 0;
         }
 
-        private void SelectCompatibleDevice()
+        private bool IsRatingCurveSelected()
         {
             string methodText = uiComboMethod.SelectedItem?.ToString() ?? string.Empty;
-            bool needsWaterLevel = string.Equals(
+            return string.Equals(
                 methodText,
                 EnumPaser.GetKorString(DischargeMethod.RatingCurve),
                 StringComparison.Ordinal);
-
-            for (int i = 0; i < uiComboHydro.Items.Count; i++)
-            {
-                if (uiComboHydro.Items[i] is not DeviceComboItem item) continue;
-                bool compatible = needsWaterLevel
-                    ? item.DeviceType == MeasurementDeviceType.WaterLevelGauge
-                    : item.DeviceType == MeasurementDeviceType.VelocityMeter;
-                if (!compatible) continue;
-
-                uiComboHydro.SelectedIndex = i;
-                return;
-            }
         }
 
         private int GetSelectedVelocityMeterId()
@@ -340,7 +331,6 @@ namespace AFMSSettings
         {
             uiTabPageMapping.LoadData();
             LoadHydroCombo();
-            SelectCompatibleDevice();
             SelectMethodPage();
         }
     }
