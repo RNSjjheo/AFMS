@@ -42,8 +42,8 @@ namespace AFMSSettings
             main.Margin = Padding.Empty;
             main.ColumnCount = 2;
             main.RowCount = 1;
-            main.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 70F));
-            main.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
+            main.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 85F));
+            main.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 15F));
             main.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
             AFMSSectionPanel settings = CreateSectionPanel();

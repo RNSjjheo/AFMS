@@ -47,8 +47,6 @@ namespace AFMSSettings
             QueryBuilderSelect query = new();
             query.Table = FbtAFMSDiscAttrVelocityDistribution.TABLE_NAME;
             query.Add(FbtAFMSDiscAttrVelocityDistribution.COL_ID);
-            query.Add(FbtAFMSDiscAttrVelocityDistribution.COL_MEASURE_DATE);
-            query.Add(FbtAFMSDiscAttrVelocityDistribution.COL_MEASURE_TIME);
             query.Add(FbtAFMSDiscAttrVelocityDistribution.COL_DIS_VER);
             query.Add(FbtAFMSDiscAttrVelocityDistribution.COL_HYDRO_ID);
             query.Add(FbtAFMSDiscAttrVelocityDistribution.COL_PHI);
@@ -79,10 +77,8 @@ namespace AFMSSettings
             SetColumnVisible(grid, FbtAFMSDiscAttrVelocityDistribution.COL_DIS_VER, false);
             SetColumnVisible(grid, FbtAFMSDiscAttrVelocityDistribution.COL_HYDRO_ID, false);
             SetColumnVisible(grid, FbtAFMSDiscAttrVelocityDistribution.COL_TRANSECT_NOS, false);
-            SetColumnStyle(grid, COL_NO, "No.", 7F);
-            SetColumnStyle(grid, FbtAFMSDiscAttrVelocityDistribution.COL_MEASURE_DATE, "입력일자", 13F);
-            SetColumnStyle(grid, FbtAFMSDiscAttrVelocityDistribution.COL_MEASURE_TIME, "입력시간", 11F);
-            SetColumnStyle(grid, FbtAFMSDiscAttrVelocityDistribution.COL_PHI, "φ", 8F, "0.000");
+            SetColumnStyle(grid, COL_NO, "No.", 9F);
+            SetColumnStyle(grid, FbtAFMSDiscAttrVelocityDistribution.COL_PHI, "φ", 10F, "0.000");
             SetColumnStyle(grid, FbtAFMSDiscAttrVelocityDistribution.COL_HORIZONTAL_GRID_M, "횡격자", 10F, "0.00");
             SetColumnStyle(grid, FbtAFMSDiscAttrVelocityDistribution.COL_VERTICAL_GRID_M, "종격자", 10F, "0.00");
             SetColumnStyle(grid, FbtAFMSDiscAttrVelocityDistribution.COL_MAX_VELOCITY_DEPTH_RATIO, "최대유속 수심비", 13F, "0.00");
