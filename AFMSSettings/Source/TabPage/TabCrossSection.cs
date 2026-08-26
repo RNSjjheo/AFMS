@@ -8,7 +8,7 @@ using System.Text;
 
 namespace AFMSSettings
 {
-    internal class TabAreaManage : _TabBase
+    internal class TabCrossSection : _TabBase
     {
         private const string COL_DATA = "단면값";
         private const string COL_INDEX = "번호";
@@ -32,7 +32,7 @@ namespace AFMSSettings
         private int _lastSelectedId = -1;
         private bool _selectLastArea;
 
-        public TabAreaManage()
+        public TabCrossSection()
         {
             Text = "단면설정";
             Desc = "csv 형태의 단면 자료를 입력합니다";

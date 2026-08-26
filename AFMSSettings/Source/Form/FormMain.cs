@@ -43,7 +43,7 @@ namespace AFMSSettings
 
             afmsTabControl1.TabHeight = 40;
             afmsTabControl1.TabPages.Add(new TabHydroMeter());
-            afmsTabControl1.TabPages.Add(new TabAreaManage());
+            afmsTabControl1.TabPages.Add(new TabCrossSection());
             afmsTabControl1.TabPages.Add(new TabDischarge());
         }
 
