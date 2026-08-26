@@ -50,8 +50,51 @@ namespace AFMSDll
         private double _xInterval = 10.0;
         private double _yInterval = 1.0;
         private AFMSChartAspectMode _aspectMode = AFMSChartAspectMode.Fit;
+        private bool _showTransectAreas = true;
+        private int _transectAreaOpacity = 65;
+        private Color _transectAreaColor = Color.FromArgb(0, 90, 125);
         [Browsable(false)]
         public CrossSectionPointCollection Data => _points;
+
+        [Category("AFMS Transect")]
+        [DefaultValue(true)]
+        public bool ShowTransectAreas
+        {
+            get => _showTransectAreas;
+            set
+            {
+                if (_showTransectAreas == value) return;
+                _showTransectAreas = value;
+                Invalidate();
+            }
+        }
+
+        [Category("AFMS Transect")]
+        [DefaultValue(65)]
+        public int TransectAreaOpacity
+        {
+            get => _transectAreaOpacity;
+            set
+            {
+                int opacity = Math.Max(0, Math.Min(100, value));
+                if (_transectAreaOpacity == opacity) return;
+                _transectAreaOpacity = opacity;
+                Invalidate();
+            }
+        }
+
+        [Category("AFMS Transect")]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+        public Color TransectAreaColor
+        {
+            get => _transectAreaColor;
+            set
+            {
+                if (_transectAreaColor == value) return;
+                _transectAreaColor = value;
+                Invalidate();
+            }
+        }
 
 
         public AFMSAreaChart()
@@ -231,12 +274,75 @@ namespace AFMSDll
 
             DrawWater(g, plotRect, minY, maxY);
             DrawArea(g, plotRect, profilePoints);
+            DrawTransectAreas(g, plotRect, minX, maxX, minY, maxY);
             DrawWaterLevel(g, plotRect, minX, maxX, minY, maxY);
 
             g.Restore(clipState);
 
             DrawTransectMarkers(g, plotRect, minX, maxX);
             DrawAxisTitles(g, plotRect);
+        }
+
+        private void DrawTransectAreas(
+            Graphics g, Rectangle rect, double minX, double maxX, double minY, double maxY)
+        {
+            if (!ShowTransectAreas || TransectAreaOpacity <= 0 || _transectMarkers.Count == 0 ||
+                !_points.WaterLevel.HasValue) return;
+
+            double waterLevel = _points.WaterLevel.Value;
+            float waterY = ConvertY(waterLevel, rect, minY, maxY);
+            float markerY = rect.Top + (rect.Height * 0.1F);
+            if (waterY <= markerY || waterY > rect.Bottom) return;
+
+            List<(float StartX, float EndX)> wetSegments = GetWaterSurfaceSegments(rect, waterLevel, minX, maxX);
+            if (wetSegments.Count == 0) return;
+
+            List<AFMSChartTransectMarker> markers = _transectMarkers
+                .OrderBy(marker => marker.LeftBankDistance)
+                .ToList();
+            int alpha = (int)Math.Round(255.0 * TransectAreaOpacity / 100.0);
+            using SolidBrush brush = new SolidBrush(Color.FromArgb(alpha, TransectAreaColor));
+
+            for (int i = 0; i < markers.Count; i++)
+            {
+                float markerX = ConvertX(markers[i].LeftBankDistance, rect, minX, maxX);
+                (float StartX, float EndX)? wetSegment = FindContainingWaterSegment(wetSegments, markerX);
+                if (!wetSegment.HasValue) continue;
+
+                float leftBoundary = i == 0
+                    ? wetSegment.Value.StartX
+                    : ConvertX(
+                        (markers[i - 1].LeftBankDistance + markers[i].LeftBankDistance) / 2.0,
+                        rect, minX, maxX);
+                float rightBoundary = i == markers.Count - 1
+                    ? wetSegment.Value.EndX
+                    : ConvertX(
+                        (markers[i].LeftBankDistance + markers[i + 1].LeftBankDistance) / 2.0,
+                        rect, minX, maxX);
+
+                leftBoundary = Math.Max(wetSegment.Value.StartX, leftBoundary);
+                rightBoundary = Math.Min(wetSegment.Value.EndX, rightBoundary);
+                if (rightBoundary <= leftBoundary) continue;
+
+                PointF[] triangle =
+                {
+                    new PointF(markerX, markerY),
+                    new PointF(rightBoundary, waterY),
+                    new PointF(leftBoundary, waterY)
+                };
+                g.FillPolygon(brush, triangle);
+            }
+        }
+
+        private static (float StartX, float EndX)? FindContainingWaterSegment(
+            IEnumerable<(float StartX, float EndX)> segments, float x)
+        {
+            foreach ((float startX, float endX) in segments)
+            {
+                if (x >= startX && x <= endX) return (startX, endX);
+            }
+
+            return null;
         }
 
         private void ApplyAspectMode(Rectangle rect, ref double minX, ref double maxX, ref double minY, ref double maxY)

@@ -31,6 +31,18 @@ namespace AFMSSettings
         private readonly AFMSButtonGroup _chartRatio;
         private readonly TransectCollection _selectedTransects = new();
 
+        public bool ShowTransectAreas
+        {
+            get => _chart.ShowTransectAreas;
+            set => _chart.ShowTransectAreas = value;
+        }
+
+        public int TransectAreaOpacity
+        {
+            get => _chart.TransectAreaOpacity;
+            set => _chart.TransectAreaOpacity = value;
+        }
+
         public CrossSectionChartPanel()
         {
             Dock = DockStyle.Fill;
