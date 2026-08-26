@@ -56,7 +56,12 @@ namespace AFMSDll
             }
 
             string tag = loggingEvent.LoggerName ?? string.Empty;
-            if (tag.Length > width) tag = tag[..width];
+            if (tag.Length > width)
+            {
+                tag = width <= 2
+                    ? new string('.', width)
+                    : $"{tag[..(width - 2)]}..";
+            }
             writer.Write(tag.PadRight(width));
         }
     }
