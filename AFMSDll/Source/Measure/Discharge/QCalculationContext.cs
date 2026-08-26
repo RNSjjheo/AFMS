@@ -14,15 +14,15 @@ namespace AFMSDll
     /// </summary>
     public sealed class QCalculationContext
     {
-        public int SlotId { get; internal set; } = -1;
-        public DateOnly SlotDate { get; internal set; }
-        public TimeOnly SlotTime { get; internal set; }
+        public int SlotId { get; set; } = -1;
+        public DateOnly SlotDate { get; set; }
+        public TimeOnly SlotTime { get; set; }
         public double CrossSectionArea { get; set; }
         public double Velocity { get; set; }
         public double Value { get; set; }
         public double Uncertainty { get; set; }
 
-        internal void ClearSlot()
+        public void ClearSlot()
         {
             SlotId = -1;
             SlotDate = default;

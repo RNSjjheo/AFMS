@@ -7,7 +7,7 @@ namespace AFMSDischargeService
         ILogger<DischargeCalculationWorker> logger) : BackgroundService
     {
         private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(10);
-        private readonly List<_QBase> calculators = new();
+        private readonly List<QCalculatorBase> calculators = new();
         private readonly HashSet<string> loggedReadyMeasurements = new();
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -37,7 +37,7 @@ namespace AFMSDischargeService
                     bool calculationCompleted = false;
                     using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
 
-                    foreach (_QBase calculator in calculators)
+                    foreach (QCalculatorBase calculator in calculators)
                     {
                         stoppingToken.ThrowIfCancellationRequested();
                         if (!calculator.IsImplemented) continue;
@@ -70,7 +70,7 @@ namespace AFMSDischargeService
 
             for (int index = 0; index < calculators.Count; index++)
             {
-                _QBase calculator = calculators[index];
+                QCalculatorBase calculator = calculators[index];
                 QConfiguration config = calculator.Configuration;
                 logger.LogInformation(
                     "유량 객체 [{Index}/{Count}]: {DeviceType} {DeviceId} ({DeviceName}), {MethodName}",
@@ -85,7 +85,7 @@ namespace AFMSDischargeService
 
         private void LogCurrentTargets(string reason)
         {
-            foreach (_QBase calculator in calculators)
+            foreach (QCalculatorBase calculator in calculators)
             {
                 QConfiguration config = calculator.Configuration;
                 QMeasurementContext measurement = calculator.Measurement;
@@ -123,7 +123,7 @@ namespace AFMSDischargeService
             return boundary.AddMinutes(10);
         }
 
-        private void LogCalculationCompleted(_QBase calculator)
+        private void LogCalculationCompleted(QCalculatorBase calculator)
         {
             logger.LogInformation(
                 "유량 완료: {DeviceType} {DeviceId} ({DeviceName}), {MethodName}, 유량 {Discharge}, 평균유속 {Velocity}, 단면적 {Area}",
@@ -136,7 +136,7 @@ namespace AFMSDischargeService
                 calculator.Calculation.CrossSectionArea);
         }
 
-        private void LogReadyMeasurement(_QBase calculator)
+        private void LogReadyMeasurement(QCalculatorBase calculator)
         {
             QConfiguration config = calculator.Configuration;
             QMeasurementContext measurement = calculator.Measurement;
@@ -193,7 +193,7 @@ namespace AFMSDischargeService
                     !Enum.TryParse(Convert.ToString(row[FbtAFMSDischargeConfig.COL_DISCHARGE_METHOD]), true,
                         out DischargeMethod method)) continue;
 
-                _QBase? calculator = CreateCalculator(method);
+                QCalculatorBase? calculator = CreateCalculator(method);
                 if (calculator == null || !IsSupportedDevice(method, deviceType)) continue;
 
                 calculator.Configuration.DischargeConfigId = Convert.ToInt32(row[FbtAFMSDischargeConfig.COL_ID]);
@@ -205,10 +205,10 @@ namespace AFMSDischargeService
 
         private void InitializeCalculators(CancellationToken stoppingToken)
         {
-            List<_QBase> initializedCalculators = new();
+            List<QCalculatorBase> initializedCalculators = new();
             using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
 
-            foreach (_QBase calculator in calculators)
+            foreach (QCalculatorBase calculator in calculators)
             {
                 stoppingToken.ThrowIfCancellationRequested();
 
@@ -275,14 +275,14 @@ namespace AFMSDischargeService
             calculators.AddRange(initializedCalculators);
         }
 
-        private static _QBase? CreateCalculator(DischargeMethod method)
+        private static QCalculatorBase? CreateCalculator(DischargeMethod method)
         {
             return method switch
             {
-                DischargeMethod.MidSection => new QMidSection(),
-                DischargeMethod.RatingCurve => new QRatingCurve(),
-                DischargeMethod.SurfaceVelo => new QSurfaceVelocity(),
-                DischargeMethod.VeloDist => new QVelocityDistribution(),
+                DischargeMethod.MidSection => new QMidSectionCalculator(),
+                DischargeMethod.RatingCurve => new QRatingCurveCalculator(),
+                DischargeMethod.SurfaceVelo => new QSurfaceVelocityCalculator(),
+                DischargeMethod.VeloDist => new QVelocityDistributionCalculator(),
                 _ => null
             };
         }
