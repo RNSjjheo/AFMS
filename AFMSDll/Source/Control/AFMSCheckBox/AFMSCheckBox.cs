@@ -177,7 +177,7 @@ namespace AFMSDll
         protected override void OnCheckedChanged(EventArgs e)
         {
             base.OnCheckedChanged(e);
-            Invalidate();
+            if (!IsDisposed && !Disposing) Invalidate();
         }
 
         protected override void OnTextChanged(EventArgs e)

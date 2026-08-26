@@ -506,7 +506,8 @@ namespace AFMSDll
             Rows[rowIndex].Cells[columnIndex].Value = value;
 
             string key = GetCheckBoxKey(rowIndex, columnIndex);
-            if (_checkBoxControls.TryGetValue(key, out AFMSCheckBox checkBox)) checkBox.Checked = value;
+            if (_checkBoxControls.TryGetValue(key, out AFMSCheckBox checkBox) && !checkBox.IsDisposed)
+                checkBox.Checked = value;
 
             _syncingCheckBox = false;
         }
@@ -537,7 +538,8 @@ namespace AFMSDll
             _checkBoxCellVisibility[key] = visible;
             Rows[rowIndex].Cells[columnIndex].Tag = new AFMSCheckBoxCellVisibilitySetting(visible);
 
-            if (_checkBoxControls.TryGetValue(key, out AFMSCheckBox checkBox)) checkBox.Visible = visible;
+            if (_checkBoxControls.TryGetValue(key, out AFMSCheckBox checkBox) && !checkBox.IsDisposed)
+                checkBox.Visible = visible;
             UpdateAFMSCheckBoxBounds();
         }
 
@@ -598,35 +600,19 @@ namespace AFMSDll
             if (_syncingCheckBox || sender is not AFMSCheckBox checkBox || checkBox.Tag is not Point cell) return;
             if (cell.Y < 0 || cell.Y >= Rows.Count || cell.X < 0 || cell.X >= Columns.Count) return;
 
+            bool isChecked = checkBox.Checked;
+
             _syncingCheckBox = true;
-            Rows[cell.Y].Cells[cell.X].Value = checkBox.Checked;
-            _syncingCheckBox = false;
-
-            SelectCheckBoxRow(cell.Y, cell.X);
-
-            AFMSCheckBoxCheckedChanged?.Invoke(this, new AFMSCheckBoxCheckedChangedEventArgs(cell.Y, cell.X, Columns[cell.X].Name, checkBox.Checked, checkBox));
-        }
-
-        private void SelectCheckBoxRow(int rowIndex, int columnIndex)
-        {
-            if (rowIndex < 0 || rowIndex >= Rows.Count) return;
-
-            if (!IsHandleCreated || IsDisposed) return;
-
-            BeginInvoke(new Action(() =>
+            try
             {
-                if (IsDisposed || rowIndex < 0 || rowIndex >= Rows.Count) return;
+                Rows[cell.Y].Cells[cell.X].Value = isChecked;
+            }
+            finally
+            {
+                _syncingCheckBox = false;
+            }
 
-                ClearSelection();
-
-                if (columnIndex >= 0 && columnIndex < Columns.Count && Columns[columnIndex].Visible)
-                {
-                    CurrentCell = Rows[rowIndex].Cells[columnIndex];
-                }
-
-                Rows[rowIndex].Selected = true;
-                InvalidateRow(rowIndex);
-            }));
+            AFMSCheckBoxCheckedChanged?.Invoke(this, new AFMSCheckBoxCheckedChangedEventArgs(cell.Y, cell.X, Columns[cell.X].Name, isChecked, checkBox));
         }
 
         private void UpdateAFMSCheckBoxBounds()
@@ -719,10 +705,10 @@ namespace AFMSDll
             foreach (string key in removeKeys)
             {
                 AFMSCheckBox checkBox = _checkBoxControls[key];
-                Controls.Remove(checkBox);
-                checkBox.CheckedChanged -= AFMSCheckBox_CheckedChanged;
-                checkBox.Dispose();
                 _checkBoxControls.Remove(key);
+                checkBox.CheckedChanged -= AFMSCheckBox_CheckedChanged;
+                Controls.Remove(checkBox);
+                checkBox.Dispose();
             }
         }
 
@@ -913,8 +899,9 @@ namespace AFMSDll
 
         private void UpdateAFMSCheckBoxBackground()
         {
-            foreach (AFMSCheckBox checkBox in _checkBoxControls.Values)
+            foreach (AFMSCheckBox checkBox in new List<AFMSCheckBox>(_checkBoxControls.Values))
             {
+                if (checkBox.IsDisposed) continue;
                 if (checkBox.Tag is not Point cell) continue;
                 if (cell.Y < 0 || cell.Y >= Rows.Count) continue;
 
@@ -925,8 +912,9 @@ namespace AFMSDll
 
         private void ApplyAFMSCheckBoxAppearance()
         {
-            foreach (AFMSCheckBox checkBox in _checkBoxControls.Values)
+            foreach (AFMSCheckBox checkBox in new List<AFMSCheckBox>(_checkBoxControls.Values))
             {
+                if (checkBox.IsDisposed) continue;
                 checkBox.CheckedBorderColor = _afmsCheckBoxCheckedBorderColor;
                 checkBox.CheckedBorderThickness = _afmsCheckBoxCheckedBorderThickness;
                 checkBox.Invalidate();
@@ -1000,7 +988,7 @@ namespace AFMSDll
             if (_syncingCheckBox || e.RowIndex < 0 || e.ColumnIndex < 0 || !_checkBoxColumns.ContainsKey(e.ColumnIndex)) return;
 
             string key = GetCheckBoxKey(e.RowIndex, e.ColumnIndex);
-            if (!_checkBoxControls.TryGetValue(key, out AFMSCheckBox checkBox)) return;
+            if (!_checkBoxControls.TryGetValue(key, out AFMSCheckBox checkBox) || checkBox.IsDisposed) return;
 
             _syncingCheckBox = true;
             checkBox.Checked = ToBoolean(Rows[e.RowIndex].Cells[e.ColumnIndex].Value);
