@@ -6,8 +6,8 @@ namespace AFMSDll
 {
     public class Transect
     {
-        public AreaPointDatas AreaFull;
-        public AreaPointDatas AreaThis;
+        public CrossSectionPointCollection AreaFull = new();
+        public CrossSectionPointCollection AreaThis = new();
         public int Id;
         public double PosX;
         public double Width;

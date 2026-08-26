@@ -12,7 +12,7 @@ namespace AFMSSettings
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         }
 
-        public static AreaPointDatas Read(string filePath)
+        public static CrossSectionPointCollection Read(string filePath)
         {
             if (string.IsNullOrWhiteSpace(filePath)) throw new ArgumentException("파일 경로가 비어 있습니다.", nameof(filePath));
             if (!File.Exists(filePath)) throw new FileNotFoundException("단면 CSV 파일을 찾을 수 없습니다.", filePath);
@@ -27,7 +27,7 @@ namespace AFMSSettings
 
             if (lines.Length <= 1) throw new InvalidDataException("유효한 단면 좌표가 없습니다.");
 
-            AreaPointDatas points = new();
+            List<(double Distance, double Elevation)> source = new();
 
             // 첫 번째 행은 헤더 여부와 관계없이 무조건 무시합니다.
             for (int i = 1; i < lines.Length; i++)
@@ -62,15 +62,15 @@ namespace AFMSSettings
                     throw new InvalidDataException($"{i + 1}행의 두 번째 열 값이 숫자가 아닙니다. 값: {elevationText}");
                 }
 
-                points.Add(new AreaPoint(points.Count, distance, elevation));
+                source.Add((distance, elevation));
             }
 
-            if (points.Count == 0) throw new InvalidDataException("유효한 단면 좌표가 없습니다.");
+            if (source.Count == 0) throw new InvalidDataException("유효한 단면 좌표가 없습니다.");
 
-            return points;
+            return CrossSectionPointBuilder.Build(source, point => new CrossSectionPoint(point.Distance, point.Elevation));
         }
 
-        public static bool TryRead(string filePath, out AreaPointDatas points, out string errorMessage)
+        public static bool TryRead(string filePath, out CrossSectionPointCollection points, out string errorMessage)
         {
             try
             {
@@ -80,7 +80,7 @@ namespace AFMSSettings
             }
             catch (Exception ex)
             {
-                points = new AreaPointDatas();
+                points = CrossSectionPointBuilder.Build(Array.Empty<CrossSectionPoint>());
                 errorMessage = ex.Message;
                 return false;
             }

@@ -16,7 +16,7 @@ namespace AFMSDll
 
     public class AFMSAreaChart : Control
     {
-        private AreaPointDatas _points = new AreaPointDatas();
+        private CrossSectionPointCollection _points = new CrossSectionPointCollection();
 
         private double? _xMin;
         private double? _xMax;
@@ -31,7 +31,7 @@ namespace AFMSDll
         private double _xInterval = 10.0;
         private double _yInterval = 1.0;
         [Browsable(false)]
-        public AreaPointDatas Data => _points;
+        public CrossSectionPointCollection Data => _points;
 
 
         public AFMSAreaChart()
@@ -42,9 +42,9 @@ namespace AFMSDll
             BackColor = Color.White;
         }
 
-        public void SetData(AreaPointDatas? points)
+        public void SetData(CrossSectionPointCollection? points)
         {
-            _points = points ?? new AreaPointDatas();
+            _points = points ?? new CrossSectionPointCollection();
             Invalidate();
         }
 
@@ -169,10 +169,10 @@ namespace AFMSDll
 
             Rectangle plotRect = new Rectangle(LEFT, TOP, Math.Max(1, Width - LEFT - RIGHT), Math.Max(1, Height - TOP - BOTTOM));
 
-            double dataMinX = _points.Min(x => x.Dist);
-            double dataMaxX = _points.Max(x => x.Dist);
-            double dataMinY = _points.Min(x => x.Elev);
-            double dataMaxY = _points.Max(x => x.Elev);
+            double dataMinX = _points.Min(point => point.X);
+            double dataMaxX = _points.Max(point => point.X);
+            double dataMinY = _points.Min(point => point.Y);
+            double dataMaxY = _points.Max(point => point.Y);
 
             double minX = _xMin ?? dataMinX;
             double maxX = _xMax ?? dataMaxX;
@@ -204,8 +204,8 @@ namespace AFMSDll
 
             for (int i = 0; i < _points.Count; i++)
             {
-                float x = ConvertX(_points[i].Dist, rect, minX, maxX);
-                float y = ConvertY(_points[i].Elev, rect, minY, maxY);
+                float x = ConvertX(_points[i].X, rect, minX, maxX);
+                float y = ConvertY(_points[i].Y, rect, minY, maxY);
                 points[i] = new PointF(x, y);
             }
 
@@ -327,14 +327,14 @@ namespace AFMSDll
 
             for (int i = 0; i < _points.Count - 1; i++)
             {
-                AreaPoint p1 = _points[i];
-                AreaPoint p2 = _points[i + 1];
+                CrossSectionPoint p1 = _points[i];
+                CrossSectionPoint p2 = _points[i + 1];
 
-                bool p1Wet = p1.Elev <= waterLevel;
-                bool p2Wet = p2.Elev <= waterLevel;
+                bool p1Wet = p1.Y <= waterLevel;
+                bool p2Wet = p2.Y <= waterLevel;
 
-                float x1 = ConvertX(p1.Dist, rect, minX, maxX);
-                float x2 = ConvertX(p2.Dist, rect, minX, maxX);
+                float x1 = ConvertX(p1.X, rect, minX, maxX);
+                float x2 = ConvertX(p2.X, rect, minX, maxX);
 
                 if (p1Wet && p2Wet)
                 {
@@ -380,14 +380,14 @@ namespace AFMSDll
             return result;
         }
 
-        private static float GetWaterIntersectionX(AreaPoint p1, AreaPoint p2, Rectangle rect, double minX, double maxX, double waterLevel)
+        private static float GetWaterIntersectionX(CrossSectionPoint p1, CrossSectionPoint p2, Rectangle rect, double minX, double maxX, double waterLevel)
         {
-            double elevDiff = p2.Elev - p1.Elev;
+            double elevDiff = p2.Y - p1.Y;
 
-            if (Math.Abs(elevDiff) < double.Epsilon) return ConvertX(p1.Dist, rect, minX, maxX);
+            if (Math.Abs(elevDiff) < double.Epsilon) return ConvertX(p1.X, rect, minX, maxX);
 
-            double ratio = (waterLevel - p1.Elev) / elevDiff;
-            double dist = p1.Dist + ((p2.Dist - p1.Dist) * ratio);
+            double ratio = (waterLevel - p1.Y) / elevDiff;
+            double dist = p1.X + ((p2.X - p1.X) * ratio);
 
             return ConvertX(dist, rect, minX, maxX);
         }

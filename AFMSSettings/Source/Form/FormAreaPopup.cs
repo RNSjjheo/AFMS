@@ -8,13 +8,13 @@ namespace AFMSSettings
     public class FormAreaPopup:AFMSForm
     {
         private readonly AFMSAreaChart _chart;
-        private readonly AreaPointDatas _data;
+        private readonly CrossSectionPointCollection _data;
 
         private readonly AFMSNumberBox _uiWaterLevel;
         private readonly AFMSLabel _uiArea;
 
         private readonly TableLayoutPanel _uiTpMain;
-        public FormAreaPopup(AFMSAreaChart chart, AreaPointDatas data)
+        public FormAreaPopup(AFMSAreaChart chart, CrossSectionPointCollection data)
         {
             _chart = chart;
             _data = data;

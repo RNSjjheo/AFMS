@@ -26,7 +26,7 @@ namespace AFMSSettings
         private AFMSNumberBox uiNoZeroLevel;
         private AFMSButton uiBtnSelect;
         private AFMSButton uiBtnInsert;
-        private AreaPointDatas? _selectedAreaData;
+        private CrossSectionPointCollection? _selectedAreaData;
         private AFMSGuidePanel uiGuide;
         private TableLayoutPanel uiTpRigth;
         private int _lastSelectedId = -1;
@@ -194,16 +194,15 @@ namespace AFMSSettings
 
                 try
                 {
-                    AreaPointDatas data = new AreaPointDatas();
-                    data.Convert(dataValue.ToString() ?? string.Empty);
-
                     object? zeroValue = row.Cells[COL_ZERO_ELEV].Value;
 
                     if (zeroValue == null) continue;
                     if (zeroValue == DBNull.Value) continue;
                     if (!double.TryParse(zeroValue.ToString(), out double zeroEL)) continue;
 
-                    data.ZeroPointEL = zeroEL;
+                    CrossSectionPointCollection data = CrossSectionPointBuilder.Build(
+                        dataValue.ToString() ?? string.Empty,
+                        zeroEL);
                     row.Tag = data;
                 }
                 catch
@@ -239,7 +238,7 @@ namespace AFMSSettings
 
             _lastSelectedId = id;
 
-            if (row.Tag is not AreaPointDatas data)
+            if (row.Tag is not CrossSectionPointCollection data)
             {
                 _uiChart.ClearData();
                 return;
@@ -252,7 +251,7 @@ namespace AFMSSettings
         {
             if (e.Button != MouseButtons.Right) return;
 
-            AreaPointDatas data = _uiChart.Data;
+            CrossSectionPointCollection data = _uiChart.Data;
 
             if (data.Count < 2) return;
 
@@ -298,7 +297,7 @@ namespace AFMSSettings
             }
 
             DateTime now = DateTime.Now;
-            AreaPointDatas data = _selectedAreaData;
+            CrossSectionPointCollection data = _selectedAreaData;
 
             QueryBuilderInsert query = new QueryBuilderInsert();
             query.Table = FbtAFMSAreaMapPoint.TABLE_NAME;
@@ -309,7 +308,7 @@ namespace AFMSSettings
             query.Value(FbtAFMSAreaMapPoint.COL_MAP_NAME, uiTeFileName.Text);
             query.Value(FbtAFMSAreaMapPoint.COL_POINT_COUNT, data.Count);
             query.Value(FbtAFMSAreaMapPoint.COL_ZERO_POINT_ELEVATION, uiNoZeroLevel.DoubleValue);
-            query.Value(FbtAFMSAreaMapPoint.COL_MAP_DATA, data.GetJson());
+            query.Value(FbtAFMSAreaMapPoint.COL_MAP_DATA, CrossSectionPointBuilder.GetJson(data));
 
             using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
             db.Execute(query, out string error);
