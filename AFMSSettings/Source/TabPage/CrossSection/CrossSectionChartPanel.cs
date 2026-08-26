@@ -28,7 +28,6 @@ namespace AFMSSettings
         private readonly AFMSComboBox _hydroCombo;
         private readonly AFMSNumberBox _waterLevel;
         private readonly AFMSLabel _totalArea;
-        private readonly AFMSLabel _areaStatus;
         private readonly AFMSButtonGroup _chartRatio;
         private readonly TransectCollection _selectedTransects = new();
 
@@ -42,7 +41,7 @@ namespace AFMSSettings
             ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 80F));
             ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
             RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            RowStyles.Add(new RowStyle(SizeType.Absolute, 105F));
+            RowStyles.Add(new RowStyle(SizeType.Absolute, 110F));
 
             _chart = new AFMSAreaChart { Dock = DockStyle.Fill };
             AFMSPanel chartPanel = new AFMSPanel { Dock = DockStyle.Fill };
@@ -58,12 +57,6 @@ namespace AFMSSettings
             _hydroCombo.SelectedIndexChanged += HydroCombo_SelectedIndexChanged;
 
             _areaGrid = CreateAreaGrid();
-            _areaStatus = new AFMSLabel
-            {
-                Dock = DockStyle.Fill,
-                TextAlign = ContentAlignment.MiddleCenter,
-                Text = "측선 정보 없음"
-            };
 
             Control areaPanel = CreateAreaPanel();
             Control commandPanel = CreateCommandPanel(out _waterLevel, out _totalArea, out _chartRatio);
@@ -161,29 +154,16 @@ namespace AFMSSettings
 
         private Control CreateAreaPanel()
         {
-            Label title = new Label
-            {
-                Dock = DockStyle.Fill,
-                Text = "측선별 단면적",
-                TextAlign = ContentAlignment.MiddleLeft,
-                Font = new Font("맑은 고딕", 10F, FontStyle.Bold),
-                ForeColor = DllColorHelper.HexToColor("#017D43")
-            };
-
             TableLayoutPanel panel = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 Margin = new Padding(5, 0, 0, 0),
                 ColumnCount = 1,
-                RowCount = 3
+                RowCount = 1
             };
             panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
             panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            panel.RowStyles.Add(new RowStyle(SizeType.Absolute, 42F));
-            panel.Controls.Add(title, 0, 0);
-            panel.Controls.Add(_areaGrid, 0, 1);
-            panel.Controls.Add(_areaStatus, 0, 2);
+            panel.Controls.Add(_areaGrid, 0, 0);
             return panel;
         }
 
@@ -225,30 +205,42 @@ namespace AFMSSettings
             panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
             panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 28F));
             panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 32F));
-            panel.Controls.Add(CreateLabeledControl("수위 / 전체 단면적", waterLevel, totalArea), 0, 0);
-            panel.Controls.Add(CreateLabeledControl("유속계 선택", _hydroCombo), 1, 0);
-            panel.Controls.Add(CreateLabeledControl("차트 비율", chartRatio), 2, 0);
+            panel.Controls.Add(CreateSectionPanel("수위 / 전체 단면적", waterLevel, totalArea), 0, 0);
+            panel.Controls.Add(CreateSectionPanel("유속계 선택", _hydroCombo), 1, 0);
+            panel.Controls.Add(CreateSectionPanel("차트 비율", chartRatio), 2, 0);
             return panel;
         }
 
-        private static Control CreateLabeledControl(string title, params Control[] controls)
+        private static AFMSSectionPanel CreateSectionPanel(string title, params Control[] controls)
         {
-            Label label = new Label { Dock = DockStyle.Fill, Text = title, TextAlign = ContentAlignment.MiddleLeft };
-            TableLayoutPanel content = new TableLayoutPanel
+            AFMSSectionPanel section = new AFMSSectionPanel
             {
                 Dock = DockStyle.Fill,
                 Margin = new Padding(5, 0, 5, 0),
-                ColumnCount = Math.Max(1, controls.Length),
-                RowCount = 2
+                HeaderText = title,
+                SectionStyle = AFMSSectionStyle.OutlineTitle,
+                HeaderHeight = 32,
+                BorderRadius = 6,
+                BorderThickness = 1F,
+                ContentPadding = new Padding(6)
             };
-            content.RowStyles.Add(new RowStyle(SizeType.Absolute, 28F));
+
+            TableLayoutPanel content = section.ContentLayout;
+            content.Controls.Clear();
+            content.ColumnStyles.Clear();
+            content.RowStyles.Clear();
+            content.ColumnCount = Math.Max(1, controls.Length);
+            content.RowCount = 1;
             content.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             for (int i = 0; i < content.ColumnCount; i++)
                 content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F / content.ColumnCount));
-            content.Controls.Add(label, 0, 0);
-            content.SetColumnSpan(label, content.ColumnCount);
-            for (int i = 0; i < controls.Length; i++) content.Controls.Add(controls[i], i, 1);
-            return content;
+            for (int i = 0; i < controls.Length; i++)
+            {
+                controls[i].Margin = new Padding(i == 0 ? 0 : 3, 0, i == controls.Length - 1 ? 0 : 3, 0);
+                content.Controls.Add(controls[i], i, 0);
+            }
+
+            return section;
         }
 
         private void WaterLevel_TextChanged(object? sender, EventArgs e)
@@ -292,18 +284,13 @@ namespace AFMSSettings
             if (!data.WaterLevel.HasValue || data.Count < 2)
             {
                 _totalArea.Text = "전체 단면적  0.00 m²";
-                SetStatus(_selectedTransects.Count == 0 ? "측선 정보 없음" : "수위를 입력하세요", false);
                 return;
             }
 
             double totalArea = data.Area;
-            _totalArea.Text = $"전체 단면적  {totalArea:N2} m²";
+            _totalArea.Text = $"{totalArea:N2} m²";
 
-            if (_selectedTransects.Count == 0)
-            {
-                SetStatus("측선 정보 없음", false);
-                return;
-            }
+            if (_selectedTransects.Count == 0) return;
 
             try
             {
@@ -315,23 +302,10 @@ namespace AFMSSettings
 
                 foreach (Transect transect in _selectedTransects.OrderBy(item => item.No))
                     _areaGrid.Rows.Add(transect.No, transect.SectionArea);
-
-                double tolerance = Math.Max(0.01, Math.Abs(totalArea) * 0.000001);
-                bool matches = Math.Abs(totalArea - sum) <= tolerance;
-                SetStatus(matches ? "✓ 전체 단면적과 일치" : "⚠ 전체 단면적과 불일치", true, matches);
             }
             catch (ArgumentException ex)
             {
-                SetStatus(ex.Message, true, false);
             }
-        }
-
-        private void SetStatus(string text, bool validation, bool success = false)
-        {
-            _areaStatus.NormalForeColor = !validation
-                ? Color.FromArgb(90, 95, 105)
-                : success ? DllColorHelper.HexToColor("#017D43") : Color.FromArgb(200, 60, 60);
-            _areaStatus.Text = text;
         }
 
     }
