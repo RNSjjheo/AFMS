@@ -1,4 +1,4 @@
-namespace AFMSDll.Source.Measure.Discharge
+namespace AFMSDll
 {
     public sealed class QSurfaceVelocity : _QBase
     {

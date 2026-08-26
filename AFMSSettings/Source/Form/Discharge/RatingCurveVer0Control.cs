@@ -1,5 +1,4 @@
 using AFMSDll;
-using AFMSDll.Source.Measure.Discharge;
 using System;
 using System.Drawing;
 using System.Globalization;

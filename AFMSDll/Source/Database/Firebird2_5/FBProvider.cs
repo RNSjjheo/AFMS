@@ -69,6 +69,8 @@ namespace AFMSDll
             Tables.Add(new FbtAFMSDiscAttrRatingCurve());
             Tables.Add(new FbtAFMSDischargeData());
             Tables.Add(new FbtAFMSDischargeConfig());
+            Tables.Add(new FbtAFMSDischargeTimeslot());
+            Tables.Add(new FbtAFMSDischargeResult());
             Tables.Add(new FbtAFMSReplicatorSetting());
             Tables.Add(new FbtAFMSHydroTransect());
 
