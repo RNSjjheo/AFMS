@@ -14,8 +14,8 @@ namespace AFMSSettings
         {
             Text = "유속분포법";
             BackColor = Color.White;
-            uiTpMain.ColumnStyles[0].Width = 68F;
-            uiTpMain.ColumnStyles[1].Width = 32F;
+            uiTpMain.ColumnStyles[0].Width = 75F;
+            uiTpMain.ColumnStyles[1].Width = 25F;
 
             _configListPanel = new VelocityDistributionConfigListPanel();
             _transectPanel = new VelocityDistributionTransectPanel();

@@ -6,8 +6,12 @@ namespace AFMSSettings
 {
     internal sealed class VelocityDistributionConfigListPanel : UserControl
     {
+        public event EventHandler<IReadOnlyList<int>>? SelectedTransectNosChanged;
+
         private const string COL_NO = "NO";
+        
         private int _hydroId = -1;
+        public AFMSDataGridView Grid { get; }
 
         public VelocityDistributionConfigListPanel()
         {
@@ -26,8 +30,6 @@ namespace AFMSSettings
             Controls.Add(Grid);
         }
 
-        public AFMSDataGridView Grid { get; }
-        public event EventHandler<IReadOnlyList<int>>? SelectedTransectNosChanged;
 
         public void SetHydroId(int hydroId)
         {

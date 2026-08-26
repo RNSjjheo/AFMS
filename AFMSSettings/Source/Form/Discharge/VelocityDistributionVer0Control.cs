@@ -42,8 +42,8 @@ namespace AFMSSettings
             main.Margin = Padding.Empty;
             main.ColumnCount = 2;
             main.RowCount = 1;
-            main.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 85F));
-            main.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 15F));
+            main.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 75F));
+            main.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
             main.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
             AFMSSectionPanel settings = CreateSectionPanel();
@@ -99,19 +99,11 @@ namespace AFMSSettings
                 AFMSCheckBox checkBox = new();
                 checkBox.Dock = DockStyle.Fill;
                 checkBox.Margin = Padding.Empty;
-                checkBox.Text = $"측선 {transect.No}";
+                checkBox.Text = $"측선 {transect.No} - {transect.CenterLeftBankDistance:0.00}m";
                 checkBox.Checked = true;
-
-                Label distance = new();
-                distance.Dock = DockStyle.Fill;
-                distance.Margin = Padding.Empty;
-                distance.Text = $"{transect.CenterLeftBankDistance:0.##} m";
-                distance.TextAlign = ContentAlignment.MiddleRight;
-                distance.ForeColor = DllColorHelper.HexToColor("#69737D");
 
                 _transectLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42F));
                 _transectLayout.Controls.Add(checkBox, 0, row);
-                _transectLayout.Controls.Add(distance, 1, row);
                 _transectChecks.Add((transect.No, checkBox));
                 row++;
             }
@@ -220,9 +212,8 @@ namespace AFMSSettings
 
             _transectLayout.Dock = DockStyle.Top;
             _transectLayout.AutoSize = true;
-            _transectLayout.ColumnCount = 2;
-            _transectLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 60F));
-            _transectLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
+            _transectLayout.ColumnCount = 1;
+            _transectLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             host.Controls.Add(_transectLayout);
             return host;
         }
