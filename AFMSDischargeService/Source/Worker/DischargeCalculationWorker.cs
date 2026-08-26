@@ -114,7 +114,8 @@ namespace AFMSDischargeService
                         out DischargeMethod method)) continue;
 
                 _QBase? calculator = CreateCalculator(method);
-                if (calculator == null || !IsSupportedDevice(method, deviceType)) continue;
+                if (calculator == null || !calculator.IsImplemented ||
+                    !IsSupportedDevice(method, deviceType)) continue;
 
                 calculator.Configuration.DischargeConfigId = Convert.ToInt32(row[FbtAFMSDischargeConfig.COL_ID]);
                 calculator.Configuration.DeviceType = deviceType;

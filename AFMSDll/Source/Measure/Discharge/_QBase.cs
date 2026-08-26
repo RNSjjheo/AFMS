@@ -13,6 +13,7 @@ namespace AFMSDll
         public QConfiguration Configuration { get; }
         public QMeasurementContext Measurement { get; } = new();
         public QCalculationContext Calculation { get; } = new();
+        public virtual bool IsImplemented => false;
 
         protected _QBase(DischargeMethod method)
         {

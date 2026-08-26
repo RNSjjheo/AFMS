@@ -5,6 +5,8 @@ namespace AFMSDll
 {
     public sealed class QMidSection : _QBase
     {
+        public override bool IsImplemented => true;
+
         /// <summary>현재 유속계에 설정된 최신 측선 목록입니다.</summary>
         public TransectCollection Transects => Configuration.CrossSection.Transects;
         /// <summary>현재 원시자료에서 수집된 측선별 유속정보입니다.</summary>

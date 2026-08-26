@@ -12,6 +12,7 @@ namespace AFMSDischargeService
         public static async Task<int> Main(string[] args)
         {
             RnsLog.Init(Environment.UserInteractive, PROCESS_NAME, 100, 0);
+            RnsLogTagLayout.Apply();
             RnsLog.Start();
             RnsLog.AppenderInfo();
             RnsLog.ShowVersion();
