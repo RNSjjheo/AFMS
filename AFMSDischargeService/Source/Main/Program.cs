@@ -15,6 +15,7 @@ namespace AFMSDischargeService
             RnsLog.Start();
             RnsLog.AppenderInfo();
             RnsLog.ShowVersion();
+            RnsLogBanner.WriteStartup(PROCESS_NAME, "AFMS DISCHARGE SERVICE");
 
             string programPath = Environment.ProcessPath?? throw new InvalidOperationException("현재 프로그램 경로를 확인할 수 없습니다.");
             ServiceInstallResult installResult = WindowsServiceManager.EnsureInstalled(programPath, PROCESS_NAME);
@@ -41,6 +42,8 @@ namespace AFMSDischargeService
             {
                 options.ServiceName = PROCESS_NAME;
             });
+
+            builder.Logging.AddProvider(new RnsLogLoggerProvider());
 
             // 초기 슬롯 준비가 끝난 뒤 다음 HostedService가 시작되도록 가장 먼저 등록합니다.
             builder.Services.AddHostedService<DischargeSlotService>();
