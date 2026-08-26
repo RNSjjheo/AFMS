@@ -47,6 +47,7 @@ namespace AFMSDischargeService
 
             // 초기 슬롯 준비가 끝난 뒤 다음 HostedService가 시작되도록 가장 먼저 등록합니다.
             builder.Services.AddHostedService<DischargeSlotService>();
+            builder.Services.AddHostedService<DischargeCalculationWorker>();
             builder.Services.AddHostedService<BuildInfoWorker>();
 
             var host = builder.Build();

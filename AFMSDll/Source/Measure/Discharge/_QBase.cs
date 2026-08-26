@@ -8,6 +8,7 @@ namespace AFMSDll
     {
         public int Id { get; set; } = -1;
         public int HydroMeterId { get; set; } = -1;
+        public int DischargeConfigId { get; set; } = -1;
         public DateOnly MeasureDate { get; set; }
         public TimeOnly MeasureTime { get; set; }
         public double Value { get; set; }
