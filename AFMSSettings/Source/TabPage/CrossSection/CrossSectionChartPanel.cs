@@ -41,7 +41,7 @@ namespace AFMSSettings
             ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 80F));
             ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
             RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            RowStyles.Add(new RowStyle(SizeType.Absolute, 110F));
+            RowStyles.Add(new RowStyle(SizeType.Absolute, 80F));
 
             _chart = new AFMSAreaChart { Dock = DockStyle.Fill };
             AFMSPanel chartPanel = new AFMSPanel { Dock = DockStyle.Fill };
@@ -60,6 +60,7 @@ namespace AFMSSettings
 
             Control areaPanel = CreateAreaPanel();
             Control commandPanel = CreateCommandPanel(out _waterLevel, out _totalArea, out _chartRatio);
+            commandPanel.Dock = DockStyle.Fill;
 
             Controls.Add(chartPanel, 0, 0);
             Controls.Add(areaPanel, 1, 0);
@@ -191,7 +192,7 @@ namespace AFMSSettings
 
             chartRatio = new AFMSButtonGroup { Dock = DockStyle.Fill };
             chartRatio.AddButton("화면 맞춤", AFMSChartAspectMode.Fit);
-            chartRatio.AddButton("X·Y 동일 비율", AFMSChartAspectMode.EqualScale);
+            chartRatio.AddButton("동일 축척", AFMSChartAspectMode.EqualScale);
             chartRatio.SelectedIndexChanged += ChartRatio_SelectedIndexChanged;
             chartRatio.SelectedIndex = 0;
 
@@ -202,9 +203,10 @@ namespace AFMSSettings
                 ColumnCount = 3,
                 RowCount = 1
             };
-            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 40F));
-            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 28F));
-            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 32F));
+            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
+            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            panel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            panel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             panel.Controls.Add(CreateSectionPanel("수위 / 전체 단면적", waterLevel, totalArea), 0, 0);
             panel.Controls.Add(CreateSectionPanel("유속계 선택", _hydroCombo), 1, 0);
             panel.Controls.Add(CreateSectionPanel("차트 비율", chartRatio), 2, 0);
