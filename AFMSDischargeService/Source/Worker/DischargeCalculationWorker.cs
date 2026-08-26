@@ -75,13 +75,36 @@ namespace AFMSDischargeService
                 calculator.DeviceId = Convert.ToInt32(row[FbtAFMSDischargeConfig.COL_DEVICE_ID]);
                 calculator.MethodConfigId = GetLatestMethodConfigId(db, method, deviceType, calculator.DeviceId);
                 if (calculator.MethodConfigId < 0) continue;
+
+                bool hasStartSlot = calculator.TryLoadStartSlot(db, out string startSlotError);
+                if (!string.IsNullOrEmpty(startSlotError))
+                {
+                    throw new InvalidOperationException(
+                        $"유량 산정 시작 슬롯 조회 실패 " +
+                        $"({calculator.DeviceType} {calculator.DeviceId}, {calculator.Method}): {startSlotError}");
+                }
+
                 calculators.Add(calculator);
 
-                logger.LogInformation(
-                    "유량 산정 객체 추가: {DeviceType} {DeviceId}, 산정법 {Method}",
-                    calculator.DeviceType,
-                    calculator.DeviceId,
-                    calculator.Method);
+                if (hasStartSlot)
+                {
+                    logger.LogInformation(
+                        "유량 산정 객체 추가: {DeviceType} {DeviceId}, 산정법 {Method}, 시작 슬롯 {SlotId} ({MeasureDate} {MeasureTime})",
+                        calculator.DeviceType,
+                        calculator.DeviceId,
+                        calculator.Method,
+                        calculator.SlotId,
+                        calculator.MeasureDate,
+                        calculator.MeasureTime);
+                }
+                else
+                {
+                    logger.LogInformation(
+                        "유량 산정 객체 추가: {DeviceType} {DeviceId}, 산정법 {Method}, 미산정 슬롯 없음",
+                        calculator.DeviceType,
+                        calculator.DeviceId,
+                        calculator.Method);
+                }
             }
         }
 
