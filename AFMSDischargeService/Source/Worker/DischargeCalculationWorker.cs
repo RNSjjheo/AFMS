@@ -83,6 +83,14 @@ namespace AFMSDischargeService
                         $"({calculator.DeviceType} {calculator.DeviceId}, {calculator.Method}): {measurementTableError}");
                 }
 
+                bool hasMeasurementStart = calculator.TryLoadMeasurementStart(db, out string measurementStartError);
+                if (!string.IsNullOrEmpty(measurementStartError))
+                {
+                    throw new InvalidOperationException(
+                        $"유속 자료 시작값 조회 실패 " +
+                        $"({calculator.DeviceType} {calculator.DeviceId}, {calculator.Method}): {measurementStartError}");
+                }
+
                 bool hasStartSlot = calculator.TryLoadStartSlot(db, out string startSlotError);
                 if (!string.IsNullOrEmpty(startSlotError))
                 {
@@ -96,12 +104,13 @@ namespace AFMSDischargeService
                 if (hasStartSlot)
                 {
                     logger.LogInformation(
-                        "유량 산정 객체 추가: {DeviceType} {DeviceId} ({DeviceName}), 산정법 {Method}, 측정 테이블 {MeasurementTable}, 시작 슬롯 {SlotId} ({MeasureDate} {MeasureTime})",
+                        "유량 산정 객체 추가: {DeviceType} {DeviceId} ({DeviceName}), 산정법 {Method}, 측정 테이블 {MeasurementTable}, 유속 시작값 {MeasurementStartId}, 시작 슬롯 {SlotId} ({MeasureDate} {MeasureTime})",
                         calculator.DeviceType,
                         calculator.DeviceId,
                         calculator.DeviceName,
                         calculator.Method,
                         calculator.MeasurementTable!.GetTableName(),
+                        hasMeasurementStart ? calculator.MeasurementStartId : -1,
                         calculator.SlotId,
                         calculator.MeasureDate,
                         calculator.MeasureTime);
@@ -109,12 +118,13 @@ namespace AFMSDischargeService
                 else
                 {
                     logger.LogInformation(
-                        "유량 산정 객체 추가: {DeviceType} {DeviceId} ({DeviceName}), 산정법 {Method}, 측정 테이블 {MeasurementTable}, 미산정 슬롯 없음",
+                        "유량 산정 객체 추가: {DeviceType} {DeviceId} ({DeviceName}), 산정법 {Method}, 측정 테이블 {MeasurementTable}, 유속 시작값 {MeasurementStartId}, 미산정 슬롯 없음",
                         calculator.DeviceType,
                         calculator.DeviceId,
                         calculator.DeviceName,
                         calculator.Method,
-                        calculator.MeasurementTable!.GetTableName());
+                        calculator.MeasurementTable!.GetTableName(),
+                        hasMeasurementStart ? calculator.MeasurementStartId : -1);
                 }
             }
         }
