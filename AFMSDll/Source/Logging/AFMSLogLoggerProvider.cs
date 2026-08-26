@@ -4,9 +4,9 @@ using Microsoft.Extensions.Logging;
 namespace AFMSDll
 {
     /// <summary>
-    /// Microsoft ILogger 로그를 RnsLog가 구성한 log4net SYS 로그에도 전달합니다.
+    /// Microsoft ILogger 로그를 AFMSLog가 구성한 log4net 로그에도 전달합니다.
     /// </summary>
-    public sealed class RnsLogLoggerProvider : ILoggerProvider
+    public sealed class AFMSLogLoggerProvider : ILoggerProvider
     {
         public ILogger CreateLogger(string categoryName)
         {
@@ -15,14 +15,14 @@ namespace AFMSDll
                 ? categoryName[(separatorIndex + 1)..]
                 : categoryName;
 
-            return new RnsLogLogger(LogManager.GetLogger(shortCategoryName));
+            return new AFMSLogger(LogManager.GetLogger(shortCategoryName));
         }
 
         public void Dispose()
         {
         }
 
-        private sealed class RnsLogLogger(ILog log) : ILogger
+        private sealed class AFMSLogger(ILog log) : ILogger
         {
             public IDisposable? BeginScope<TState>(TState state) where TState : notnull
             {

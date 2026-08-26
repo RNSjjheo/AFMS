@@ -2,7 +2,7 @@ using log4net;
 
 namespace AFMSDll
 {
-    public static class RnsLogBanner
+    public static class AFMSLogBanner
     {
         public static void WriteStartup(string programName, string? displayName = null)
         {

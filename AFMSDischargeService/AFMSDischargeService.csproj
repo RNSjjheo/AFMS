@@ -16,12 +16,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Reference Include="RnsLibrary">
-      <HintPath>..\Dll\RnsLibrary.dll</HintPath>
-    </Reference>
-  </ItemGroup>
-
-  <ItemGroup>
     <None Update="AFMSDischargeService.settings.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Update="AFMSDischargeService.settings.Development.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Update="AFMSDischargeService.settings.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

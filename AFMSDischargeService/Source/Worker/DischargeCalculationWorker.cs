@@ -65,7 +65,7 @@ namespace AFMSDischargeService
         private void LogCalculatorList()
         {
             logger.LogInformation(
-                "서비스 시작 설정을 기준으로 유량 산정 객체 {Count}개를 준비했습니다.",
+                "서비스 시작 설정을 기준으로 유량 객체 {Count}개를 준비했습니다.",
                 calculators.Count);
 
             for (int index = 0; index < calculators.Count; index++)
@@ -73,14 +73,13 @@ namespace AFMSDischargeService
                 _QBase calculator = calculators[index];
                 QConfiguration config = calculator.Configuration;
                 logger.LogInformation(
-                    "유량 산정 객체 [{Index}/{Count}]: {DeviceType} {DeviceId} ({DeviceName}), 산정법 {MethodName} ({Method})",
+                    "유량 객체 [{Index}/{Count}]: {DeviceType} {DeviceId} ({DeviceName}), {MethodName}",
                     index + 1,
                     calculators.Count,
                     config.DeviceType,
                     config.DeviceId,
                     calculator.Measurement.DeviceName,
-                    EnumPaser.GetKorString(config.Method),
-                    config.Method);
+                    GetMethodLogName(config.Method));
             }
         }
 
@@ -99,12 +98,12 @@ namespace AFMSDischargeService
                     : "없음";
 
                 logger.LogInformation(
-                    "유량 산정 조회 위치({Reason}): {DeviceType} {DeviceId} ({DeviceName}), 산정법 {Method}, 원시자료 키 {SourceKey}, 슬롯 키 {SlotKey}",
+                    "유량 조회 위치({Reason}): {DeviceType} {DeviceId} ({DeviceName}), {MethodName}, 원시자료 키 {SourceKey}, 슬롯 키 {SlotKey}",
                     reason,
                     config.DeviceType,
                     config.DeviceId,
                     measurement.DeviceName,
-                    config.Method,
+                    GetMethodLogName(config.Method),
                     sourceKey,
                     slotKey);
             }
@@ -127,11 +126,11 @@ namespace AFMSDischargeService
         private void LogCalculationCompleted(_QBase calculator)
         {
             logger.LogInformation(
-                "유량 산정 완료: {DeviceType} {DeviceId} ({DeviceName}), 산정법 {Method}, 유량 {Discharge}, 평균유속 {Velocity}, 단면적 {Area}",
+                "유량 완료: {DeviceType} {DeviceId} ({DeviceName}), {MethodName}, 유량 {Discharge}, 평균유속 {Velocity}, 단면적 {Area}",
                 calculator.Configuration.DeviceType,
                 calculator.Configuration.DeviceId,
                 calculator.Measurement.DeviceName,
-                calculator.Configuration.Method,
+                GetMethodLogName(calculator.Configuration.Method),
                 calculator.Calculation.Value,
                 calculator.Calculation.Velocity,
                 calculator.Calculation.CrossSectionArea);
@@ -150,11 +149,11 @@ namespace AFMSDischargeService
             if (!loggedReadyMeasurements.Add(key)) return;
 
             logger.LogInformation(
-                "산정 가능 데이터 발견: {DeviceType} {DeviceId} ({DeviceName}), 산정법 {Method}, 측정 테이블 {MeasurementTable}, 측정값 {MeasurementId} ({MeasurementDate} {MeasurementTime}), 슬롯 {SlotId}",
+                "산정 가능 데이터 발견: {DeviceType} {DeviceId} ({DeviceName}), {MethodName}, 측정 테이블 {MeasurementTable}, 측정값 {MeasurementId} ({MeasurementDate} {MeasurementTime}), 슬롯 {SlotId}",
                 config.DeviceType,
                 config.DeviceId,
                 measurement.DeviceName,
-                config.Method,
+                GetMethodLogName(config.Method),
                 measurement.Table!.GetTableName(),
                 measurement.SourceId,
                 measurement.SourceDate,
@@ -183,7 +182,7 @@ namespace AFMSDischargeService
             using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
             DataTable table = db.Execute(sql, out string error);
             if (!string.IsNullOrEmpty(error))
-                throw new InvalidOperationException($"유량 산정 설정 조회 실패: {error}");
+                throw new InvalidOperationException($"유량 설정 조회 실패: {error}");
 
             foreach (DataRow row in table.Rows)
             {
@@ -223,7 +222,7 @@ namespace AFMSDischargeService
                 if (!calculator.TryLoadConfiguration(db, out string configurationError))
                 {
                     throw new InvalidOperationException(
-                        $"유량 산정 설정 조회 실패 " +
+                        $"유량 설정 조회 실패 " +
                         $"({calculator.Configuration.DeviceType} {calculator.Configuration.DeviceId}, {calculator.Configuration.Method}): {configurationError}");
                 }
 
@@ -246,7 +245,7 @@ namespace AFMSDischargeService
                 if (!string.IsNullOrEmpty(startSlotError))
                 {
                     throw new InvalidOperationException(
-                        $"유량 산정 시작 슬롯 조회 실패 " +
+                        $"유량 시작 슬롯 조회 실패 " +
                         $"({calculator.Configuration.DeviceType} {calculator.Configuration.DeviceId}, {calculator.Configuration.Method}): {startSlotError}");
                 }
 
@@ -261,11 +260,11 @@ namespace AFMSDischargeService
                     : "없음";
 
                 logger.LogInformation(
-                    "유량 산정 객체 시작값: {DeviceType} {DeviceId} ({DeviceName}), 산정법 {Method}, 측정 테이블 {MeasurementTable}, 마지막 산정값 {LastCalculatedSource}, 유속 시작값 {MeasurementStart}, 슬롯 시작값 {SlotStart}",
+                    "유량 객체 시작값: {DeviceType} {DeviceId} ({DeviceName}), {MethodName}, 측정 테이블 {MeasurementTable}, 마지막 산정값 {LastCalculatedSource}, 유속 시작값 {MeasurementStart}, 슬롯 시작값 {SlotStart}",
                     calculator.Configuration.DeviceType,
                     calculator.Configuration.DeviceId,
                     calculator.Measurement.DeviceName,
-                    calculator.Configuration.Method,
+                    GetMethodLogName(calculator.Configuration.Method),
                     calculator.Measurement.Table!.GetTableName(),
                     lastCalculatedSource,
                     measurementStart,
@@ -285,6 +284,18 @@ namespace AFMSDischargeService
                 DischargeMethod.SurfaceVelo => new QSurfaceVelocity(),
                 DischargeMethod.VeloDist => new QVelocityDistribution(),
                 _ => null
+            };
+        }
+
+        private static string GetMethodLogName(DischargeMethod method)
+        {
+            return method switch
+            {
+                DischargeMethod.VeloDist => "유속분포법",
+                DischargeMethod.MidSection => "중간단면적법",
+                DischargeMethod.SurfaceVelo => "지표유속법",
+                DischargeMethod.RatingCurve => "수위-유량곡선법",
+                _ => $"{method}법"
             };
         }
 
