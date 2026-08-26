@@ -21,6 +21,79 @@ namespace AFMSDll
         }
 
         /// <summary>
+        /// 준비된 설정, 수집자료 및 슬롯을 사용하여 유량을 산정합니다.
+        /// </summary>
+        public abstract bool Calculate(out string error);
+
+        /// <summary>
+        /// 현재 자료를 산정하고 결과 저장이 완료되면 다음 원시자료와 슬롯을 준비합니다.
+        /// </summary>
+        public bool CalculateAndMoveNext(FBDatabase db)
+        {
+            ArgumentNullException.ThrowIfNull(db);
+
+            if (!Calculate(out string error))
+            {
+                LogFailure("계산 실패", error);
+                return false;
+            }
+
+            if (!TrySaveCalculationResult(db, out error))
+            {
+                LogFailure("결과 저장 실패", error);
+                return false;
+            }
+
+            if (!TryLoadMeasurementStart(db, out error))
+            {
+                if (!string.IsNullOrEmpty(error))
+                {
+                    LogFailure("다음 원시자료 조회 실패", error);
+                    return false;
+                }
+
+                ClearStartSlot();
+                return true;
+            }
+
+            TryLoadStartSlot(db, out error);
+            if (!string.IsNullOrEmpty(error))
+            {
+                LogFailure("다음 슬롯 조회 실패", error);
+                return false;
+            }
+
+            return true;
+        }
+
+        private bool TrySaveCalculationResult(FBDatabase db, out string error)
+        {
+            DateTime sourceTime = Measurement.SourceDate.ToDateTime(Measurement.SourceTime);
+            QueryBuilderInsert query = new();
+            query.Table = FbtAFMSDischargeResult.TABLE_NAME;
+            query.AutoIncrement = FbtAFMSDischargeResult.COL_ID;
+            query.Value(FbtAFMSDischargeResult.COL_SLOT_ID, Calculation.SlotId);
+            query.Value(FbtAFMSDischargeResult.COL_SOURCE_DEVICE_TYPE, Configuration.DeviceType.ToString());
+            query.Value(FbtAFMSDischargeResult.COL_SOURCE_DEVICE_ID, Configuration.DeviceId);
+            query.Value(FbtAFMSDischargeResult.COL_DISCHARGE_METHOD, Configuration.Method.ToString());
+            query.Value(FbtAFMSDischargeResult.COL_HYDRO_CONFIG_ID, Configuration.DeviceId);
+            query.Value(FbtAFMSDischargeResult.COL_DISCHARGE_CONFIG_ID, Configuration.DischargeConfigId);
+            query.Value(FbtAFMSDischargeResult.COL_CROSS_SECTION_ID, Configuration.CrossSection.Id);
+            query.Value(FbtAFMSDischargeResult.COL_TRANSECT_CONFIG_ID, Configuration.TransectConfigId);
+            query.Value(FbtAFMSDischargeResult.COL_METHOD_CONFIG_ID, Configuration.MethodConfigId);
+            query.Value(FbtAFMSDischargeResult.COL_WATER_LEVEL,
+                Measurement.HasWaterLevel ? Measurement.WaterLevel : null);
+            query.Value(FbtAFMSDischargeResult.COL_VELOCITY, Calculation.Velocity);
+            query.Value(FbtAFMSDischargeResult.COL_CROSS_SECTION_AREA, Calculation.CrossSectionArea);
+            query.Value(FbtAFMSDischargeResult.COL_DISCHARGE, Calculation.Value);
+            query.Value(FbtAFMSDischargeResult.COL_SOURCE_TIME, sourceTime, typeof(DateTime));
+            query.Value(FbtAFMSDischargeResult.COL_CALCULATED_AT, DateTime.Now, typeof(DateTime));
+
+            db.Execute(query, out error);
+            return string.IsNullOrEmpty(error);
+        }
+
+        /// <summary>
         /// 현재 또는 이후 측정자료 중 산정 가능한 시작값과 슬롯을 준비합니다.
         /// 실패 로그는 산정 객체가 직접 기록합니다.
         /// </summary>

@@ -12,6 +12,12 @@ namespace AFMSDll
         {
         }
 
+        public override bool Calculate(out string error)
+        {
+            error = "수위-유량곡선법 계산이 아직 구현되지 않았습니다.";
+            return false;
+        }
+
         public static AFMSMathLabel GetExample(DiscVerRatingCurve version)
         {
             AFMSMathLabel item = new AFMSMathLabel();

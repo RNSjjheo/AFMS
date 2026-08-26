@@ -12,6 +12,12 @@ namespace AFMSDll
         {
         }
 
+        public override bool Calculate(out string error)
+        {
+            error = "표면유속법 계산이 아직 구현되지 않았습니다.";
+            return false;
+        }
+
         public static AFMSMathLabel GetExample(DiscVerSurfaceVelo version)
         {
             AFMSMathLabel item = new AFMSMathLabel();

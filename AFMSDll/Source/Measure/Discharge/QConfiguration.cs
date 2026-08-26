@@ -13,6 +13,7 @@ namespace AFMSDll
 
         public int DischargeConfigId { get; set; } = -1;
         public int MethodConfigId { get; set; } = -1;
+        public int TransectConfigId { get; internal set; } = -1;
         public MeasurementDeviceType DeviceType { get; set; } = MeasurementDeviceType.None;
         public int DeviceId { get; set; } = -1;
         public DischargeMethod Method { get; }

@@ -7,6 +7,12 @@ namespace AFMSDll
         {
         }
 
+        public override bool Calculate(out string error)
+        {
+            error = "유속분포법 계산이 아직 구현되지 않았습니다.";
+            return false;
+        }
+
         public static AFMSMathLabel GetExample()
         {
             AFMSMathLabel item = new AFMSMathLabel();

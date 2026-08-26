@@ -18,6 +18,7 @@ namespace AFMSDll
         public DateOnly SlotDate { get; internal set; }
         public TimeOnly SlotTime { get; internal set; }
         public double CrossSectionArea { get; set; }
+        public double Velocity { get; set; }
         public double Value { get; set; }
         public double Uncertainty { get; set; }
 
@@ -26,9 +27,6 @@ namespace AFMSDll
             SlotId = -1;
             SlotDate = default;
             SlotTime = default;
-            CrossSectionArea = 0.0;
-            Value = 0.0;
-            Uncertainty = 0.0;
         }
     }
 }

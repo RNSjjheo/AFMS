@@ -17,11 +17,11 @@ namespace AFMSDischargeService
 
             logger.LogInformation("서비스 시작 설정을 기준으로 유량 산정 객체 {Count}개를 준비했습니다.", calculators.Count);
 
-            using PeriodicTimer timer = new(PollInterval);
             try
             {
-                while (await timer.WaitForNextTickAsync(stoppingToken))
+                while (!stoppingToken.IsCancellationRequested)
                 {
+                    bool calculationCompleted = false;
                     using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
 
                     foreach (_QBase calculator in calculators)
@@ -29,14 +29,31 @@ namespace AFMSDischargeService
                         stoppingToken.ThrowIfCancellationRequested();
                         if (!calculator.PrepareNextCalculation(db)) continue;
                         LogReadyMeasurement(calculator);
-
-                        // 시작값의 입력자료가 모두 수신된 산정 객체만 이후 유량 산정을 수행합니다.
+                        if (!calculator.CalculateAndMoveNext(db)) continue;
+                        calculationCompleted = true;
+                        LogCalculationCompleted(calculator);
                     }
+
+                    if (!calculationCompleted)
+                        await Task.Delay(PollInterval, stoppingToken);
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
             }
+        }
+
+        private void LogCalculationCompleted(_QBase calculator)
+        {
+            logger.LogInformation(
+                "유량 산정 완료: {DeviceType} {DeviceId} ({DeviceName}), 산정법 {Method}, 유량 {Discharge}, 평균유속 {Velocity}, 단면적 {Area}",
+                calculator.Configuration.DeviceType,
+                calculator.Configuration.DeviceId,
+                calculator.Measurement.DeviceName,
+                calculator.Configuration.Method,
+                calculator.Calculation.Value,
+                calculator.Calculation.Velocity,
+                calculator.Calculation.CrossSectionArea);
         }
 
         private void LogReadyMeasurement(_QBase calculator)

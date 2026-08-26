@@ -18,6 +18,67 @@ namespace AFMSDll
         {
         }
 
+        public override bool Calculate(out string error)
+        {
+            error = ValidateCalculationInputs();
+            if (!string.IsNullOrEmpty(error)) return false;
+
+            CrossSection crossSection = Configuration.CrossSection;
+            try
+            {
+                crossSection.CalculateTransectAreas(Measurement.WaterLevel);
+            }
+            catch (ArgumentException ex)
+            {
+                error = ex.Message;
+                return false;
+            }
+
+            double discharge = 0.0;
+            double area = 0.0;
+            foreach (Transect transect in Transects.Where(item =>
+                         item.No >= CellRangeMin && item.No <= CellRangeMax))
+            {
+                QTransectMeasurement? measurement = TransectMeasurements
+                    .FirstOrDefault(item => item.No == transect.No);
+                if (measurement == null)
+                {
+                    error = $"{transect.No}번 측선의 유속자료가 없습니다.";
+                    return false;
+                }
+
+                area += transect.SectionArea;
+                discharge += transect.SectionArea * measurement.Velocity * ConversionFactor;
+            }
+
+            if (!double.IsFinite(area) || !double.IsFinite(discharge))
+            {
+                error = "중간단면적법 산정 결과가 올바르지 않습니다.";
+                return false;
+            }
+
+            Calculation.CrossSectionArea = area;
+            Calculation.Velocity = area > 0.0 ? discharge / area : 0.0;
+            Calculation.Value = discharge;
+            error = string.Empty;
+            return true;
+        }
+
+        private string ValidateCalculationInputs()
+        {
+            if (Calculation.SlotId < 0) return "산정 슬롯이 준비되지 않았습니다.";
+            if (!Measurement.HasWaterLevel) return "산정할 수위자료가 준비되지 않았습니다.";
+            if (Configuration.CrossSection.Points.Count < 2) return "단면정보가 준비되지 않았습니다.";
+            if (Transects.Count == 0) return "설정된 측선정보가 없습니다.";
+            if (TransectMeasurements.Count == 0) return "수집된 측선 유속자료가 없습니다.";
+
+            int calculationTransectCount = Transects.Count(item =>
+                item.No >= CellRangeMin && item.No <= CellRangeMax);
+            return calculationTransectCount == 0
+                ? $"산정 셀 범위에 포함되는 측선이 없습니다: {CellRangeMin}~{CellRangeMax}"
+                : string.Empty;
+        }
+
         public override bool TryLoadConfiguration(FBDatabase db, out string error)
         {
             ArgumentNullException.ThrowIfNull(db);
@@ -91,6 +152,7 @@ namespace AFMSDll
             QueryBuilderSelect query = new();
             query.Table = FbtAFMSHydroTransect.TABLE_NAME;
             query.First = 1;
+            query.Add(FbtAFMSHydroTransect.COL_ID);
             query.Add(FbtAFMSHydroTransect.COL_DISTANCE_DATAS);
             query.Where(FbtAFMSHydroTransect.COL_HYDRO_ID, "=", Configuration.DeviceId);
             query.OrderByDesc(FbtAFMSHydroTransect.COL_ID);
@@ -103,13 +165,15 @@ namespace AFMSDll
                 return false;
             }
 
-            string json = Convert.ToString(table.Rows[0][FbtAFMSHydroTransect.COL_DISTANCE_DATAS]) ?? string.Empty;
+            DataRow row = table.Rows[0];
+            string json = Convert.ToString(row[FbtAFMSHydroTransect.COL_DISTANCE_DATAS]) ?? string.Empty;
             if (!TransectBuilder.TryBuild(json, out TransectCollection transects))
             {
                 error = $"유속계 측선 설정을 읽을 수 없습니다: DeviceId={Configuration.DeviceId}";
                 return false;
             }
 
+            Configuration.TransectConfigId = Convert.ToInt32(row[FbtAFMSHydroTransect.COL_ID]);
             Transects.AddRange(transects);
             error = string.Empty;
             return true;
