@@ -3,24 +3,61 @@ using System.Data;
 
 namespace AFMSDischargeService
 {
-    internal sealed class DischargeSlotService(ILogger<DischargeSlotService> logger) : BackgroundService
+    internal sealed class DischargeSlotService(
+        ILogger<DischargeSlotService> logger,
+        IHostApplicationLifetime applicationLifetime) : BackgroundService
     {
         private static readonly DateTime FirstSlotTime = new(2026, 7, 14, 0, 0, 0, DateTimeKind.Local);
         private static readonly TimeSpan SlotInterval = TimeSpan.FromMinutes(10);
         private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(10);
 
-        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        public override async Task StartAsync(CancellationToken cancellationToken)
         {
-            foreach (string error in FBProvider.Instance.CheckDischargeTables())
-                logger.LogError("유량 테이블 확인 오류: {Error}", error);
+            using CancellationTokenSource startupCancellation = CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken,
+                applicationLifetime.ApplicationStopping);
+            CancellationToken stoppingToken = startupCancellation.Token;
+
+            stoppingToken.ThrowIfCancellationRequested();
+
+            List<string> tableErrors = FBProvider.Instance.CheckDischargeTables();
+            stoppingToken.ThrowIfCancellationRequested();
+
+            if (tableErrors.Count > 0)
+            {
+                foreach (string error in tableErrors)
+                    logger.LogError("유량 테이블 확인 오류: {Error}", error);
+
+                throw new InvalidOperationException("유량 테이블을 준비하지 못해 서비스를 시작할 수 없습니다.");
+            }
 
             CreateMissingSlots(stoppingToken);
+            logger.LogInformation("초기 유량 슬롯 준비를 완료했습니다.");
 
+            stoppingToken.ThrowIfCancellationRequested();
+            await base.StartAsync(cancellationToken);
+        }
+
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
+        {
             using PeriodicTimer timer = new(PollInterval);
             try
             {
                 while (await timer.WaitForNextTickAsync(stoppingToken))
-                    CreateMissingSlots(stoppingToken);
+                {
+                    try
+                    {
+                        CreateMissingSlots(stoppingToken);
+                    }
+                    catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                    {
+                        break;
+                    }
+                    catch (Exception exception)
+                    {
+                        logger.LogError(exception, "유량 슬롯 생성 중 오류가 발생했습니다.");
+                    }
+                }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
@@ -29,46 +66,36 @@ namespace AFMSDischargeService
 
         private void CreateMissingSlots(CancellationToken stoppingToken)
         {
-            try
+            stoppingToken.ThrowIfCancellationRequested();
+
+            DateTime lastPassedSlot = GetLastPassedSlot(DateTime.Now);
+            if (lastPassedSlot < FirstSlotTime) return;
+
+            DateTime? latestSlot = GetLatestSlotTime();
+            DateTime nextSlot = latestSlot.HasValue
+                ? latestSlot.Value.Add(SlotInterval)
+                : FirstSlotTime;
+            if (nextSlot < FirstSlotTime) nextSlot = FirstSlotTime;
+
+            int createdCount = 0;
+            while (nextSlot <= lastPassedSlot)
             {
                 stoppingToken.ThrowIfCancellationRequested();
 
-                DateTime lastPassedSlot = GetLastPassedSlot(DateTime.Now);
-                if (lastPassedSlot < FirstSlotTime) return;
+                string error = InsertSlot(nextSlot);
+                if (!string.IsNullOrEmpty(error))
+                    throw new InvalidOperationException($"{nextSlot:yyyy-MM-dd HH:mm:ss} 슬롯 생성 실패: {error}");
 
-                DateTime? latestSlot = GetLatestSlotTime();
-                DateTime nextSlot = latestSlot.HasValue
-                    ? latestSlot.Value.Add(SlotInterval)
-                    : FirstSlotTime;
-                if (nextSlot < FirstSlotTime) nextSlot = FirstSlotTime;
-
-                int createdCount = 0;
-                while (nextSlot <= lastPassedSlot)
-                {
-                    stoppingToken.ThrowIfCancellationRequested();
-
-                    string error = InsertSlot(nextSlot);
-                    if (!string.IsNullOrEmpty(error))
-                        throw new InvalidOperationException($"{nextSlot:yyyy-MM-dd HH:mm:ss} 슬롯 생성 실패: {error}");
-
-                    createdCount++;
-                    nextSlot = nextSlot.Add(SlotInterval);
-                }
-
-                if (createdCount > 0)
-                {
-                    logger.LogInformation(
-                        "유량 슬롯 {Count}개를 생성했습니다. 마지막 슬롯: {LastSlot}",
-                        createdCount,
-                        lastPassedSlot);
-                }
+                createdCount++;
+                nextSlot = nextSlot.Add(SlotInterval);
             }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+
+            if (createdCount > 0)
             {
-            }
-            catch (Exception exception)
-            {
-                logger.LogError(exception, "유량 슬롯 생성 중 오류가 발생했습니다.");
+                logger.LogInformation(
+                    "유량 슬롯 {Count}개를 생성했습니다. 마지막 슬롯: {LastSlot}",
+                    createdCount,
+                    lastPassedSlot);
             }
         }
 
