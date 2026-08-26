@@ -297,7 +297,7 @@ namespace AFMSSettings
 
             if (!data.WaterLevel.HasValue || data.Count < 2)
             {
-                _totalArea.Text = "전체 단면적  0.00 m²";
+                _totalArea.Text = "전체 단면적";
                 return;
             }
 
