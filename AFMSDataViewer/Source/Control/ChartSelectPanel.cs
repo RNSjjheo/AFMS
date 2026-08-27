@@ -18,7 +18,7 @@ namespace AFMSDataViewer.Source.Control
         private AFMSButton uiBtnChartLevel;
         private AFMSButton uiBtnChartDisc;
         private AFMSButton uiBtnChartVTHL;
-        private DischargeResultChart? uiDischargeChart;
+        private RealtimeResultChart? uiResultChart;
         public ChartSelectPanel()
         {
             const float NODE_WIDTH = 70F;
@@ -114,20 +114,20 @@ namespace AFMSDataViewer.Source.Control
 
             ChartSelected?.Invoke(this, new ChartSelectedEventArgs(chartType, button.Text));
 
-            if (chartType == ChartMainType.Discharge) ShowDischargeChart();
+            ShowChart(chartType);
         }
 
-        private void ShowDischargeChart()
+        private void ShowChart(ChartMainType chartType)
         {
-            uiDischargeChart ??= new DischargeResultChart();
-            uiDischargeChart.BackRequested -= UiDischargeChart_BackRequested;
-            uiDischargeChart.BackRequested += UiDischargeChart_BackRequested;
+            uiResultChart?.Dispose();
+            uiResultChart = new RealtimeResultChart(chartType);
+            uiResultChart.BackRequested += UiResultChart_BackRequested;
             Controls.Clear();
-            Controls.Add(uiDischargeChart);
-            uiDischargeChart.LoadData();
+            Controls.Add(uiResultChart);
+            uiResultChart.LoadData();
         }
 
-        private void UiDischargeChart_BackRequested(object? sender, EventArgs e)
+        private void UiResultChart_BackRequested(object? sender, EventArgs e)
         {
             Controls.Clear();
             Controls.Add(uiTpMain);

@@ -1,286 +1,240 @@
 using AFMSDll;
+using ScottPlot;
+using ScottPlot.Plottables;
+using ScottPlot.WinForms;
 using System.Data;
-using System.Drawing.Drawing2D;
+using System.Globalization;
+using WinFormsLabel = System.Windows.Forms.Label;
 
 namespace AFMSDataViewer.Source.Control
 {
-    internal sealed class DischargeResultChart : UserControl
+    internal sealed class RealtimeResultChart : UserControl
     {
         private sealed record ChartPoint(DateTime Time, double Value);
+        private sealed record ChartSeries(string Name, System.Drawing.Color Color, List<ChartPoint> Points, bool SecondaryAxis = false);
 
-        private sealed class ChartSeries
+        private const int MaxRows = 500;
+        private static readonly System.Drawing.Color[] SeriesColors =
         {
-            public required string Name { get; init; }
-            public required Color Color { get; init; }
-            public List<ChartPoint> Points { get; } = new();
-        }
-
-        private sealed class PlotSurface : System.Windows.Forms.Control
-        {
-            private readonly List<ChartSeries> series = new();
-            private string message = string.Empty;
-
-            public PlotSurface()
-            {
-                Dock = DockStyle.Fill;
-                BackColor = Color.White;
-                SetStyle(ControlStyles.AllPaintingInWmPaint |
-                         ControlStyles.OptimizedDoubleBuffer |
-                         ControlStyles.ResizeRedraw |
-                         ControlStyles.UserPaint, true);
-            }
-
-            public void SetData(IEnumerable<ChartSeries> values, string emptyMessage)
-            {
-                series.Clear();
-                series.AddRange(values);
-                message = emptyMessage;
-                Invalidate();
-            }
-
-            protected override void OnPaint(PaintEventArgs e)
-            {
-                base.OnPaint(e);
-                e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
-                e.Graphics.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit;
-
-                List<ChartPoint> points = series.SelectMany(item => item.Points).ToList();
-                if (points.Count == 0)
-                {
-                    DrawCenteredMessage(e.Graphics, string.IsNullOrEmpty(message)
-                        ? "표시할 유량 산정 결과가 없습니다."
-                        : message);
-                    return;
-                }
-
-                Rectangle plot = new(66, 42, Math.Max(10, Width - 90), Math.Max(10, Height - 96));
-                if (plot.Width < 40 || plot.Height < 40) return;
-
-                DateTime minTime = points.Min(item => item.Time);
-                DateTime maxTime = points.Max(item => item.Time);
-                if (maxTime <= minTime) maxTime = minTime.AddMinutes(1);
-
-                double minValue = Math.Min(0.0, points.Min(item => item.Value));
-                double maxValue = points.Max(item => item.Value);
-                if (maxValue <= minValue) maxValue = minValue + 1.0;
-                double padding = (maxValue - minValue) * 0.08;
-                maxValue += padding;
-                if (minValue < 0.0) minValue -= padding;
-
-                DrawGrid(e.Graphics, plot, minTime, maxTime, minValue, maxValue);
-                DrawSeries(e.Graphics, plot, minTime, maxTime, minValue, maxValue);
-                DrawLegend(e.Graphics, plot);
-            }
-
-            private void DrawGrid(Graphics graphics, Rectangle plot, DateTime minTime, DateTime maxTime,
-                double minValue, double maxValue)
-            {
-                using Pen gridPen = new(Color.FromArgb(228, 233, 238), 1F);
-                using Pen axisPen = new(Color.FromArgb(135, 148, 160), 1F);
-                using Font labelFont = new("맑은 고딕", 8F);
-                using Brush labelBrush = new SolidBrush(Color.FromArgb(85, 95, 105));
-
-                const int divisions = 5;
-                for (int index = 0; index <= divisions; index++)
-                {
-                    float y = plot.Bottom - plot.Height * index / (float)divisions;
-                    graphics.DrawLine(gridPen, plot.Left, y, plot.Right, y);
-                    double value = minValue + (maxValue - minValue) * index / divisions;
-                    string text = value.ToString("0.###");
-                    SizeF size = graphics.MeasureString(text, labelFont);
-                    graphics.DrawString(text, labelFont, labelBrush, plot.Left - size.Width - 7, y - size.Height / 2);
-                }
-
-                TimeSpan range = maxTime - minTime;
-                string timeFormat = range.TotalDays >= 2 ? "MM-dd\nHH:mm" : "HH:mm";
-                for (int index = 0; index <= divisions; index++)
-                {
-                    float x = plot.Left + plot.Width * index / (float)divisions;
-                    graphics.DrawLine(gridPen, x, plot.Top, x, plot.Bottom);
-                    DateTime time = minTime.AddTicks(range.Ticks * index / divisions);
-                    string text = time.ToString(timeFormat).Replace("\n", Environment.NewLine);
-                    SizeF size = graphics.MeasureString(text, labelFont);
-                    graphics.DrawString(text, labelFont, labelBrush, x - size.Width / 2, plot.Bottom + 6);
-                }
-
-                graphics.DrawRectangle(axisPen, plot);
-                using Font unitFont = new("맑은 고딕", 9F, FontStyle.Bold);
-                graphics.DrawString("유량 (m³/s)", unitFont, labelBrush, plot.Left, 13F);
-            }
-
-            private void DrawSeries(Graphics graphics, Rectangle plot, DateTime minTime, DateTime maxTime,
-                double minValue, double maxValue)
-            {
-                double timeRange = (maxTime - minTime).TotalMilliseconds;
-                double valueRange = maxValue - minValue;
-                foreach (ChartSeries item in series)
-                {
-                    PointF[] coordinates = item.Points.OrderBy(point => point.Time).Select(point => new PointF(
-                        plot.Left + (float)((point.Time - minTime).TotalMilliseconds / timeRange * plot.Width),
-                        plot.Bottom - (float)((point.Value - minValue) / valueRange * plot.Height))).ToArray();
-                    if (coordinates.Length == 0) continue;
-
-                    using Pen linePen = new(item.Color, 2F) { LineJoin = LineJoin.Round };
-                    if (coordinates.Length > 1) graphics.DrawLines(linePen, coordinates);
-                    using Brush pointBrush = new SolidBrush(item.Color);
-                    foreach (PointF point in coordinates)
-                        graphics.FillEllipse(pointBrush, point.X - 2.5F, point.Y - 2.5F, 5F, 5F);
-                }
-            }
-
-            private void DrawLegend(Graphics graphics, Rectangle plot)
-            {
-                using Font font = new("맑은 고딕", 8F);
-                float x = plot.Right;
-                foreach (ChartSeries item in series.AsEnumerable().Reverse())
-                {
-                    SizeF size = graphics.MeasureString(item.Name, font);
-                    x -= size.Width + 25F;
-                    if (x < plot.Left) break;
-                    using Pen pen = new(item.Color, 3F);
-                    graphics.DrawLine(pen, x, 24F, x + 13F, 24F);
-                    graphics.DrawString(item.Name, font, Brushes.DimGray, x + 17F, 17F);
-                    x -= 12F;
-                }
-            }
-
-            private void DrawCenteredMessage(Graphics graphics, string text)
-            {
-                using Font font = new("맑은 고딕", 10F);
-                using Brush brush = new SolidBrush(Color.FromArgb(95, 105, 115));
-                SizeF size = graphics.MeasureString(text, font);
-                graphics.DrawString(text, font, brush,
-                    Math.Max(0F, (Width - size.Width) / 2F),
-                    Math.Max(0F, (Height - size.Height) / 2F));
-            }
-        }
-
-        private static readonly Color[] SeriesColors =
-        {
-            Color.FromArgb(2, 146, 93),
-            Color.FromArgb(35, 116, 210),
-            Color.FromArgb(239, 126, 35),
-            Color.FromArgb(137, 85, 190),
-            Color.FromArgb(213, 67, 84),
-            Color.FromArgb(25, 160, 173)
+            System.Drawing.Color.FromArgb(19, 187, 130), System.Drawing.Color.FromArgb(30, 190, 210),
+            System.Drawing.Color.FromArgb(132, 82, 246), System.Drawing.Color.FromArgb(244, 165, 36)
         };
 
-        private readonly PlotSurface plot = new();
-        private readonly Label title = new();
+        private readonly ChartMainType chartType;
+        private readonly FormsPlot formsPlot = new();
+        private readonly WinFormsLabel title = new();
+        private readonly WinFormsLabel minimum = CreateStatLabel("최소");
+        private readonly WinFormsLabel average = CreateStatLabel("평균", true);
+        private readonly WinFormsLabel maximum = CreateStatLabel("최대");
+        private readonly ComboBox seriesSelector = new();
+        private readonly CheckBox compareDischarge = new();
+        private readonly ToolTip hoverTip = new() { InitialDelay = 0, ReshowDelay = 0, AutoPopDelay = 5000 };
+        private readonly List<ChartSeries> availableSeries = new();
+
         public event EventHandler? BackRequested;
 
-        public DischargeResultChart()
+        public RealtimeResultChart(ChartMainType chartType)
         {
+            this.chartType = chartType;
             Dock = DockStyle.Fill;
-            BackColor = Color.White;
+            BackColor = System.Drawing.Color.White;
             Margin = Padding.Empty;
+            BuildLayout();
+            ConfigurePlot();
+        }
 
-            TableLayoutPanel layout = new();
-            layout.Dock = DockStyle.Fill;
-            layout.Margin = Padding.Empty;
-            layout.RowCount = 2;
-            layout.ColumnCount = 1;
-            layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
-            layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+        private void BuildLayout()
+        {
+            TableLayoutPanel root = new() { Dock = DockStyle.Fill, Margin = Padding.Empty, RowCount = 2, ColumnCount = 1 };
+            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 66F));
+            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
-            TableLayoutPanel header = new();
-            header.Dock = DockStyle.Fill;
-            header.Margin = Padding.Empty;
-            header.ColumnCount = 3;
+            TableLayoutPanel header = new() { Dock = DockStyle.Fill, Margin = Padding.Empty, ColumnCount = 8, BackColor = System.Drawing.Color.FromArgb(247, 250, 253) };
+            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 54F));
+            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 142F));
             header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 72F));
-            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 72F));
+            for (int i = 0; i < 3; i++) header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 64F));
+            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 78F));
+            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 36F));
 
             title.Dock = DockStyle.Fill;
-            title.Text = "유량 산정 결과";
-            title.TextAlign = ContentAlignment.MiddleLeft;
-            title.Font = new Font("맑은 고딕", 10F, FontStyle.Bold);
-            title.ForeColor = Color.FromArgb(36, 75, 55);
-            title.Padding = new Padding(12, 0, 0, 0);
+            title.Text = GetTitle();
+            title.TextAlign = ContentAlignment.MiddleCenter;
+            title.Font = new System.Drawing.Font("맑은 고딕", 10F, System.Drawing.FontStyle.Bold);
+            title.ForeColor = GetColor();
 
-            Button refresh = CreateHeaderButton("새로고침");
-            Button back = CreateHeaderButton("차트 선택");
-            refresh.Click += (_, _) => LoadData();
+            seriesSelector.Dock = DockStyle.Fill;
+            seriesSelector.DropDownStyle = ComboBoxStyle.DropDownList;
+            seriesSelector.Margin = new Padding(3, 18, 3, 18);
+            seriesSelector.SelectedIndexChanged += (_, _) => DrawSelectedSeries();
+
+            compareDischarge.Text = "유량 비교";
+            compareDischarge.Dock = DockStyle.Fill;
+            compareDischarge.TextAlign = ContentAlignment.MiddleCenter;
+            compareDischarge.Visible = chartType == ChartMainType.Level;
+            compareDischarge.CheckedChanged += (_, _) => LoadData();
+
+            Button back = new() { Text = "×", Dock = DockStyle.Fill, FlatStyle = FlatStyle.Flat, Margin = new Padding(2) };
+            back.FlatAppearance.BorderSize = 0;
             back.Click += (_, _) => BackRequested?.Invoke(this, EventArgs.Empty);
 
-            header.Controls.Add(title, 0, 0);
-            header.Controls.Add(refresh, 1, 0);
-            header.Controls.Add(back, 2, 0);
-            layout.Controls.Add(header, 0, 0);
-            layout.Controls.Add(plot, 0, 1);
-            Controls.Add(layout);
+            header.Controls.Add(title, 0, 0); header.Controls.Add(seriesSelector, 1, 0); header.Controls.Add(compareDischarge, 2, 0);
+            header.Controls.Add(minimum, 3, 0); header.Controls.Add(average, 4, 0); header.Controls.Add(maximum, 5, 0); header.Controls.Add(back, 7, 0);
+            root.Controls.Add(header, 0, 0); root.Controls.Add(formsPlot, 0, 1); Controls.Add(root);
+        }
+
+        private void ConfigurePlot()
+        {
+            formsPlot.Dock = DockStyle.Fill;
+            formsPlot.Plot.FigureBackground.Color = ScottPlot.Color.FromHex("#FFFFFF");
+            formsPlot.Plot.DataBackground.Color = ScottPlot.Color.FromHex("#FFFFFF");
+            formsPlot.Plot.Grid.MajorLineColor = ScottPlot.Color.FromHex("#E1EAF2");
+            formsPlot.Plot.Axes.Left.Label.Text = GetUnit();
+            formsPlot.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.DateTimeAutomatic();
+            formsPlot.MouseMove += FormsPlot_MouseMove;
+            formsPlot.MouseLeave += (_, _) => hoverTip.Hide(formsPlot);
         }
 
         public void LoadData()
         {
-            const int MaxRows = 500;
-            string sql = $"SELECT FIRST {MaxRows}" +
-                $" {_FBTableBase.COL_ID}," +
-                $" {FbtAFMSDischargeResult.COL_SOURCE_TIME}," +
-                $" TRIM({FbtAFMSDischargeResult.COL_SOURCE_DEVICE_TYPE}) AS {FbtAFMSDischargeResult.COL_SOURCE_DEVICE_TYPE}," +
-                $" {FbtAFMSDischargeResult.COL_SOURCE_DEVICE_ID} + 0 AS {FbtAFMSDischargeResult.COL_SOURCE_DEVICE_ID}," +
-                $" TRIM({FbtAFMSDischargeResult.COL_DISCHARGE_METHOD}) AS {FbtAFMSDischargeResult.COL_DISCHARGE_METHOD}," +
-                $" {FbtAFMSDischargeResult.COL_DISCHARGE}" +
-                $" FROM {FbtAFMSDischargeResult.TABLE_NAME}" +
-                $" WHERE {FbtAFMSDischargeResult.COL_CALCULATION_STATUS} = 'Calculated'" +
-                $" AND {FbtAFMSDischargeResult.COL_SOURCE_TIME} IS NOT NULL" +
-                $" AND {FbtAFMSDischargeResult.COL_DISCHARGE} IS NOT NULL" +
-                $" ORDER BY {FbtAFMSDischargeResult.COL_SOURCE_TIME} DESC," +
-                $" {FbtAFMSDischargeResult.COL_SOURCE_DEVICE_TYPE}," +
-                $" {FbtAFMSDischargeResult.COL_SOURCE_DEVICE_ID}," +
-                $" {FbtAFMSDischargeResult.COL_DISCHARGE_METHOD}";
-
-            using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
-            DataTable table = db.Execute(sql, out string error);
-            if (!string.IsNullOrEmpty(error))
+            try
             {
-                plot.SetData(Array.Empty<ChartSeries>(), $"유량 결과 조회 오류\n{error}");
-                title.Text = "유량 산정 결과 - 조회 실패";
-                return;
-            }
+                using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
+                DataTable table = db.Execute(GetSql(), out string error);
+                if (!string.IsNullOrEmpty(error)) { ShowMessage(error); return; }
 
-            Dictionary<string, ChartSeries> groups = new();
-            foreach (DataRow row in table.Rows.Cast<DataRow>().Reverse())
-            {
-                DateTime time = Convert.ToDateTime(row[FbtAFMSDischargeResult.COL_SOURCE_TIME]);
-                double discharge = Convert.ToDouble(row[FbtAFMSDischargeResult.COL_DISCHARGE]);
-                if (!double.IsFinite(discharge)) continue;
-
-                string deviceType = row[FbtAFMSDischargeResult.COL_SOURCE_DEVICE_TYPE].ToText();
-                int deviceId = Convert.ToInt32(row[FbtAFMSDischargeResult.COL_SOURCE_DEVICE_ID]);
-                string methodText = row[FbtAFMSDischargeResult.COL_DISCHARGE_METHOD].ToText();
-                string key = $"{deviceType}:{deviceId}:{methodText}";
-                if (!groups.TryGetValue(key, out ChartSeries? series))
+                availableSeries.Clear();
+                foreach (IGrouping<string, DataRow> group in table.Rows.Cast<DataRow>().Where(row => row["VALUE"] != DBNull.Value).GroupBy(row => row["SERIES"].ToText()))
                 {
-                    string methodName = Enum.TryParse(methodText, true, out DischargeMethod method)
-                        ? EnumPaser.GetKorString(method)
-                        : methodText;
-                    series = new ChartSeries
-                    {
-                        Name = $"{methodName} · {deviceType} {deviceId}",
-                        Color = SeriesColors[groups.Count % SeriesColors.Length]
-                    };
-                    groups.Add(key, series);
+                    List<ChartPoint> points = group.Reverse().Select(row => new ChartPoint(ParseSourceTime(row["SOURCE_TIME"]), Convert.ToDouble(row["VALUE"])))
+                        .Where(point => double.IsFinite(point.Value)).ToList();
+                    if (points.Count > 0) availableSeries.Add(new ChartSeries(group.Key, SeriesColors[availableSeries.Count % SeriesColors.Length], points));
                 }
-                series.Points.Add(new ChartPoint(time, discharge));
-            }
 
-            plot.SetData(groups.Values, "표시할 유량 산정 결과가 없습니다.");
-            title.Text = groups.Count == 0
-                ? "유량 산정 결과"
-                : $"유량 산정 결과 · 최근 {groups.Sum(item => item.Value.Points.Count)}건";
+                if (chartType == ChartMainType.Level && compareDischarge.Checked) AddDischargeComparison(db);
+                PopulateSelector();
+                DrawSelectedSeries();
+                title.Text = GetTitle();
+            }
+            catch (Exception ex) { ShowMessage(ex.Message); }
         }
 
-        private static Button CreateHeaderButton(string text) => new()
+        private void AddDischargeComparison(FBDatabase db)
         {
-            Text = text,
-            Dock = DockStyle.Fill,
-            FlatStyle = FlatStyle.Flat,
-            BackColor = Color.White,
-            ForeColor = Color.FromArgb(55, 75, 65),
-            Font = new Font("맑은 고딕", 8F),
-            Margin = new Padding(2, 5, 2, 5),
-            Cursor = Cursors.Hand
+            DataTable table = db.Execute(GetDischargeSql(), out string error);
+            if (!string.IsNullOrEmpty(error)) return;
+            List<ChartPoint> points = table.Rows.Cast<DataRow>().Reverse().Where(row => row["VALUE"] != DBNull.Value)
+                .Select(row => new ChartPoint(ParseSourceTime(row["SOURCE_TIME"]), Convert.ToDouble(row["VALUE"]))).Where(point => double.IsFinite(point.Value)).ToList();
+            if (points.Count > 0) availableSeries.Add(new ChartSeries("유량 비교", SeriesColors[0], points, true));
+        }
+
+        private void PopulateSelector()
+        {
+            string? selected = seriesSelector.SelectedItem?.ToString();
+            seriesSelector.BeginUpdate(); seriesSelector.Items.Clear(); seriesSelector.Items.Add("전체");
+            foreach (ChartSeries series in availableSeries.Where(series => !series.SecondaryAxis)) seriesSelector.Items.Add(series.Name);
+            seriesSelector.SelectedItem = selected != null && seriesSelector.Items.Contains(selected) ? selected : "전체";
+            seriesSelector.EndUpdate();
+        }
+
+        private void DrawSelectedSeries()
+        {
+            string selected = seriesSelector.SelectedItem?.ToString() ?? "전체";
+            formsPlot.Plot.Clear();
+            formsPlot.Plot.Axes.Right.IsVisible = false;
+            List<ChartSeries> visible = availableSeries.Where(series => selected == "전체" || series.Name == selected || series.SecondaryAxis).ToList();
+
+            foreach (ChartSeries source in visible)
+            {
+                double[] xs = source.Points.Select(point => point.Time.ToOADate()).ToArray();
+                double[] ys = source.Points.Select(point => point.Value).ToArray();
+                Scatter scatter = formsPlot.Plot.Add.Scatter(xs, ys);
+                scatter.LegendText = source.Name;
+                scatter.Color = ToScottColor(source.Color);
+                scatter.LineWidth = 2;
+                scatter.MarkerSize = 5;
+                scatter.FillY = true;
+                scatter.FillYValue = 0;
+                scatter.FillYColor = ToScottColor(System.Drawing.Color.FromArgb(45, source.Color));
+                if (source.SecondaryAxis)
+                {
+                    scatter.Axes.YAxis = formsPlot.Plot.Axes.Right;
+                    formsPlot.Plot.Axes.Right.IsVisible = true;
+                    formsPlot.Plot.Axes.Right.Label.Text = "m³/s";
+                }
+            }
+
+            formsPlot.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.DateTimeAutomatic();
+            formsPlot.Plot.Axes.AutoScale();
+            formsPlot.Plot.ShowLegend(Alignment.UpperRight);
+            formsPlot.Refresh();
+            UpdateStatistics(visible.Where(series => !series.SecondaryAxis).SelectMany(series => series.Points).Select(point => point.Value));
+        }
+
+        private void FormsPlot_MouseMove(object? sender, MouseEventArgs e)
+        {
+            if (availableSeries.Count == 0 || formsPlot.Width <= 0) return;
+            Coordinates coordinates = formsPlot.Plot.GetCoordinates(new Pixel(e.X, e.Y));
+            DateTime cursorTime = DateTime.FromOADate(coordinates.X);
+            ChartSeries? nearestSeries = null;
+            ChartPoint? nearestPoint = null;
+            double nearestSeconds = double.MaxValue;
+            string selected = seriesSelector.SelectedItem?.ToString() ?? "전체";
+            foreach (ChartSeries series in availableSeries.Where(series => selected == "전체" || series.Name == selected || series.SecondaryAxis))
+            {
+                ChartPoint? point = series.Points.MinBy(point => Math.Abs((point.Time - cursorTime).TotalSeconds));
+                if (point == null) continue;
+                double seconds = Math.Abs((point.Time - cursorTime).TotalSeconds);
+                if (seconds >= nearestSeconds) continue;
+                nearestSeconds = seconds; nearestPoint = point; nearestSeries = series;
+            }
+            if (nearestPoint == null || nearestSeries == null) return;
+            hoverTip.Show($"{nearestSeries.Name}\n{nearestPoint.Value:0.00} {(nearestSeries.SecondaryAxis ? "m³/s" : GetUnit())}\n{nearestPoint.Time:yyyy-MM-dd HH:mm}", formsPlot, e.X + 14, e.Y + 14, 1000);
+        }
+
+        private void UpdateStatistics(IEnumerable<double> values)
+        {
+            double[] data = values.ToArray();
+            minimum.Text = data.Length == 0 ? "최소\n-" : $"최소\n{data.Min():0.0}";
+            average.Text = data.Length == 0 ? "평균\n-" : $"평균\n{data.Average():0.0}";
+            maximum.Text = data.Length == 0 ? "최대\n-" : $"최대\n{data.Max():0.0}";
+        }
+
+        private void ShowMessage(string message)
+        {
+            availableSeries.Clear(); formsPlot.Plot.Clear(); formsPlot.Refresh();
+            title.Text = $"{GetTitle()} - 조회 오류: {message}"; UpdateStatistics(Array.Empty<double>());
+        }
+
+        private static DateTime ParseSourceTime(object value)
+        {
+            if (value is DateTime time) return time;
+            string text = value.ToText().Trim();
+            if (DateTime.TryParseExact(text, new[] { "yyyyMMdd HHmmss", "yyyyMMdd HHmmss.fff" }, CultureInfo.InvariantCulture, DateTimeStyles.None, out time)) return time;
+            return Convert.ToDateTime(value, CultureInfo.InvariantCulture);
+        }
+
+        private string GetSql() => chartType switch
+        {
+            ChartMainType.Level => $"SELECT FIRST {MaxRows} ({_FBTableBase.COL_MEASURE_DATE} || ' ' || {_FBTableBase.COL_MEASURE_TIME}) AS SOURCE_TIME, '수위계' AS SERIES, {FbtWATERLEVEL.COL_AVG_WATER_LEVEL} AS VALUE FROM {FbtWATERLEVEL.TABLE_NAME} WHERE {FbtWATERLEVEL.COL_AVG_WATER_LEVEL} IS NOT NULL ORDER BY {_FBTableBase.COL_MEASURE_DATE} DESC, {_FBTableBase.COL_MEASURE_TIME} DESC",
+            ChartMainType.Discharge => GetDischargeSql(),
+            ChartMainType.VTH => $"SELECT FIRST {MaxRows} ({_FBTableBase.COL_MEASURE_DATE} || ' ' || {_FBTableBase.COL_MEASURE_TIME}) AS SOURCE_TIME, '전압' AS SERIES, {FbtVTHLOGGER.COL_VOLT} AS VALUE FROM {FbtVTHLOGGER.TABLE_NAME} WHERE {FbtVTHLOGGER.COL_VOLT} IS NOT NULL ORDER BY {_FBTableBase.COL_MEASURE_DATE} DESC, {_FBTableBase.COL_MEASURE_TIME} DESC",
+            _ => GetVelocitySql()
+        };
+
+        private static string GetDischargeSql() => $"SELECT FIRST {MaxRows} {FbtAFMSDischargeResult.COL_SOURCE_TIME} AS SOURCE_TIME, TRIM({FbtAFMSDischargeResult.COL_DISCHARGE_METHOD}) AS SERIES, {FbtAFMSDischargeResult.COL_DISCHARGE} AS VALUE FROM {FbtAFMSDischargeResult.TABLE_NAME} WHERE {FbtAFMSDischargeResult.COL_DISCHARGE} IS NOT NULL ORDER BY {FbtAFMSDischargeResult.COL_SOURCE_TIME} DESC";
+        private static string GetVelocitySql() => $"SELECT FIRST {MaxRows} (M.{_FBTableBase.COL_MEASURE_DATE} || ' ' || M.{_FBTableBase.COL_MEASURE_TIME}) AS SOURCE_TIME, 'MPDS ' || C.{FbtHYDROMETERMPDSCELL.COL_DEV_NO} AS SERIES, C.{FbtHYDROMETERMPDSCELL.COL_VELOCITY} AS VALUE FROM {FbtHYDROMETERMPDS.TABLE_NAME} M JOIN {FbtHYDROMETERMPDSCELL.TABLE_NAME} C ON C.{FbtHYDROMETERMPDSCELL.COL_MPDS_ID}=M.{_FBTableBase.COL_ID} WHERE C.{FbtHYDROMETERMPDSCELL.COL_VELOCITY} IS NOT NULL ORDER BY M.{_FBTableBase.COL_MEASURE_DATE} DESC, M.{_FBTableBase.COL_MEASURE_TIME} DESC";
+
+        private string GetTitle() => chartType switch { ChartMainType.Velocity => "유속계", ChartMainType.Level => "수위계", ChartMainType.Discharge => "유량계", _ => "전원" };
+        private string GetUnit() => chartType switch { ChartMainType.Velocity => "m/s", ChartMainType.Level => "m", ChartMainType.Discharge => "m³/s", _ => "V" };
+        private System.Drawing.Color GetColor() => chartType switch { ChartMainType.Velocity => SeriesColors[2], ChartMainType.Level => SeriesColors[1], ChartMainType.Discharge => SeriesColors[0], _ => SeriesColors[3] };
+        private static ScottPlot.Color ToScottColor(System.Drawing.Color color) => new(color.R, color.G, color.B, color.A);
+        private static WinFormsLabel CreateStatLabel(string caption, bool highlighted = false) => new()
+        {
+            Text = $"{caption}\n-", Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter,
+            Font = new System.Drawing.Font("맑은 고딕", 8F), ForeColor = System.Drawing.Color.FromArgb(58, 91, 120),
+            BackColor = highlighted ? System.Drawing.Color.FromArgb(224, 255, 243) : System.Drawing.Color.White,
+            Margin = new Padding(2, 8, 2, 8), BorderStyle = BorderStyle.FixedSingle
         };
     }
 }
