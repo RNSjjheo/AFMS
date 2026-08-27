@@ -10,6 +10,8 @@ namespace AFMSSettings
     public class TabDischargeMapping : _TabDischargeBase
     {
         private const int SYSTEM_WATER_LEVEL_DEVICE_ID = 0;
+        private const int METHOD_CHECKBOX_WIDTH = 112;
+        private const int METHOD_CHECKBOX_HEIGHT = 43;
 
         private sealed class DeviceRowState
         {
@@ -32,6 +34,7 @@ namespace AFMSSettings
         private bool _hasRatingCurveConfig;
         private AFMSGuidePanel uiGuide;
         private Panel uiDeviceListHost;
+        private AFMSPanel uiDeviceTableBorder;
         private TableLayoutPanel uiDeviceTable;
 
         public TabDischargeMapping() : base(false)
@@ -146,8 +149,9 @@ namespace AFMSSettings
                 {
                     Text = EnumPaser.GetKorString(method),
                     Checked = enabled,
-                    AutoSize = true,
-                    Margin = new Padding(4, 7, 4, 7)
+                    AutoSize = false,
+                    Size = new Size(METHOD_CHECKBOX_WIDTH, METHOD_CHECKBOX_HEIGHT),
+                    Margin = new Padding(4, 5, 4, 6)
                 };
                 panel.Controls.Add(checkBox);
                 state.CheckBoxes[method] = checkBox;
@@ -164,6 +168,7 @@ namespace AFMSSettings
             uiDeviceTable.Controls.Add(CreateCellLabel(deviceKind), 1, tableRow);
             uiDeviceTable.Controls.Add(CreateCellLabel(deviceName), 2, tableRow);
             uiDeviceTable.Controls.Add(panel, 3, tableRow);
+            UpdateDeviceTableBorder();
         }
 
         private Dictionary<string, bool> LoadLatestSelections(FBDatabase db)
@@ -343,8 +348,8 @@ namespace AFMSSettings
                 Dock = DockStyle.Top,
                 Margin = Padding.Empty,
                 Padding = Padding.Empty,
-                CellBorderStyle = TableLayoutPanelCellBorderStyle.Single,
-                BackColor = Color.White
+                CellBorderStyle = TableLayoutPanelCellBorderStyle.None,
+                BackColor = DllColorHelper.HexToColor("#E1E6E3")
             };
             uiDeviceTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 9F));
             uiDeviceTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 14F));
@@ -356,18 +361,38 @@ namespace AFMSSettings
             uiDeviceTable.Controls.Add(CreateHeaderLabel("측정장비"), 2, 0);
             uiDeviceTable.Controls.Add(CreateHeaderLabel("산정법", ContentAlignment.MiddleLeft), 3, 0);
 
-            uiDeviceListHost = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Color.White };
-            uiDeviceListHost.Controls.Add(uiDeviceTable);
+            uiDeviceTableBorder = new AFMSPanel
+            {
+                Dock = DockStyle.Top,
+                BackColor = Color.White,
+                Padding = new Padding(6),
+                Margin = Padding.Empty,
+                BorderRadius = 10,
+                BorderThickness = 1F,
+                BorderColor = DllColorHelper.HexToColor("#AEB8B2")
+            };
+            uiDeviceTable.Dock = DockStyle.Fill;
+            uiDeviceTableBorder.Controls.Add(uiDeviceTable);
+
+            uiDeviceListHost = new Panel
+            {
+                Dock = DockStyle.Fill,
+                AutoScroll = true,
+                BackColor = Color.White,
+                Padding = new Padding(1)
+            };
+            uiDeviceListHost.Controls.Add(uiDeviceTableBorder);
             CtlMain = uiDeviceListHost;
+            UpdateDeviceTableBorder();
         }
 
         private static FlowLayoutPanel CreateMethodPanel() => new()
         {
-            BackColor = Color.Transparent,
+            BackColor = Color.White,
             FlowDirection = FlowDirection.LeftToRight,
             WrapContents = false,
             Dock = DockStyle.Fill,
-            Margin = Padding.Empty,
+            Margin = new Padding(0, 0, 0, 1),
             Padding = new Padding(4, 0, 0, 0)
         };
 
@@ -378,8 +403,8 @@ namespace AFMSSettings
             TextAlign = alignment,
             Font = new Font(DLLStyle.DEFAULT_FONT_SYLTE, 9F, FontStyle.Bold),
             ForeColor = DllColorHelper.HexToColor("#244B37"),
-            BackColor = DllColorHelper.HexToColor("#F7F9F8"),
-            Margin = Padding.Empty
+            BackColor = Color.White,
+            Margin = new Padding(0, 0, 0, 1)
         };
 
         private static Label CreateCellLabel(string text) => new()
@@ -388,7 +413,7 @@ namespace AFMSSettings
             Dock = DockStyle.Fill,
             TextAlign = ContentAlignment.MiddleCenter,
             BackColor = Color.White,
-            Margin = Padding.Empty
+            Margin = new Padding(0, 0, 0, 1)
         };
 
         private void ResetDeviceRows()
@@ -406,6 +431,15 @@ namespace AFMSSettings
                 uiDeviceTable.RowStyles.RemoveAt(row);
                 uiDeviceTable.RowCount--;
             }
+            UpdateDeviceTableBorder();
+        }
+
+        private void UpdateDeviceTableBorder()
+        {
+            if (uiDeviceTableBorder == null) return;
+            uiDeviceTableBorder.Height = uiDeviceTable.GetPreferredSize(new Size(uiDeviceTable.Width, 0)).Height
+                + uiDeviceTableBorder.Padding.Vertical;
+            uiDeviceTableBorder.Invalidate();
         }
 
         private static string GetDeviceKey(MeasurementDeviceType type, int id) => $"{type}:{id}";
