@@ -20,6 +20,8 @@ namespace AFMSDataViewer.Source.Control
         private AFMSButton uiBtnChartDisc;
         private AFMSButton uiBtnChartVTHL;
         private RealtimeResultChart? uiResultChart;
+        private DateTime rangeStart;
+        private DateTime rangeEnd;
         public ChartSelectPanel()
         {
             const float NODE_WIDTH = 70F;
@@ -121,11 +123,18 @@ namespace AFMSDataViewer.Source.Control
         private void ShowChart(ChartMainType chartType)
         {
             uiResultChart?.Dispose();
-            uiResultChart = new RealtimeResultChart(chartType);
+            uiResultChart = new RealtimeResultChart(chartType, rangeStart, rangeEnd);
             uiResultChart.MaximizeRequested += UiResultChart_MaximizeRequested;
             Controls.Clear();
             Controls.Add(uiResultChart);
             uiResultChart.LoadData();
+        }
+
+        public void SetTimeRange(DateTime start, DateTime end)
+        {
+            rangeStart = start;
+            rangeEnd = end;
+            uiResultChart?.SetTimeRange(start, end);
         }
 
         /// <summary>표시 중인 실시간 차트를 제거하고 차트 선택 화면으로 돌아갑니다.</summary>

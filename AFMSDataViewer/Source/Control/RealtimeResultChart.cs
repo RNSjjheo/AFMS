@@ -13,7 +13,6 @@ namespace AFMSDataViewer.Source.Control
         private sealed record ChartPoint(DateTime Time, double Value);
         private sealed record ChartSeries(string Name, System.Drawing.Color Color, List<ChartPoint> Points, bool SecondaryAxis = false);
 
-        private const int MaxRows = 500;
         private static readonly System.Drawing.Color[] SeriesColors =
         {
             System.Drawing.Color.FromArgb(19, 187, 130), System.Drawing.Color.FromArgb(30, 190, 210),
@@ -30,17 +29,29 @@ namespace AFMSDataViewer.Source.Control
         private readonly CheckBox compareDischarge = new();
         private readonly ToolTip hoverTip = new() { InitialDelay = 0, ReshowDelay = 0, AutoPopDelay = 5000 };
         private readonly List<ChartSeries> availableSeries = new();
+        private DateTime rangeStart;
+        private DateTime rangeEnd;
 
         public event EventHandler? MaximizeRequested;
 
-        public RealtimeResultChart(ChartMainType chartType)
+        public RealtimeResultChart(ChartMainType chartType, DateTime rangeStart, DateTime rangeEnd)
         {
             this.chartType = chartType;
+            this.rangeStart = rangeStart;
+            this.rangeEnd = rangeEnd;
             Dock = DockStyle.Fill;
             BackColor = System.Drawing.Color.White;
             Margin = Padding.Empty;
             BuildLayout();
             ConfigurePlot();
+        }
+
+        public void SetTimeRange(DateTime start, DateTime end)
+        {
+            if (start >= end) throw new ArgumentException("차트 시작 시각은 종료 시각보다 이전이어야 합니다.");
+            rangeStart = start;
+            rangeEnd = end;
+            LoadData();
         }
 
         private void BuildLayout()
@@ -166,6 +177,7 @@ namespace AFMSDataViewer.Source.Control
 
             formsPlot.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.DateTimeAutomatic();
             formsPlot.Plot.Axes.AutoScale();
+            formsPlot.Plot.Axes.SetLimitsX(rangeStart.ToOADate(), rangeEnd.ToOADate());
             formsPlot.Plot.ShowLegend(Alignment.UpperRight);
             formsPlot.Refresh();
             UpdateStatistics(visible.Where(series => !series.SecondaryAxis).SelectMany(series => series.Points).Select(point => point.Value));
@@ -214,16 +226,23 @@ namespace AFMSDataViewer.Source.Control
             return Convert.ToDateTime(value, CultureInfo.InvariantCulture);
         }
 
+        private string GetMeasurementTimeCondition(string? alias = null)
+        {
+            string prefix = string.IsNullOrEmpty(alias) ? string.Empty : alias + ".";
+            string sourceTime = $"({prefix}{_FBTableBase.COL_MEASURE_DATE} || ' ' || {prefix}{_FBTableBase.COL_MEASURE_TIME})";
+            return $"{sourceTime} >= '{rangeStart:yyyyMMdd HHmmss}' AND {sourceTime} <= '{rangeEnd:yyyyMMdd HHmmss}'";
+        }
+
         private string GetSql() => chartType switch
         {
-            ChartMainType.Level => $"SELECT FIRST {MaxRows} ({_FBTableBase.COL_MEASURE_DATE} || ' ' || {_FBTableBase.COL_MEASURE_TIME}) AS SOURCE_TIME, '수위계' AS SERIES, {FbtWATERLEVEL.COL_AVG_WATER_LEVEL} AS VALUE FROM {FbtWATERLEVEL.TABLE_NAME} WHERE {FbtWATERLEVEL.COL_AVG_WATER_LEVEL} IS NOT NULL ORDER BY {_FBTableBase.COL_MEASURE_DATE} DESC, {_FBTableBase.COL_MEASURE_TIME} DESC",
+            ChartMainType.Level => $"SELECT ({_FBTableBase.COL_MEASURE_DATE} || ' ' || {_FBTableBase.COL_MEASURE_TIME}) AS SOURCE_TIME, '수위계' AS SERIES, {FbtWATERLEVEL.COL_AVG_WATER_LEVEL} AS VALUE FROM {FbtWATERLEVEL.TABLE_NAME} WHERE {FbtWATERLEVEL.COL_AVG_WATER_LEVEL} IS NOT NULL AND {GetMeasurementTimeCondition()} ORDER BY {_FBTableBase.COL_MEASURE_DATE} DESC, {_FBTableBase.COL_MEASURE_TIME} DESC",
             ChartMainType.Discharge => GetDischargeSql(),
-            ChartMainType.VTH => $"SELECT FIRST {MaxRows} ({_FBTableBase.COL_MEASURE_DATE} || ' ' || {_FBTableBase.COL_MEASURE_TIME}) AS SOURCE_TIME, '전압' AS SERIES, {FbtVTHLOGGER.COL_VOLT} AS VALUE FROM {FbtVTHLOGGER.TABLE_NAME} WHERE {FbtVTHLOGGER.COL_VOLT} IS NOT NULL ORDER BY {_FBTableBase.COL_MEASURE_DATE} DESC, {_FBTableBase.COL_MEASURE_TIME} DESC",
+            ChartMainType.VTH => $"SELECT ({_FBTableBase.COL_MEASURE_DATE} || ' ' || {_FBTableBase.COL_MEASURE_TIME}) AS SOURCE_TIME, '전압' AS SERIES, {FbtVTHLOGGER.COL_VOLT} AS VALUE FROM {FbtVTHLOGGER.TABLE_NAME} WHERE {FbtVTHLOGGER.COL_VOLT} IS NOT NULL AND {GetMeasurementTimeCondition()} ORDER BY {_FBTableBase.COL_MEASURE_DATE} DESC, {_FBTableBase.COL_MEASURE_TIME} DESC",
             _ => GetVelocitySql()
         };
 
-        private static string GetDischargeSql() => $"SELECT FIRST {MaxRows} {FbtAFMSDischargeResult.COL_SOURCE_TIME} AS SOURCE_TIME, TRIM({FbtAFMSDischargeResult.COL_DISCHARGE_METHOD}) AS SERIES, {FbtAFMSDischargeResult.COL_DISCHARGE} AS VALUE FROM {FbtAFMSDischargeResult.TABLE_NAME} WHERE {FbtAFMSDischargeResult.COL_DISCHARGE} IS NOT NULL ORDER BY {FbtAFMSDischargeResult.COL_SOURCE_TIME} DESC";
-        private static string GetVelocitySql() => $"SELECT FIRST {MaxRows} (M.{_FBTableBase.COL_MEASURE_DATE} || ' ' || M.{_FBTableBase.COL_MEASURE_TIME}) AS SOURCE_TIME, 'MPDS ' || C.{FbtHYDROMETERMPDSCELL.COL_DEV_NO} AS SERIES, C.{FbtHYDROMETERMPDSCELL.COL_VELOCITY} AS VALUE FROM {FbtHYDROMETERMPDS.TABLE_NAME} M JOIN {FbtHYDROMETERMPDSCELL.TABLE_NAME} C ON C.{FbtHYDROMETERMPDSCELL.COL_MPDS_ID}=M.{_FBTableBase.COL_ID} WHERE C.{FbtHYDROMETERMPDSCELL.COL_VELOCITY} IS NOT NULL ORDER BY M.{_FBTableBase.COL_MEASURE_DATE} DESC, M.{_FBTableBase.COL_MEASURE_TIME} DESC";
+        private string GetDischargeSql() => $"SELECT {FbtAFMSDischargeResult.COL_SOURCE_TIME} AS SOURCE_TIME, TRIM({FbtAFMSDischargeResult.COL_DISCHARGE_METHOD}) AS SERIES, {FbtAFMSDischargeResult.COL_DISCHARGE} AS VALUE FROM {FbtAFMSDischargeResult.TABLE_NAME} WHERE {FbtAFMSDischargeResult.COL_DISCHARGE} IS NOT NULL AND {FbtAFMSDischargeResult.COL_SOURCE_TIME} >= '{rangeStart:yyyy-MM-dd HH:mm:ss}' AND {FbtAFMSDischargeResult.COL_SOURCE_TIME} <= '{rangeEnd:yyyy-MM-dd HH:mm:ss}' ORDER BY {FbtAFMSDischargeResult.COL_SOURCE_TIME} DESC";
+        private string GetVelocitySql() => $"SELECT (M.{_FBTableBase.COL_MEASURE_DATE} || ' ' || M.{_FBTableBase.COL_MEASURE_TIME}) AS SOURCE_TIME, 'MPDS ' || C.{FbtHYDROMETERMPDSCELL.COL_DEV_NO} AS SERIES, C.{FbtHYDROMETERMPDSCELL.COL_VELOCITY} AS VALUE FROM {FbtHYDROMETERMPDS.TABLE_NAME} M JOIN {FbtHYDROMETERMPDSCELL.TABLE_NAME} C ON C.{FbtHYDROMETERMPDSCELL.COL_MPDS_ID}=M.{_FBTableBase.COL_ID} WHERE C.{FbtHYDROMETERMPDSCELL.COL_VELOCITY} IS NOT NULL AND {GetMeasurementTimeCondition("M")} ORDER BY M.{_FBTableBase.COL_MEASURE_DATE} DESC, M.{_FBTableBase.COL_MEASURE_TIME} DESC";
 
         private string GetTitle() => chartType switch { ChartMainType.Velocity => "유속계", ChartMainType.Level => "수위계", ChartMainType.Discharge => "유량계", _ => "전원" };
         private string GetUnit() => chartType switch { ChartMainType.Velocity => "m/s", ChartMainType.Level => "m", ChartMainType.Discharge => "m³/s", _ => "V" };

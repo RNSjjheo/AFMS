@@ -68,7 +68,7 @@ namespace AFMSDataViewer
             uiBtnGroups.AddButton("일");
             uiBtnGroups.AddButton("주");
             uiBtnGroups.AddButton("월");
-            uiBtnGroups.SelectedIndexChanged += (_, _) => UpdateNavigatorText();
+            uiBtnGroups.SelectedIndexChanged += (_, _) => ApplyNavigatorRange();
 
             uiBtnTemp = new AFMSButtonGroup();
             uiBtnTemp.Dock = DockStyle.Fill;
@@ -101,12 +101,12 @@ namespace AFMSDataViewer
             DateTime now = DateTime.Now;
             selectedDateTime = new DateTime(
                 now.Year, now.Month, now.Day, now.Hour, now.Minute / 10 * 10, 0, now.Kind);
-            UpdateNavigatorText();
 
             uiChart1 = CreateChartPanel();
             uiChart2 = CreateChartPanel();
             uiChart3 = CreateChartPanel();
             uiChart4 = CreateChartPanel();
+            ApplyNavigatorRange();
 
             uiTpTop.Controls.Add(uiBtnGroups, 0, 0);
             uiTpTop.Controls.Add(uiNavigator, 1, 0);
@@ -128,13 +128,25 @@ namespace AFMSDataViewer
                 2 => selectedDateTime.AddMonths(direction),
                 _ => selectedDateTime.AddDays(direction)
             };
-            UpdateNavigatorText();
+            ApplyNavigatorRange();
         }
 
-        private void UpdateNavigatorText()
+        private void ApplyNavigatorRange()
         {
             if (uiNavigator == null) return;
             uiNavigator.Text = selectedDateTime.ToString("yyyy-MM-dd HH:mm");
+
+            DateTime start = uiBtnGroups.SelectedIndex switch
+            {
+                1 => selectedDateTime.AddDays(-7),
+                2 => selectedDateTime.AddMonths(-1),
+                _ => selectedDateTime.AddHours(-24)
+            };
+
+            uiChart1?.SetTimeRange(start, selectedDateTime);
+            uiChart2?.SetTimeRange(start, selectedDateTime);
+            uiChart3?.SetTimeRange(start, selectedDateTime);
+            uiChart4?.SetTimeRange(start, selectedDateTime);
         }
 
         private void UiBtnTemp_Click(object? sender, EventArgs e)
