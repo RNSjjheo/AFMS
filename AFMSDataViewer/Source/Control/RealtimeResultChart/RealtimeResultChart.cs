@@ -25,6 +25,7 @@ namespace AFMSDataViewer
         private readonly ChartMainType chartType;
         private readonly FormsPlot formsPlot = new();
         private readonly AFMSSectionPanel chartSection = new();
+        private readonly Button maximizeToggle = new();
         private readonly WinFormsLabel title = new();
         private readonly WinFormsLabel minimum = CreateStatLabel("최소");
         private readonly WinFormsLabel average = CreateStatLabel("평균", true);
@@ -35,6 +36,7 @@ namespace AFMSDataViewer
         private readonly List<ChartSeries> availableSeries = new();
         private DateTime rangeStart;
         private DateTime rangeEnd;
+        private bool isMaximized;
 
         public event EventHandler? MaximizeRequested;
         public RealtimeResultChartControl TopLayout;
@@ -62,6 +64,8 @@ namespace AFMSDataViewer
             chartSection.SectionStyle = AFMSSectionStyle.FilledHeader;
             chartSection.Font = new System.Drawing.Font(ChartFontName, 9F, System.Drawing.FontStyle.Bold);
 
+            ConfigureMaximizeToggle();
+
             uiTpMain = new TableLayoutPanel();
             uiTpMain.Dock = DockStyle.Fill;
             uiTpMain.Margin = Padding.Empty;
@@ -81,7 +85,60 @@ namespace AFMSDataViewer
             uiTpMain.Controls.Add(TopLayout, 0, 0);
             uiTpMain.Controls.Add(formsPlot, 0, 1);
             chartSection.ContentLayout.Controls.Add(uiTpMain);
+            chartSection.Controls.Add(maximizeToggle);
+            maximizeToggle.BringToFront();
             Controls.Add(chartSection);
+        }
+
+        private void ConfigureMaximizeToggle()
+        {
+            maximizeToggle.Size = new System.Drawing.Size(28, 28);
+            maximizeToggle.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            maximizeToggle.FlatStyle = FlatStyle.Flat;
+            maximizeToggle.FlatAppearance.BorderSize = 0;
+            maximizeToggle.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(232, 237, 243);
+            maximizeToggle.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(220, 227, 235);
+            maximizeToggle.BackColor = System.Drawing.Color.Transparent;
+            maximizeToggle.ForeColor = System.Drawing.Color.FromArgb(55, 62, 72);
+            maximizeToggle.Cursor = Cursors.Hand;
+            maximizeToggle.TabStop = false;
+            maximizeToggle.AccessibleName = "차트 최대화";
+            hoverTip.SetToolTip(maximizeToggle, "최대화");
+            maximizeToggle.Paint += MaximizeToggle_Paint;
+            maximizeToggle.Click += (_, _) =>
+            {
+                isMaximized = !isMaximized;
+                maximizeToggle.AccessibleName = isMaximized ? "차트 기본 크기로 복원" : "차트 최대화";
+                hoverTip.SetToolTip(maximizeToggle, isMaximized ? "기본 크기로 복원" : "최대화");
+                maximizeToggle.Invalidate();
+                MaximizeRequested?.Invoke(this, EventArgs.Empty);
+            };
+
+            chartSection.Resize += (_, _) => PositionMaximizeToggle();
+            PositionMaximizeToggle();
+        }
+
+        private void PositionMaximizeToggle()
+        {
+            maximizeToggle.Location = new System.Drawing.Point(
+                Math.Max(0, chartSection.ClientSize.Width - maximizeToggle.Width - 6),
+                Math.Max(0, (chartSection.HeaderHeight - maximizeToggle.Height) / 2));
+        }
+
+        private void MaximizeToggle_Paint(object? sender, PaintEventArgs e)
+        {
+            e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            using System.Drawing.Pen pen = new(maximizeToggle.ForeColor, 1.4F);
+
+            if (isMaximized)
+            {
+                e.Graphics.DrawRectangle(pen, 11, 8, 8, 8);
+                e.Graphics.DrawRectangle(pen, 8, 11, 8, 8);
+            }
+            else
+            {
+                e.Graphics.DrawRectangle(pen, 9, 9, 10, 10);
+            }
         }
 
         public void SetTimeRange(DateTime start, DateTime end)
@@ -249,6 +306,9 @@ namespace AFMSDataViewer
             minimum.Text = data.Length == 0 ? "최소\n-" : $"최소\n{data.Min():0.0}";
             average.Text = data.Length == 0 ? "평균\n-" : $"평균\n{data.Average():0.0}";
             maximum.Text = data.Length == 0 ? "최대\n-" : $"최대\n{data.Max():0.0}";
+            TopLayout.uiValueMin.Value = data.Length == 0 ? "-" : $"{data.Min():0.0}";
+            TopLayout.uiValueAvg.Value = data.Length == 0 ? "-" : $"{data.Average():0.0}";
+            TopLayout.uiValueMax.Value = data.Length == 0 ? "-" : $"{data.Max():0.0}";
         }
 
         private void ShowMessage(string message)
