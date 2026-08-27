@@ -39,6 +39,9 @@ namespace AFMSDischargeService
                 options.ServiceName = PROCESS_NAME;
             });
 
+            builder.Services.Configure<DischargeServiceOptions>(
+                builder.Configuration.GetSection(DischargeServiceOptions.SectionName));
+
             builder.Logging.ClearProviders();
             builder.Logging.AddProvider(new AFMSLogLoggerProvider());
 

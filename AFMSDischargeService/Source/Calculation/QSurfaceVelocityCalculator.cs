@@ -27,7 +27,8 @@ namespace AFMSDischargeService
         public double StandardVelocityUncertainty { get; private set; }
         public double IndexVelocityUncertainty { get; private set; }
 
-        public QSurfaceVelocityCalculator(): base(DischargeMethod.SurfaceVelo)
+        public QSurfaceVelocityCalculator(DateTime calculationStartTime)
+            : base(DischargeMethod.SurfaceVelo, calculationStartTime)
         {
         }
 

@@ -33,6 +33,7 @@ namespace AFMSDll
             string sql = $"CREATE TABLE {TABLE_NAME} (";
             sql += "\n" + $"{COL_ID} INTEGER NOT NULL,";
             sql += "\n" + $"{COL_SLOT_ID} INTEGER NOT NULL,";
+            sql += "\n" + $"{COL_SOURCE_TIME} TIMESTAMP,";
             sql += "\n" + $"{COL_SOURCE_DEVICE_TYPE} VARCHAR(30) NOT NULL,";
             sql += "\n" + $"{COL_SOURCE_DEVICE_ID} INTEGER NOT NULL,";
             sql += "\n" + $"{COL_DISCHARGE_METHOD} VARCHAR(32) NOT NULL,";
@@ -48,7 +49,6 @@ namespace AFMSDll
             sql += "\n" + $"{COL_CALCULATION_STATUS} VARCHAR(32) DEFAULT '{DischargeCalculationStatus.Calculated}' NOT NULL,";
             sql += "\n" + $"{COL_STATUS_MESSAGE} VARCHAR(255),";
             sql += "\n" + $"{COL_CALCULATION_FORMULA} VARCHAR(4096),";
-            sql += "\n" + $"{COL_SOURCE_TIME} TIMESTAMP,";
             sql += "\n" + $"{COL_CALCULATED_AT} TIMESTAMP,";
             sql += "\n" + $"CONSTRAINT PK_AFMS_DIS_RESULT PRIMARY KEY({COL_ID}),";
             sql += "\n" + $"CONSTRAINT UQ_AFMS_DIS_RESULT UNIQUE(";

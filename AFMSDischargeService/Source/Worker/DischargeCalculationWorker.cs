@@ -1,10 +1,12 @@
 using AFMSDll;
+using Microsoft.Extensions.Options;
 using System.Data;
 
 namespace AFMSDischargeService
 {
     internal sealed class DischargeCalculationWorker(
-        ILogger<DischargeCalculationWorker> logger) : BackgroundService
+        ILogger<DischargeCalculationWorker> logger,
+        IOptions<DischargeServiceOptions> options) : BackgroundService
     {
         private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(10);
         private static readonly TimeSpan BacklogDelay = TimeSpan.FromMilliseconds(20);
@@ -205,7 +207,9 @@ namespace AFMSDischargeService
                     !Enum.TryParse(Convert.ToString(row[FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD]), true,
                         out DischargeMethod method)) continue;
 
-                QCalculatorBase? calculator = CreateCalculator(method);
+                QCalculatorBase? calculator = CreateCalculator(
+                    method,
+                    options.Value.CalculationStartTime);
                 if (calculator == null || !IsSupportedDevice(method, deviceType)) continue;
 
                 calculator.Configuration.MethodConfigId = Convert.ToInt32(row[FbtAFMSDischargeMethodConfig.COL_ID]);
@@ -357,14 +361,16 @@ namespace AFMSDischargeService
             return true;
         }
 
-        private static QCalculatorBase? CreateCalculator(DischargeMethod method)
+        private static QCalculatorBase? CreateCalculator(
+            DischargeMethod method,
+            DateTime calculationStartTime)
         {
             return method switch
             {
-                DischargeMethod.MidSection => new QMidSectionCalculator(),
-                DischargeMethod.RatingCurve => new QRatingCurveCalculator(),
-                DischargeMethod.SurfaceVelo => new QSurfaceVelocityCalculator(),
-                DischargeMethod.VeloDist => new QVelocityDistributionCalculator(),
+                DischargeMethod.MidSection => new QMidSectionCalculator(calculationStartTime),
+                DischargeMethod.RatingCurve => new QRatingCurveCalculator(calculationStartTime),
+                DischargeMethod.SurfaceVelo => new QSurfaceVelocityCalculator(calculationStartTime),
+                DischargeMethod.VeloDist => new QVelocityDistributionCalculator(calculationStartTime),
                 _ => null
             };
         }

@@ -4,8 +4,8 @@ namespace AFMSDischargeService
 {
     internal sealed class QVelocityDistributionCalculator : QCalculatorBase
     {
-        public QVelocityDistributionCalculator()
-            : base(DischargeMethod.VeloDist)
+        public QVelocityDistributionCalculator(DateTime calculationStartTime)
+            : base(DischargeMethod.VeloDist, calculationStartTime)
         {
         }
 

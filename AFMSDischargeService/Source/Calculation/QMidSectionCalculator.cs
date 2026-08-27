@@ -16,7 +16,8 @@ namespace AFMSDischargeService
         public int CellRangeMax { get; private set; }
         public double ConversionFactor { get; private set; }
 
-        public QMidSectionCalculator(): base(DischargeMethod.MidSection)
+        public QMidSectionCalculator(DateTime calculationStartTime)
+            : base(DischargeMethod.MidSection, calculationStartTime)
         {
         }
 

@@ -41,7 +41,9 @@ namespace AFMSDischargeService
 
         public static string GetSlotKey(QCalculationContext calculation)
         {
-            return calculation.SlotId >= 0 ? calculation.SlotId.ToString() : "없음";
+            return calculation.SlotId >= 0
+                ? $"#{calculation.SlotId}@{calculation.SlotDate:yyyy-MM-dd} {calculation.SlotTime:HH:mm}"
+                : "없음";
         }
     }
 }

@@ -24,8 +24,8 @@ namespace AFMSDischargeService
         public override bool IsImplemented => true;
         public DiscVerRatingCurve Version { get; private set; }
 
-        public QRatingCurveCalculator()
-            : base(DischargeMethod.RatingCurve)
+        public QRatingCurveCalculator(DateTime calculationStartTime)
+            : base(DischargeMethod.RatingCurve, calculationStartTime)
         {
         }
 

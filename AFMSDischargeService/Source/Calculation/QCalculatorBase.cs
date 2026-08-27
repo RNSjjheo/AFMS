@@ -10,15 +10,19 @@ namespace AFMSDischargeService
     {
         private readonly ILog log;
         private readonly TransectCollection calculationTransects = new();
+        private readonly DateTime calculationStartTime;
 
         /// <summary>단면 구간 계산에 사용하는 전체 측선 목록입니다.</summary>
         public TransectCollection Transects => Configuration.CrossSection.Transects;
         /// <summary>현재 유량 산정법 설정에서 실제 연산에 사용하는 측선 목록입니다.</summary>
         public IReadOnlyList<Transect> CalculationTransects => calculationTransects;
 
-        protected QCalculatorBase(DischargeMethod method) : base(method)
+        protected QCalculatorBase(
+            DischargeMethod method,
+            DateTime calculationStartTime) : base(method)
         {
             log = LogManager.GetLogger(GetType());
+            this.calculationStartTime = calculationStartTime;
         }
 
         /// <summary>
@@ -203,7 +207,7 @@ namespace AFMSDischargeService
             log.Info($"유량 산정 시작값 이동: {GetLogContext()}, " +
                 $"이전 {previousId} ({previousDate:yyyy-MM-dd} {previousTime:HH:mm:ss}), " +
                 $"변경 {Measurement.SourceId} ({Measurement.SourceDate:yyyy-MM-dd} {Measurement.SourceTime:HH:mm:ss}), " +
-                $"슬롯 {(hasSlot ? Calculation.SlotId : -1)}");
+                $"슬롯 {(hasSlot ? DischargeLogFormatter.GetSlotKey(Calculation) : "없음")}");
 
             if (!hasSlot) return false;
             return TryPrepareCalculationMeasurements(db, out bool movedMeasurementLoaded) &&
@@ -359,10 +363,13 @@ namespace AFMSDischargeService
             sourceSql += $" {FbtAFMSHydroMeter.COL_MEASURE_DATE},";
             sourceSql += $" {FbtAFMSHydroMeter.COL_MEASURE_TIME}";
             sourceSql += $" FROM {Measurement.TableName}";
+            string calculationStart = calculationStartTime
+                .ToString("yyyyMMdd HHmmss", CultureInfo.InvariantCulture);
+            sourceSql += $" WHERE {_FBTableBase.SQL_MEASURE_DATETIME} >= '{calculationStart}'";
             if (Measurement.LastCalculatedSourceTime.HasValue)
             {
                 string lastSourceDateTime = Measurement.LastCalculatedSourceTime.Value.ToString("yyyyMMdd HHmmss", CultureInfo.InvariantCulture);
-                sourceSql += $" WHERE {_FBTableBase.SQL_MEASURE_DATETIME} > '{lastSourceDateTime}'";
+                sourceSql += $" AND {_FBTableBase.SQL_MEASURE_DATETIME} > '{lastSourceDateTime}'";
             }
             sourceSql += $" ORDER BY {_FBTableBase.SQL_MEASURE_DATETIME}";
             if (hasMeasurementId) sourceSql += $", {FbtAFMSHydroMeter.COL_ID}";
@@ -586,6 +593,9 @@ namespace AFMSDischargeService
             sql += $" AND R.{FbtAFMSDischargeResult.COL_SOURCE_DEVICE_TYPE} = '{Configuration.DeviceType}'";
             sql += $" AND R.{FbtAFMSDischargeResult.COL_SOURCE_DEVICE_ID} = {Configuration.DeviceId}";
             sql += $" AND R.{FbtAFMSDischargeResult.COL_DISCHARGE_METHOD} = '{Configuration.Method}')";
+            string calculationStart = calculationStartTime
+                .ToString("yyyyMMdd HHmmss", CultureInfo.InvariantCulture);
+            sql += $" AND (S.{FbtAFMSDischargeTimeslot.COL_MEASURE_DATE} || ' ' || S.{FbtAFMSDischargeTimeslot.COL_MEASURE_TIME}) >= '{calculationStart}'";
             if (Measurement.HasSource)
             {
                 string measurementStart = $"{Measurement.SourceDate:yyyyMMdd} {Measurement.SourceTime:HHmmss}";

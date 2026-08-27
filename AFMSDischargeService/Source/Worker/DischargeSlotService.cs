@@ -1,13 +1,14 @@
 using AFMSDll;
+using Microsoft.Extensions.Options;
 using System.Data;
 
 namespace AFMSDischargeService
 {
     internal sealed class DischargeSlotService(
         ILogger<DischargeSlotService> logger,
-        IHostApplicationLifetime applicationLifetime) : BackgroundService
+        IHostApplicationLifetime applicationLifetime,
+        IOptions<DischargeServiceOptions> options) : BackgroundService
     {
-        private static readonly DateTime FirstSlotTime = new(2026, 8, 20, 0, 0, 0, DateTimeKind.Local);
         private static readonly TimeSpan SlotInterval = TimeSpan.FromMinutes(10);
         private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(10);
 
@@ -69,13 +70,15 @@ namespace AFMSDischargeService
             stoppingToken.ThrowIfCancellationRequested();
 
             DateTime lastPassedSlot = GetLastPassedSlot(DateTime.Now);
-            if (lastPassedSlot < FirstSlotTime) return;
+            DateTime calculationStartTime = options.Value.CalculationStartTime;
+            if (lastPassedSlot < calculationStartTime) return;
 
             DateTime? latestSlot = GetLatestSlotTime();
             DateTime nextSlot = latestSlot.HasValue
                 ? latestSlot.Value.Add(SlotInterval)
-                : FirstSlotTime;
-            if (nextSlot < FirstSlotTime) nextSlot = FirstSlotTime;
+                : calculationStartTime;
+            if (nextSlot < calculationStartTime)
+                nextSlot = calculationStartTime;
 
             int createdCount = 0;
             while (nextSlot <= lastPassedSlot)
