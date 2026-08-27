@@ -26,29 +26,15 @@ namespace AFMSDischargeService
             error = ValidateCalculationInputs();
             if (!string.IsNullOrEmpty(error)) return false;
 
-            CrossSection crossSection = Configuration.CrossSection;
-            try
-            {
-                crossSection.CalculateTransectAreas(Measurement.WaterLevel);
-            }
-            catch (ArgumentException ex)
-            {
-                error = ex.Message;
-                return false;
-            }
-
             double discharge = 0.0;
             double area = 0.0;
-            foreach (Transect transect in Transects.Where(item =>
-                         item.No >= CellRangeMin && item.No <= CellRangeMax))
+            CrossSection crossSection = Configuration.CrossSection;
+
+            crossSection.CalculateTransectAreas(Measurement.WaterLevel);
+
+            foreach (Transect transect in Transects.Where(item => item.No >= CellRangeMin && item.No <= CellRangeMax))
             {
-                QTransectMeasurement? measurement = TransectMeasurements
-                    .FirstOrDefault(item => item.No == transect.No);
-                if (measurement == null)
-                {
-                    error = $"{transect.No}번 측선의 유속자료가 없습니다.";
-                    return false;
-                }
+                QTransectMeasurement measurement = TransectMeasurements.First(item => item.No == transect.No);
 
                 area += transect.SectionArea;
                 discharge += transect.SectionArea * measurement.Velocity * ConversionFactor;
@@ -64,6 +50,7 @@ namespace AFMSDischargeService
             Calculation.Velocity = area > 0.0 ? discharge / area : 0.0;
             Calculation.Value = discharge;
             error = string.Empty;
+
             return true;
         }
 
@@ -71,15 +58,56 @@ namespace AFMSDischargeService
         {
             if (Calculation.SlotId < 0) return "산정 슬롯이 준비되지 않았습니다.";
             if (!Measurement.HasWaterLevel) return "산정할 수위자료가 준비되지 않았습니다.";
+            if (!double.IsFinite(Measurement.WaterLevel)) return "산정할 수위값이 올바르지 않습니다.";
+            if (CellRangeMin < 1 || CellRangeMax < CellRangeMin)
+                return $"중간단면적법 셀 범위가 올바르지 않습니다: {CellRangeMin}~{CellRangeMax}";
+            if (!double.IsFinite(ConversionFactor) || ConversionFactor <= 0.0)
+                return $"중간단면적법 환산계수가 올바르지 않습니다: {ConversionFactor}";
             if (Configuration.CrossSection.Points.Count < 2) return "단면정보가 준비되지 않았습니다.";
             if (Transects.Count == 0) return "설정된 측선정보가 없습니다.";
             if (TransectMeasurements.Count == 0) return "수집된 측선 유속자료가 없습니다.";
 
-            int calculationTransectCount = Transects.Count(item =>
-                item.No >= CellRangeMin && item.No <= CellRangeMax);
-            return calculationTransectCount == 0
-                ? $"산정 셀 범위에 포함되는 측선이 없습니다: {CellRangeMin}~{CellRangeMax}"
-                : string.Empty;
+            List<CrossSectionPoint> section = Configuration.CrossSection.Points
+                .OrderBy(point => point.LeftBankDistance)
+                .ToList();
+            if (section.Any(point =>
+                    !double.IsFinite(point.LeftBankDistance) || !double.IsFinite(point.Elevation)))
+                return "단면 좌표에 올바르지 않은 값이 있습니다.";
+
+            double sectionStart = section[0].LeftBankDistance;
+            double sectionEnd = section[^1].LeftBankDistance;
+            if (sectionStart > 0.0 || sectionEnd <= 0.0)
+                return "단면 좌표에는 좌안 거리 0과 그보다 큰 우안 거리가 포함되어야 합니다.";
+
+            List<Transect> orderedTransects = Transects
+                .OrderBy(transect => transect.CenterLeftBankDistance)
+                .ToList();
+            for (int index = 0; index < orderedTransects.Count; index++)
+            {
+                Transect transect = orderedTransects[index];
+                double center = transect.CenterLeftBankDistance;
+                if (!double.IsFinite(center) || center < 0.0 || center > sectionEnd)
+                    return $"{transect.No}번 측선의 중심 위치가 단면 범위를 벗어났습니다.";
+                if (index > 0 && orderedTransects[index - 1].CenterLeftBankDistance == center)
+                    return $"측선 중심 위치가 중복되어 있습니다: {center}";
+            }
+
+            List<Transect> calculationTransects = Transects.Where(item =>
+                    item.No >= CellRangeMin && item.No <= CellRangeMax)
+                .ToList();
+            if (calculationTransects.Count == 0)
+                return $"산정 셀 범위에 포함되는 측선이 없습니다: {CellRangeMin}~{CellRangeMax}";
+
+            foreach (Transect transect in calculationTransects)
+            {
+                QTransectMeasurement? measurement = TransectMeasurements
+                    .FirstOrDefault(item => item.No == transect.No);
+                if (measurement == null) return $"{transect.No}번 측선의 유속자료가 없습니다.";
+                if (!double.IsFinite(measurement.Velocity))
+                    return $"{transect.No}번 측선의 유속값이 올바르지 않습니다.";
+            }
+
+            return string.Empty;
         }
 
         public override bool TryLoadConfiguration(FBDatabase db, out string error)
