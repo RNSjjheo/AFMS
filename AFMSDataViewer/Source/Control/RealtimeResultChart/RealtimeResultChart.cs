@@ -172,46 +172,6 @@ namespace AFMSDataViewer
             LoadData();
         }
 
-        private void BuildLayout()
-        {
-            TableLayoutPanel root = new() { Dock = DockStyle.Fill, Margin = Padding.Empty, RowCount = 2, ColumnCount = 1 };
-            root.RowStyles.Add(new RowStyle(SizeType.Absolute, 66F));
-            root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-
-            TableLayoutPanel header = new() { Dock = DockStyle.Fill, Margin = Padding.Empty, ColumnCount = 7, BackColor = System.Drawing.Color.FromArgb(247, 250, 253) };
-            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 54F));
-            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 142F));
-            header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            for (int i = 0; i < 3; i++) header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 64F));
-            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 36F));
-
-            title.Dock = DockStyle.Fill;
-            title.Text = GetTitle();
-            title.TextAlign = ContentAlignment.MiddleCenter;
-            title.Font = new System.Drawing.Font("맑은 고딕", 10F, System.Drawing.FontStyle.Bold);
-            title.ForeColor = GetColor();
-
-            seriesSelector.Dock = DockStyle.Fill;
-            seriesSelector.DropDownStyle = ComboBoxStyle.DropDownList;
-            seriesSelector.Margin = new Padding(3, 18, 3, 18);
-            seriesSelector.SelectedIndexChanged += (_, _) => DrawSelectedSeries();
-
-            compareDischarge.Text = "유량 비교";
-            compareDischarge.Dock = DockStyle.Fill;
-            compareDischarge.TextAlign = ContentAlignment.MiddleCenter;
-            compareDischarge.Visible = chartType == ChartMainType.Level;
-            compareDischarge.CheckedChanged += (_, _) => LoadData();
-
-            Button maximize = new() { Text = "□", Dock = DockStyle.Fill, FlatStyle = FlatStyle.Flat, Margin = new Padding(2) };
-            maximize.FlatAppearance.BorderSize = 0;
-            maximize.Click += (_, _) => MaximizeRequested?.Invoke(this, EventArgs.Empty);
-
-            header.Controls.Add(title, 0, 0); header.Controls.Add(seriesSelector, 1, 0); header.Controls.Add(compareDischarge, 2, 0);
-            header.Controls.Add(minimum, 3, 0); header.Controls.Add(average, 4, 0); header.Controls.Add(maximum, 5, 0);
-            header.Controls.Add(maximize, 6, 0);
-            root.Controls.Add(header, 0, 0); root.Controls.Add(formsPlot, 0, 1); Controls.Add(root);
-        }
-
         private void ConfigurePlot()
         {
             formsPlot.Dock = DockStyle.Fill;
@@ -481,113 +441,9 @@ namespace AFMSDataViewer
             return Convert.ToDateTime(value, CultureInfo.InvariantCulture);
         }
 
-        private string GetMeasurementTimeCondition(string? alias = null)
-        {
-            string prefix = string.IsNullOrEmpty(alias) ? string.Empty : alias + ".";
-            string sourceTime = $"({prefix}{_FBTableBase.COL_MEASURE_DATE} || ' ' || {prefix}{_FBTableBase.COL_MEASURE_TIME})";
-            return $"{sourceTime} >= '{rangeStart:yyyyMMdd HHmmss}' AND {sourceTime} <= '{rangeEnd:yyyyMMdd HHmmss}'";
-        }
+        private string GetSql() => RealtimeChartQueryFactory.Create(chartType, rangeStart, rangeEnd).Build();
 
-        private string GetSlotTimeCondition(string alias = "S") =>
-            $"{alias}.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} >= '{rangeStart:yyyy-MM-dd HH:mm:ss}' AND " +
-            $"{alias}.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} <= '{rangeEnd:yyyy-MM-dd HH:mm:ss}'";
-
-        private string GetSql() => chartType switch
-        {
-            ChartMainType.Level => GetLevelSql(),
-            ChartMainType.Discharge => GetDischargeSql(),
-            ChartMainType.VTH => GetPowerSql(),
-            _ => GetVelocitySql()
-        };
-
-        private string GetLevelSql()
-        {
-            string sql = $"SELECT S.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} AS SOURCE_TIME, '수위계' AS SERIES, W.CHART_VALUE";
-            sql += $" FROM {FbtAFMSDischargeTimeslot.TABLE_NAME} S";
-            sql += $" LEFT JOIN (SELECT {_FBTableBase.COL_MEASURE_DATE} AS M_DATE, {_FBTableBase.COL_MEASURE_TIME} AS M_TIME,";
-            sql += $" AVG({FbtWATERLEVEL.COL_AVG_WATER_LEVEL}) AS CHART_VALUE FROM {FbtWATERLEVEL.TABLE_NAME}";
-            sql += $" WHERE {GetMeasurementTimeCondition()}";
-            sql += $" GROUP BY {_FBTableBase.COL_MEASURE_DATE}, {_FBTableBase.COL_MEASURE_TIME}) W";
-            sql += $" ON W.M_DATE = S.{_FBTableBase.COL_MEASURE_DATE} AND W.M_TIME = S.{_FBTableBase.COL_MEASURE_TIME}";
-            sql += $" WHERE {GetSlotTimeCondition()} ORDER BY S.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} DESC";
-            return sql;
-        }
-
-        private string GetDischargeSql()
-        {
-            string type = FbtAFMSDischargeResult.COL_SOURCE_DEVICE_TYPE;
-            string deviceId = FbtAFMSDischargeResult.COL_SOURCE_DEVICE_ID;
-            string method = FbtAFMSDischargeResult.COL_DISCHARGE_METHOD;
-            string sourceTime = FbtAFMSDischargeResult.COL_SOURCE_TIME;
-            string sql = $"SELECT S.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} AS SOURCE_TIME,";
-            sql += $" TRIM(D.DISCHARGE_METHOD) || ' ' || TRIM(D.DEVICE_TYPE) || ' ' || CAST(D.DEVICE_ID AS VARCHAR(12)) AS SERIES,";
-            sql += " R.CHART_VALUE, D.DEVICE_TYPE, D.DEVICE_ID, D.DISCHARGE_METHOD";
-            sql += $" FROM {FbtAFMSDischargeTimeslot.TABLE_NAME} S";
-            sql += $" CROSS JOIN (SELECT DISTINCT TRIM({type}) AS DEVICE_TYPE, {deviceId} AS DEVICE_ID, TRIM({method}) AS DISCHARGE_METHOD";
-            sql += $" FROM {FbtAFMSDischargeResult.TABLE_NAME}) D";
-            sql += $" LEFT JOIN (SELECT {sourceTime} AS SLOT_TIME, TRIM({type}) AS DEVICE_TYPE, {deviceId} AS DEVICE_ID,";
-            sql += $" TRIM({method}) AS DISCHARGE_METHOD, AVG({FbtAFMSDischargeResult.COL_DISCHARGE}) AS CHART_VALUE";
-            sql += $" FROM {FbtAFMSDischargeResult.TABLE_NAME} WHERE {sourceTime} >= '{rangeStart:yyyy-MM-dd HH:mm:ss}'";
-            sql += $" AND {sourceTime} <= '{rangeEnd:yyyy-MM-dd HH:mm:ss}'";
-            sql += $" GROUP BY {sourceTime}, {type}, {deviceId}, {method}) R";
-            sql += " ON R.SLOT_TIME = S.SLOT_TIME AND R.DEVICE_TYPE = D.DEVICE_TYPE AND R.DEVICE_ID = D.DEVICE_ID";
-            sql += " AND R.DISCHARGE_METHOD = D.DISCHARGE_METHOD";
-            sql += $" WHERE {GetSlotTimeCondition()} ORDER BY S.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} DESC";
-            return sql;
-        }
-
-        private string GetVelocitySql()
-        {
-            string sql = $"SELECT S.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} AS SOURCE_TIME,";
-            sql += " 'MPDS ' || CAST(D.DEV_NO AS VARCHAR(12)) AS SERIES, V.CHART_VALUE";
-            sql += $" FROM {FbtAFMSDischargeTimeslot.TABLE_NAME} S";
-            sql += $" CROSS JOIN (SELECT DISTINCT C.{FbtHYDROMETERMPDSCELL.COL_DEV_NO} AS DEV_NO FROM {FbtHYDROMETERMPDS.TABLE_NAME} M";
-            sql += $" JOIN {FbtHYDROMETERMPDSCELL.TABLE_NAME} C ON C.{FbtHYDROMETERMPDSCELL.COL_MPDS_ID} = M.{_FBTableBase.COL_ID}";
-            sql += $" WHERE {GetMeasurementTimeCondition("M")}) D";
-            sql += $" LEFT JOIN (SELECT M.{_FBTableBase.COL_MEASURE_DATE} AS M_DATE, M.{_FBTableBase.COL_MEASURE_TIME} AS M_TIME,";
-            sql += $" C.{FbtHYDROMETERMPDSCELL.COL_DEV_NO} AS DEV_NO, AVG(C.{FbtHYDROMETERMPDSCELL.COL_VELOCITY}) AS CHART_VALUE";
-            sql += $" FROM {FbtHYDROMETERMPDS.TABLE_NAME} M JOIN {FbtHYDROMETERMPDSCELL.TABLE_NAME} C";
-            sql += $" ON C.{FbtHYDROMETERMPDSCELL.COL_MPDS_ID} = M.{_FBTableBase.COL_ID}";
-            sql += $" WHERE {GetMeasurementTimeCondition("M")}";
-            sql += $" GROUP BY M.{_FBTableBase.COL_MEASURE_DATE}, M.{_FBTableBase.COL_MEASURE_TIME}, C.{FbtHYDROMETERMPDSCELL.COL_DEV_NO}) V";
-            sql += $" ON V.M_DATE = S.{_FBTableBase.COL_MEASURE_DATE} AND V.M_TIME = S.{_FBTableBase.COL_MEASURE_TIME} AND V.DEV_NO = D.DEV_NO";
-            sql += $" WHERE {GetSlotTimeCondition()}";
-            sql += " UNION ALL ";
-            sql += $"SELECT S.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} AS SOURCE_TIME,";
-            sql += " '영상 ' || CAST(D.CELL_NO AS VARCHAR(12)) AS SERIES, V.CHART_VALUE";
-            sql += $" FROM {FbtAFMSDischargeTimeslot.TABLE_NAME} S";
-            sql += $" CROSS JOIN (SELECT DISTINCT C.{FbtHYDROMETERVIDEOCELL.COL_CELL_NO} AS CELL_NO FROM {FbtHYDROMETERVIDEO.TABLE_NAME} M";
-            sql += $" JOIN {FbtHYDROMETERVIDEOCELL.TABLE_NAME} C ON C.{FbtHYDROMETERVIDEOCELL.COL_VIDEO_ID} = M.{_FBTableBase.COL_ID}";
-            sql += $" WHERE {GetMeasurementTimeCondition("M")}) D";
-            sql += $" LEFT JOIN (SELECT M.{_FBTableBase.COL_MEASURE_DATE} AS M_DATE, M.{_FBTableBase.COL_MEASURE_TIME} AS M_TIME,";
-            sql += $" C.{FbtHYDROMETERVIDEOCELL.COL_CELL_NO} AS CELL_NO, AVG(C.{FbtHYDROMETERVIDEOCELL.COL_VELOCITY}) AS CHART_VALUE";
-            sql += $" FROM {FbtHYDROMETERVIDEO.TABLE_NAME} M JOIN {FbtHYDROMETERVIDEOCELL.TABLE_NAME} C";
-            sql += $" ON C.{FbtHYDROMETERVIDEOCELL.COL_VIDEO_ID} = M.{_FBTableBase.COL_ID}";
-            sql += $" WHERE {GetMeasurementTimeCondition("M")}";
-            sql += $" GROUP BY M.{_FBTableBase.COL_MEASURE_DATE}, M.{_FBTableBase.COL_MEASURE_TIME}, C.{FbtHYDROMETERVIDEOCELL.COL_CELL_NO}) V";
-            sql += $" ON V.M_DATE = S.{_FBTableBase.COL_MEASURE_DATE} AND V.M_TIME = S.{_FBTableBase.COL_MEASURE_TIME} AND V.CELL_NO = D.CELL_NO";
-            sql += $" WHERE {GetSlotTimeCondition()}";
-            sql += " ORDER BY 1 DESC";
-            return sql;
-        }
-
-        private string GetPowerSql()
-        {
-            string values = $"SELECT {_FBTableBase.COL_MEASURE_DATE} AS M_DATE, {_FBTableBase.COL_MEASURE_TIME} AS M_TIME,";
-            values += $" AVG({FbtVTHLOGGER.COL_VOLT}) AS INPUT_VALUE, AVG({FbtVTHLOGGER.COL_DCCHARGE}) AS CHARGE_VALUE,";
-            values += $" AVG({FbtVTHLOGGER.COL_DCBATTERY}) AS BATTERY_VALUE FROM {FbtVTHLOGGER.TABLE_NAME}";
-            values += $" WHERE {GetMeasurementTimeCondition()}";
-            values += $" GROUP BY {_FBTableBase.COL_MEASURE_DATE}, {_FBTableBase.COL_MEASURE_TIME}";
-            string join = $" FROM {FbtAFMSDischargeTimeslot.TABLE_NAME} S LEFT JOIN ({values}) V";
-            join += $" ON V.M_DATE = S.{_FBTableBase.COL_MEASURE_DATE} AND V.M_TIME = S.{_FBTableBase.COL_MEASURE_TIME}";
-            string condition = $" WHERE {GetSlotTimeCondition()}";
-            string slotTime = $"S.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME}";
-            string sql = $"SELECT {slotTime} AS SOURCE_TIME, '입력 전압' AS SERIES, V.INPUT_VALUE AS CHART_VALUE{join}{condition}";
-            sql += $" UNION ALL SELECT {slotTime} AS SOURCE_TIME, '충전 전압' AS SERIES, V.CHARGE_VALUE AS CHART_VALUE{join}{condition}";
-            sql += $" UNION ALL SELECT {slotTime} AS SOURCE_TIME, '배터리 전압' AS SERIES, V.BATTERY_VALUE AS CHART_VALUE{join}{condition}";
-            sql += " ORDER BY 1 DESC";
-            return sql;
-        }
+        private string GetDischargeSql() => new RealtimeDischargeChartQuery(rangeStart, rangeEnd).Build();
 
         private string GetTitle() => chartType switch { ChartMainType.Velocity => "유속계", ChartMainType.Level => "수위계", ChartMainType.Discharge => "유량계", _ => "전원" };
         private string GetUnit() => chartType switch { ChartMainType.Velocity => "m/s", ChartMainType.Level => "m", ChartMainType.Discharge => "m³/s", _ => "V" };
