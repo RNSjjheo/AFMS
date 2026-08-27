@@ -15,7 +15,7 @@ namespace AFMSDataViewer
             string join = $" FROM {FbtAFMSDischargeTimeslot.TABLE_NAME} S LEFT JOIN ({values}) V";
             join += $" ON V.M_DATE = S.{_FBTableBase.COL_MEASURE_DATE} AND V.M_TIME = S.{_FBTableBase.COL_MEASURE_TIME}";
             string condition = $" WHERE {SlotTimeCondition()}";
-            string slotTime = $"S.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME}";
+            string slotTime = SlotTimeValue();
             string sql = $"SELECT {slotTime} AS SOURCE_TIME, '입력 전압' AS SERIES, V.INPUT_VALUE AS CHART_VALUE{join}{condition}";
             sql += $" UNION ALL SELECT {slotTime} AS SOURCE_TIME, '충전 전압' AS SERIES, V.CHARGE_VALUE AS CHART_VALUE{join}{condition}";
             sql += $" UNION ALL SELECT {slotTime} AS SOURCE_TIME, '배터리 전압' AS SERIES, V.BATTERY_VALUE AS CHART_VALUE{join}{condition}";

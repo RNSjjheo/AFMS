@@ -34,6 +34,9 @@ namespace AFMSDataViewer
         protected string SlotTimeCondition(string alias = "S") =>
             $"{alias}.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} >= '{RangeStart:yyyy-MM-dd HH:mm:ss}' AND " +
             $"{alias}.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} <= '{RangeEnd:yyyy-MM-dd HH:mm:ss}'";
+
+        protected static string SlotTimeValue(string alias = "S") =>
+            $"CAST({alias}.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} AS TIMESTAMP)";
     }
 
     internal static class RealtimeChartQueryFactory

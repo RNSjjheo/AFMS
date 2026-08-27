@@ -34,7 +34,7 @@ namespace AFMSDataViewer
 
         private string BuildMpdsQuery()
         {
-            string sql = $"SELECT S.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} AS SOURCE_TIME,";
+            string sql = $"SELECT {SlotTimeValue()} AS SOURCE_TIME,";
             sql += " 'MPDS ' || CAST(D.DEV_NO AS VARCHAR(12)) AS SERIES, V.CHART_VALUE";
             sql += $" FROM {FbtAFMSDischargeTimeslot.TABLE_NAME} S";
             sql += $" CROSS JOIN (SELECT DISTINCT C.{FbtHYDROMETERMPDSCELL.COL_DEV_NO} AS DEV_NO FROM {FbtHYDROMETERMPDS.TABLE_NAME} M";
@@ -53,7 +53,7 @@ namespace AFMSDataViewer
 
         private string BuildVideoQuery()
         {
-            string sql = $"SELECT S.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} AS SOURCE_TIME,";
+            string sql = $"SELECT {SlotTimeValue()} AS SOURCE_TIME,";
             sql += " '영상 ' || CAST(D.CELL_NO AS VARCHAR(12)) AS SERIES, V.CHART_VALUE";
             sql += $" FROM {FbtAFMSDischargeTimeslot.TABLE_NAME} S";
             sql += $" CROSS JOIN (SELECT DISTINCT C.{FbtHYDROMETERVIDEOCELL.COL_CELL_NO} AS CELL_NO FROM {FbtHYDROMETERVIDEO.TABLE_NAME} M";
@@ -71,7 +71,7 @@ namespace AFMSDataViewer
         }
 
         private string BuildEmptySeries() =>
-            $"SELECT S.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} AS SOURCE_TIME, '유속계' AS SERIES, CAST(NULL AS DOUBLE PRECISION) AS CHART_VALUE " +
+            $"SELECT {SlotTimeValue()} AS SOURCE_TIME, '유속계' AS SERIES, CAST(NULL AS DOUBLE PRECISION) AS CHART_VALUE " +
             $"FROM {FbtAFMSDischargeTimeslot.TABLE_NAME} S WHERE {SlotTimeCondition()} " +
             $"ORDER BY S.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} DESC";
     }

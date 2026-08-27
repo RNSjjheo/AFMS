@@ -7,7 +7,7 @@ namespace AFMSDataViewer
     {
         public override string Build()
         {
-            string sql = $"SELECT S.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} AS SOURCE_TIME, '수위계' AS SERIES, W.CHART_VALUE";
+            string sql = $"SELECT {SlotTimeValue()} AS SOURCE_TIME, '수위계' AS SERIES, W.CHART_VALUE";
             sql += $" FROM {FbtAFMSDischargeTimeslot.TABLE_NAME} S";
             sql += $" LEFT JOIN (SELECT {_FBTableBase.COL_MEASURE_DATE} AS M_DATE, {_FBTableBase.COL_MEASURE_TIME} AS M_TIME,";
             sql += $" AVG({FbtWATERLEVEL.COL_AVG_WATER_LEVEL}) AS CHART_VALUE FROM {FbtWATERLEVEL.TABLE_NAME}";

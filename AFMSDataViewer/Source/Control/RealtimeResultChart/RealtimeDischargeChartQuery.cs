@@ -11,7 +11,7 @@ namespace AFMSDataViewer
             string deviceId = FbtAFMSDischargeResult.COL_SOURCE_DEVICE_ID;
             string method = FbtAFMSDischargeResult.COL_DISCHARGE_METHOD;
             string sourceTime = FbtAFMSDischargeResult.COL_SOURCE_TIME;
-            string sql = $"SELECT S.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} AS SOURCE_TIME,";
+            string sql = $"SELECT {SlotTimeValue()} AS SOURCE_TIME,";
             sql += $" TRIM(D.DISCHARGE_METHOD) || ' ' || TRIM(D.DEVICE_TYPE) || ' ' || CAST(D.DEVICE_ID AS VARCHAR(12)) AS SERIES,";
             sql += " R.CHART_VALUE, D.DEVICE_TYPE, D.DEVICE_ID, D.DISCHARGE_METHOD";
             sql += $" FROM {FbtAFMSDischargeTimeslot.TABLE_NAME} S";
