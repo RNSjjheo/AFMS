@@ -17,6 +17,10 @@ namespace AFMSDischargeService
         public TransectCollection Transects => Configuration.CrossSection.Transects;
         /// <summary>현재 유량 산정법 설정에서 실제 연산에 사용하는 측선 목록입니다.</summary>
         public IReadOnlyList<Transect> CalculationTransects => calculationTransects;
+        /// <summary>서비스 시작 시 확정된 공통 단면 ID입니다.</summary>
+        public int StartupCrossSectionId { get; set; } = -1;
+        /// <summary>서비스 시작 시 장비별로 확정된 공통 측선 설정 ID입니다.</summary>
+        public int StartupTransectConfigId { get; set; } = -1;
 
         protected QCalculatorBase(
             DischargeMethod method,

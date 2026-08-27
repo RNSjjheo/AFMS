@@ -364,7 +364,7 @@ namespace AFMSDischargeService
             query.Add(FbtAFMSCrossSection.COL_DESCRIPTION);
             query.Add(FbtAFMSCrossSection.COL_ZERO_POINT_ELEVATION);
             query.Add(FbtAFMSCrossSection.COL_POINT_DATA);
-            query.OrderByDesc(FbtAFMSCrossSection.COL_ID);
+            query.Where(FbtAFMSCrossSection.COL_ID, "=", StartupCrossSectionId);
 
             table = db.Execute(query, out error);
             if (!string.IsNullOrEmpty(error)) return false;

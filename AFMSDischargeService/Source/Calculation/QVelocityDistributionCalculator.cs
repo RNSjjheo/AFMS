@@ -99,8 +99,7 @@ namespace AFMSDischargeService
 
         private bool LoadMethodConfig(FBDatabase db, out string error)
         {
-            string sql = $"SELECT FIRST 1 {FbtAFMSDischargeMethodConfig.COL_TRANSECT_CONFIG_ID}," +
-                $" {FbtAFMSDischargeMethodConfig.COL_CROSS_SECTION_ID}, {FbtAFMSDischargeMethodConfig.COL_CONFIG_JSON}" +
+            string sql = $"SELECT FIRST 1 {FbtAFMSDischargeMethodConfig.COL_CONFIG_JSON}" +
                 $" FROM {FbtAFMSDischargeMethodConfig.TABLE_NAME}" +
                 $" WHERE {FbtAFMSDischargeMethodConfig.COL_ID}={Configuration.MethodConfigId}" +
                 $" AND {FbtAFMSDischargeMethodConfig.COL_DEVICE_ID}={Configuration.DeviceId}" +
@@ -114,17 +113,11 @@ namespace AFMSDischargeService
             }
 
             DataRow row = table.Rows[0];
-            if (row[0] == DBNull.Value || row[1] == DBNull.Value)
-            {
-                error = "유속분포법 설정에 측선 또는 단면 설정 ID가 없습니다.";
-                return false;
-            }
 
             try
             {
-                Configuration.TransectConfigId = Convert.ToInt32(row[0]);
-                Configuration.CrossSection.Id = Convert.ToInt32(row[1]);
-                using JsonDocument doc = JsonDocument.Parse(row[2].ToText());
+                Configuration.TransectConfigId = StartupTransectConfigId;
+                using JsonDocument doc = JsonDocument.Parse(row[0].ToText());
                 JsonElement c = doc.RootElement.GetProperty("calculation");
                 Version = (DiscVerVelocityDistribution)c.GetProperty("DisVer").GetInt32();
                 Phi = c.GetProperty("Phi").GetDouble();
@@ -190,12 +183,12 @@ namespace AFMSDischargeService
             query.Add(FbtAFMSCrossSection.COL_DESCRIPTION);
             query.Add(FbtAFMSCrossSection.COL_ZERO_POINT_ELEVATION);
             query.Add(FbtAFMSCrossSection.COL_POINT_DATA);
-            query.Where(FbtAFMSCrossSection.COL_ID, "=", Configuration.CrossSection.Id);
+            query.Where(FbtAFMSCrossSection.COL_ID, "=", StartupCrossSectionId);
             DataTable table = db.Execute(query, out error);
             if (!string.IsNullOrEmpty(error)) return false;
             if (table.Rows.Count == 0)
             {
-                error = $"단면 설정을 찾을 수 없습니다: ID={Configuration.CrossSection.Id}";
+                error = $"단면 설정을 찾을 수 없습니다: ID={StartupCrossSectionId}";
                 return false;
             }
             try
@@ -205,6 +198,7 @@ namespace AFMSDischargeService
                 CrossSectionPointCollection points = CrossSectionPointBuilder.Build(row[2].ToText(), zero);
                 if (points.Count < 2) throw new JsonException("단면 좌표가 부족합니다.");
                 Configuration.CrossSection.Description = Convert.ToString(row[0]) ?? string.Empty;
+                Configuration.CrossSection.Id = StartupCrossSectionId;
                 Configuration.CrossSection.ZeroPointElevation = zero;
                 Configuration.CrossSection.Points.AddRange(points);
             }

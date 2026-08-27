@@ -237,20 +237,32 @@ namespace AFMSDischargeService
         {
             List<QCalculatorBase> initializedCalculators = new();
             using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
+            int startupCrossSectionId = LoadStartupCrossSectionId(db);
+            Dictionary<int, int> startupTransectIds = LoadStartupTransectIds(db);
+
+            logger.LogInformation(
+                "서비스 시작 단면을 고정했습니다: CrossSectionId={CrossSectionId}",
+                startupCrossSectionId);
 
             foreach (QCalculatorBase calculator in calculators)
             {
                 stoppingToken.ThrowIfCancellationRequested();
-
-                if (!HasCurrentDeviceConfigurations(db, calculator, out string freshnessError))
+                calculator.StartupCrossSectionId = startupCrossSectionId;
+                if (calculator.Configuration.DeviceType == MeasurementDeviceType.VelocityMeter)
                 {
-                    logger.LogWarning(
-                        "유량 설정 필요: {DeviceType} {DeviceId}, {MethodName}, {Reason}",
-                        calculator.Configuration.DeviceType,
-                        calculator.Configuration.DeviceId,
-                        GetMethodLogName(calculator.Configuration.Method),
-                        freshnessError);
-                    continue;
+                    if (!startupTransectIds.TryGetValue(
+                            calculator.Configuration.DeviceId,
+                            out int startupTransectId))
+                    {
+                        logger.LogWarning(
+                            "유량 객체를 제외합니다: {DeviceType} {DeviceId}, {MethodName}, 서비스 시작 시 사용할 측선 정보가 없습니다.",
+                            calculator.Configuration.DeviceType,
+                            calculator.Configuration.DeviceId,
+                            GetMethodLogName(calculator.Configuration.Method));
+                        continue;
+                    }
+
+                    calculator.StartupTransectConfigId = startupTransectId;
                 }
 
                 if (calculator.Configuration.MethodConfigId < 0) continue;
@@ -311,68 +323,32 @@ namespace AFMSDischargeService
             calculators.AddRange(initializedCalculators);
         }
 
-        private static bool HasCurrentTransectConfiguration(
-            FBDatabase db,
-            QCalculatorBase calculator,
-            out string error)
+        private static int LoadStartupCrossSectionId(FBDatabase db)
         {
-            if (calculator.Configuration.DeviceType != MeasurementDeviceType.VelocityMeter)
-            {
-                error = string.Empty;
-                return true;
-            }
+            string sql = $"SELECT MAX({FbtAFMSCrossSection.COL_ID}) FROM {FbtAFMSCrossSection.TABLE_NAME}";
+            DataTable table = db.Execute(sql, out string error);
+            if (!string.IsNullOrEmpty(error))
+                throw new InvalidOperationException($"서비스 시작 단면 조회 실패: {error}");
+            if (table.Rows.Count == 0 || table.Rows[0][0] == DBNull.Value)
+                throw new InvalidOperationException("서비스 시작 시 사용할 단면 정보가 없습니다.");
 
-            string sql = $"SELECT FIRST 1 C.{FbtAFMSDischargeMethodConfig.COL_TRANSECT_CONFIG_ID}";
-            sql += $" FROM {FbtAFMSDischargeMethodConfig.TABLE_NAME} C";
-            sql += $" WHERE C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_TYPE} = '{calculator.Configuration.DeviceType}'";
-            sql += $" AND C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_ID} = {calculator.Configuration.DeviceId}";
-            sql += $" AND C.{FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD} = '{calculator.Configuration.Method}'";
-            sql += $" AND C.{FbtAFMSDischargeMethodConfig.COL_ENABLED} = 1";
-            sql += $" ORDER BY C.{FbtAFMSDischargeMethodConfig.COL_ID} DESC";
-            DataTable config = db.Execute(sql, out error);
-            if (!string.IsNullOrEmpty(error)) return false;
-            if (config.Rows.Count == 0 || config.Rows[0][0] == DBNull.Value)
-            {
-                error = "통합 유량 설정이 없습니다.";
-                return false;
-            }
-
-            int configuredTransectId = Convert.ToInt32(config.Rows[0][0]);
-            string latestSql = $"SELECT MAX({FbtAFMSHydroTransect.COL_ID}) FROM {FbtAFMSHydroTransect.TABLE_NAME}";
-            latestSql += $" WHERE {FbtAFMSHydroTransect.COL_HYDRO_ID} = {calculator.Configuration.DeviceId}";
-            DataTable latest = db.Execute(latestSql, out error);
-            if (!string.IsNullOrEmpty(error)) return false;
-            if (latest.Rows.Count == 0 || latest.Rows[0][0] == DBNull.Value)
-            {
-                error = "최신 측선 설정이 없습니다.";
-                return false;
-            }
-
-            int latestTransectId = Convert.ToInt32(latest.Rows[0][0]);
-            if (configuredTransectId != latestTransectId)
-            {
-                error = $"측선 설정이 변경되었습니다({configuredTransectId} → {latestTransectId}). 모든 유량 산정법을 다시 설정해야 합니다.";
-                return false;
-            }
-
-            error = string.Empty;
-            return true;
+            return Convert.ToInt32(table.Rows[0][0]);
         }
 
-        private bool HasCurrentDeviceConfigurations(
-            FBDatabase db,
-            QCalculatorBase calculator,
-            out string error)
+        private static Dictionary<int, int> LoadStartupTransectIds(FBDatabase db)
         {
-            foreach (QCalculatorBase configured in calculators.Where(item =>
-                         item.Configuration.DeviceType == calculator.Configuration.DeviceType &&
-                         item.Configuration.DeviceId == calculator.Configuration.DeviceId))
-            {
-                if (!HasCurrentTransectConfiguration(db, configured, out error)) return false;
-            }
+            string sql = $"SELECT {FbtAFMSHydroTransect.COL_HYDRO_ID},";
+            sql += $" MAX({FbtAFMSHydroTransect.COL_ID})";
+            sql += $" FROM {FbtAFMSHydroTransect.TABLE_NAME}";
+            sql += $" GROUP BY {FbtAFMSHydroTransect.COL_HYDRO_ID}";
 
-            error = string.Empty;
-            return true;
+            DataTable table = db.Execute(sql, out string error);
+            if (!string.IsNullOrEmpty(error))
+                throw new InvalidOperationException($"서비스 시작 측선 조회 실패: {error}");
+
+            return table.Rows.Cast<DataRow>().ToDictionary(
+                row => Convert.ToInt32(row[0]),
+                row => Convert.ToInt32(row[1]));
         }
 
         private static QCalculatorBase? CreateCalculator(
