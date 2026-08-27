@@ -107,6 +107,7 @@ namespace AFMSDataViewer
                 TopLayout.uiComboMain.SelectedIndexChanged += (_, _) =>
                 {
                     if (isPopulatingSelectors) return;
+                    UpdateDischargeMethodSelectorVisibility();
                     PopulateDischargeMethodSelector();
                     DrawSelectedSeries();
                 };
@@ -305,6 +306,7 @@ namespace AFMSDataViewer
                 DischargeDeviceOption? selected = TopLayout.uiComboMain.Items.Cast<DischargeDeviceOption>()
                     .FirstOrDefault(option => option.DeviceType == selectedType && option.DeviceId == selectedId);
                 TopLayout.uiComboMain.SelectedItem = selected ?? TopLayout.uiComboMain.Items.Cast<object>().FirstOrDefault();
+                UpdateDischargeMethodSelectorVisibility();
                 PopulateDischargeMethodSelector();
             }
             finally
@@ -422,6 +424,16 @@ namespace AFMSDataViewer
             }
         }
 
+        private void UpdateDischargeMethodSelectorVisibility()
+        {
+            DischargeDeviceOption? device = TopLayout.uiComboMain.SelectedItem as DischargeDeviceOption;
+            bool isVelocityMeter = string.Equals(
+                device?.DeviceType,
+                nameof(MeasurementDeviceType.VelocityMeter),
+                StringComparison.OrdinalIgnoreCase);
+            TopLayout.SetSubComboVisible(isVelocityMeter);
+        }
+
         private static DischargeDeviceOption CreateDeviceOption(string deviceType, int deviceId)
         {
             string display = deviceType switch
@@ -445,6 +457,9 @@ namespace AFMSDataViewer
             formsPlot.Plot.Clear();
             formsPlot.Plot.Axes.Right.IsVisible = false;
             List<ChartSeries> visible = GetVisibleSeries(selected);
+            bool fillUnderLine = chartType != ChartMainType.Discharge ||
+                !TopLayout.uiComboSub.Visible ||
+                TopLayout.uiComboSub.SelectedItem is DischargeMethodOption;
 
             foreach (ChartSeries source in visible)
             {
@@ -455,7 +470,7 @@ namespace AFMSDataViewer
                 scatter.Color = ToScottColor(source.Color);
                 scatter.LineWidth = 2;
                 scatter.MarkerSize = 0;
-                scatter.FillY = true;
+                scatter.FillY = fillUnderLine;
                 scatter.FillYValue = 0;
                 scatter.FillYColor = ToScottColor(System.Drawing.Color.FromArgb(45, source.Color));
                 AddPointMarkers(source, false, source.Color);
@@ -471,6 +486,9 @@ namespace AFMSDataViewer
             formsPlot.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.DateTimeAutomatic();
             formsPlot.Plot.Axes.AutoScale();
             formsPlot.Plot.Axes.SetLimitsX(rangeStart.ToOADate(), rangeEnd.ToOADate());
+            ChartAxisRange axisRange = DataViewerChartSettings.GetAxisRange(chartType);
+            if (axisRange.TryGetFixedRange(out double minimumY, out double maximumY))
+                formsPlot.Plot.Axes.SetLimitsY(minimumY, maximumY);
             formsPlot.Plot.HideLegend();
             formsPlot.Refresh();
             UpdateStatistics(visible.Where(series => !series.SecondaryAxis).SelectMany(series => series.Points).Select(point => point.Value));

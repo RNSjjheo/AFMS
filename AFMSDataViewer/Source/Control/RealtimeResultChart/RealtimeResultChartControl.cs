@@ -63,13 +63,18 @@ namespace AFMSDataViewer
 
             if (chartType == ChartMainType.VTH)
             {
-                uiComboSub.Visible = false;
-                ColumnStyles[2].Width = 0F;
+                SetSubComboVisible(false);
             }
 
             Controls.Add(uiValueMin, 4, 0);
             Controls.Add(uiValueAvg, 5, 0);
             Controls.Add(uiValueMax, 6, 0);
+        }
+
+        public void SetSubComboVisible(bool visible)
+        {
+            uiComboSub.Visible = visible;
+            ColumnStyles[2].Width = visible ? 124F : 0F;
         }
 
         private static void SetupValueCard(RoundedTwoLabel card, string key, ChartMainType chartType, bool highlighted = false)
