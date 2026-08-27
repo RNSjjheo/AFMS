@@ -3,6 +3,8 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
+using System.Globalization;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace AFMSSettings
@@ -57,7 +59,7 @@ namespace AFMSSettings
             Label uiLbDesc = new Label();
             uiLbDesc.Dock = DockStyle.Fill;
             uiLbDesc.AutoSize = false;
-            uiLbDesc.Text = $"좌안 기준으로 {_transectCount}개 측선의 거리를 입력하세요.";
+            uiLbDesc.Text = $"좌안 기준으로 {_transectCount}개 측선의 거리를 입력하세요. Excel 값은 Ctrl+V로 일괄 입력할 수 있습니다.";
             uiLbDesc.Font = new Font(DLLStyle.DEFAULT_FONT_SYLTE, 10F, FontStyle.Regular);
             uiLbDesc.ForeColor = DllColorHelper.GetDescStrColor();
             uiLbDesc.TextAlign = ContentAlignment.MiddleLeft;
@@ -153,6 +155,7 @@ namespace AFMSSettings
                 input.Margin = new Padding(8, 6, 8, 6);
                 input.Tag = i;
                 input.InnerTextBox.Validating += DistanceInput_Validating;
+                input.InnerTextBox.KeyDown += DistanceInput_KeyDown;
 
                 _distanceInputs.Add(input);
                 panel.Controls.Add(label, 0, i);
@@ -160,6 +163,104 @@ namespace AFMSSettings
             }
 
             return panel;
+        }
+
+        private void DistanceInput_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (!e.Control || e.KeyCode != Keys.V) return;
+
+            string clipboardText;
+            try
+            {
+                if (!Clipboard.ContainsText()) return;
+                clipboardText = Clipboard.GetText(TextDataFormat.UnicodeText);
+            }
+            catch (ExternalException)
+            {
+                MessageBox.Show("클립보드 데이터를 읽을 수 없습니다. 다시 시도해주세요.", "붙여넣기 오류",
+                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                return;
+            }
+
+            bool multipleCells = clipboardText.IndexOfAny(['\t', '\r', '\n']) >= 0;
+            if (!multipleCells) return;
+
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+
+            if (!TryParseExcelDistances(clipboardText, out double[] distances))
+            {
+                MessageBox.Show(
+                    $"Excel에서 측선 수와 동일한 {_transectCount}개의 숫자 셀을 한 행 또는 한 열로 복사해주세요.",
+                    "붙여넣기 형식 확인",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
+            for (int i = 0; i < distances.Length; i++)
+            {
+                if (distances[i] < 0)
+                {
+                    MessageBox.Show($"{i + 1}번 측선의 거리는 0 이상이어야 합니다.", "측선 입력",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+
+                if (i > 0 && distances[i] <= distances[i - 1])
+                {
+                    MessageBox.Show($"{i + 1}번 측선의 거리는 {i}번 측선의 거리보다 큰 값이어야 합니다.", "측선 입력",
+                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return;
+                }
+            }
+
+            for (int i = 0; i < distances.Length; i++)
+                _distanceInputs[i].SetValue(distances[i]);
+
+            FocusDistanceInput(distances.Length - 1);
+        }
+
+        private bool TryParseExcelDistances(string text, out double[] distances)
+        {
+            distances = Array.Empty<double>();
+            string normalized = text.TrimEnd('\r', '\n');
+            string[] rows = normalized.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+            string[] cells;
+
+            if (rows.Length == 1)
+            {
+                cells = rows[0].Split('\t');
+            }
+            else if (rows.Length == _transectCount)
+            {
+                cells = new string[_transectCount];
+                for (int i = 0; i < rows.Length; i++)
+                {
+                    if (rows[i].Contains('\t')) return false;
+                    cells[i] = rows[i];
+                }
+            }
+            else
+            {
+                return false;
+            }
+
+            if (cells.Length != _transectCount) return false;
+
+            distances = new double[_transectCount];
+            for (int i = 0; i < cells.Length; i++)
+            {
+                string cell = cells[i].Trim();
+                if (double.TryParse(cell, NumberStyles.Float, CultureInfo.InvariantCulture, out distances[i])) continue;
+                if (double.TryParse(cell, NumberStyles.Float, CultureInfo.CurrentCulture, out distances[i])) continue;
+                distances = Array.Empty<double>();
+                return false;
+            }
+
+            return true;
         }
 
         private Label CreateHeaderLabel(string text)
