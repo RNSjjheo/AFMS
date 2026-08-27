@@ -42,10 +42,11 @@ namespace AFMSDataViewer
     internal static class RealtimeChartQueryFactory
     {
         public static IRealtimeChartQuery Create(ChartMainType chartType, DateTime rangeStart, DateTime rangeEnd,
-            string? velocitySourceType = null, int? velocityDeviceNo = null) => chartType switch
+            string? velocitySourceType = null, int? velocityDeviceNo = null, int? velocityTransectNo = null) => chartType switch
         {
             ChartMainType.Discharge => new RealtimeDischargeChartQuery(rangeStart, rangeEnd),
-            ChartMainType.Velocity => new RealtimeVelocityChartQuery(rangeStart, rangeEnd, velocitySourceType, velocityDeviceNo),
+            ChartMainType.Velocity => new RealtimeVelocityChartQuery(rangeStart, rangeEnd,
+                velocitySourceType, velocityDeviceNo, velocityTransectNo),
             ChartMainType.Level => new RealtimeLevelChartQuery(rangeStart, rangeEnd),
             _ => new RealtimePowerChartQuery(rangeStart, rangeEnd)
         };

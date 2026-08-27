@@ -109,8 +109,11 @@ namespace AFMSDataViewer
             _ => "1번 전원계"
         };
 
-        private static string GetSubPlaceholder(ChartMainType chartType) => chartType == ChartMainType.Discharge
-            ? "유량 산정법 선택"
-            : "측정값 선택";
+        private static string GetSubPlaceholder(ChartMainType chartType) => chartType switch
+        {
+            ChartMainType.Discharge => "유량 산정법 선택",
+            ChartMainType.Velocity => "측선 선택",
+            _ => "측정값 선택"
+        };
     }
 }

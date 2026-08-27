@@ -24,9 +24,13 @@ namespace AFMSDataViewer
         {
             public override string ToString() => DisplayText;
         }
-        private sealed record VelocityDeviceOption(int DeviceId, string SourceType, int DeviceNo, string DisplayText)
+        private sealed record VelocityDeviceOption(int DeviceId, string SourceType, int DeviceNo, int TransectCount, string DisplayText)
         {
             public override string ToString() => DisplayText;
+        }
+        private sealed record VelocityTransectOption(int TransectNo)
+        {
+            public override string ToString() => $"{TransectNo}번 측선";
         }
 
         private static readonly System.Drawing.Color[] SeriesColors =
@@ -110,6 +114,12 @@ namespace AFMSDataViewer
             else if (chartType == ChartMainType.Velocity)
             {
                 TopLayout.uiComboMain.SelectedIndexChanged += (_, _) =>
+                {
+                    if (isPopulatingSelectors) return;
+                    PopulateVelocityTransectSelector(true);
+                    LoadData();
+                };
+                TopLayout.uiComboSub.SelectedIndexChanged += (_, _) =>
                 {
                     if (!isPopulatingSelectors) LoadData();
                 };
@@ -307,17 +317,42 @@ namespace AFMSDataViewer
                     string sourceType = row["SOURCE_TYPE"].ToText().Trim();
                     int deviceId = Convert.ToInt32(row["DEVICE_ID"]);
                     int deviceNo = row["DEVICE_NO"] == DBNull.Value ? deviceId : Convert.ToInt32(row["DEVICE_NO"]);
-                    TopLayout.uiComboMain.Items.Add(new VelocityDeviceOption(deviceId, sourceType, deviceNo, $"{deviceNo}번 유속계"));
+                    int transectCount = row["TRANSECT_COUNT"] == DBNull.Value ? 1 : Math.Max(1, Convert.ToInt32(row["TRANSECT_COUNT"]));
+                    TopLayout.uiComboMain.Items.Add(new VelocityDeviceOption(deviceId, sourceType, deviceNo, transectCount, $"{deviceNo}번 유속계"));
                 }
 
                 VelocityDeviceOption? selected = TopLayout.uiComboMain.Items.Cast<object>()
                     .OfType<VelocityDeviceOption>()
                     .FirstOrDefault(option => option.DeviceId == previous?.DeviceId);
                 TopLayout.uiComboMain.SelectedItem = selected ?? TopLayout.uiComboMain.Items.Cast<object>().FirstOrDefault();
+                PopulateVelocityTransectSelector();
             }
             finally
             {
                 isPopulatingSelectors = false;
+            }
+        }
+
+        private void PopulateVelocityTransectSelector(bool resetToFirst = false)
+        {
+            int previousNo = resetToFirst ? 1 : (TopLayout.uiComboSub.SelectedItem as VelocityTransectOption)?.TransectNo ?? 1;
+            VelocityDeviceOption? device = TopLayout.uiComboMain.SelectedItem as VelocityDeviceOption;
+            bool wasPopulating = isPopulatingSelectors;
+            isPopulatingSelectors = true;
+            try
+            {
+                TopLayout.uiComboSub.Items.Clear();
+                int count = device?.TransectCount ?? 0;
+                for (int no = 1; no <= count; no++)
+                    TopLayout.uiComboSub.Items.Add(new VelocityTransectOption(no));
+
+                VelocityTransectOption? selected = TopLayout.uiComboSub.Items.Cast<object>()
+                    .OfType<VelocityTransectOption>().FirstOrDefault(option => option.TransectNo == previousNo);
+                TopLayout.uiComboSub.SelectedItem = selected ?? TopLayout.uiComboSub.Items.Cast<object>().FirstOrDefault();
+            }
+            finally
+            {
+                isPopulatingSelectors = wasPopulating;
             }
         }
 
@@ -486,13 +521,20 @@ namespace AFMSDataViewer
         private string GetSql()
         {
             VelocityDeviceOption? velocity = TopLayout.uiComboMain.SelectedItem as VelocityDeviceOption;
+            VelocityTransectOption? transect = TopLayout.uiComboSub.SelectedItem as VelocityTransectOption;
             return RealtimeChartQueryFactory.Create(chartType, rangeStart, rangeEnd,
-                velocity?.SourceType, velocity?.DeviceNo).Build();
+                velocity?.SourceType, velocity?.DeviceNo, transect?.TransectNo).Build();
         }
 
         private string GetDischargeSql() => new RealtimeDischargeChartQuery(rangeStart, rangeEnd).Build();
 
-        private string GetTitle() => chartType switch { ChartMainType.Velocity => "유속계", ChartMainType.Level => "수위계", ChartMainType.Discharge => "유량계", _ => "전원" };
+        private string GetTitle() => chartType switch
+        {
+            ChartMainType.Velocity => "유속차트",
+            ChartMainType.Level => "수위차트",
+            ChartMainType.Discharge => "유량차트",
+            _ => "전압차트"
+        };
         private string GetUnit() => chartType switch { ChartMainType.Velocity => "m/s", ChartMainType.Level => "m", ChartMainType.Discharge => "m³/s", _ => "V" };
         private System.Drawing.Color GetColor() => chartType switch
         {
