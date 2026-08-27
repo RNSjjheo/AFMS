@@ -61,6 +61,12 @@ namespace AFMSDataViewer
             Controls.Add(uiComboMain, 1, 0);
             Controls.Add(uiComboSub, 2, 0);
 
+            if (chartType == ChartMainType.VTH)
+            {
+                uiComboSub.Visible = false;
+                ColumnStyles[2].Width = 0F;
+            }
+
             Controls.Add(uiValueMin, 4, 0);
             Controls.Add(uiValueAvg, 5, 0);
             Controls.Add(uiValueMax, 6, 0);
@@ -106,7 +112,7 @@ namespace AFMSDataViewer
             ChartMainType.Velocity => "1번 유속계",
             ChartMainType.Level => "1번 수위계",
             ChartMainType.Discharge => "장비 선택",
-            _ => "1번 전원계"
+            _ => "전압 선택"
         };
 
         private static string GetSubPlaceholder(ChartMainType chartType) => chartType switch

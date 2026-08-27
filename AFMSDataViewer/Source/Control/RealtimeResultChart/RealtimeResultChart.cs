@@ -32,6 +32,10 @@ namespace AFMSDataViewer
         {
             public override string ToString() => $"{TransectNo}번 측선";
         }
+        private sealed record PowerValueOption(PowerChartValueType ValueType, string DisplayText)
+        {
+            public override string ToString() => DisplayText;
+        }
 
         private static readonly System.Drawing.Color[] SeriesColors =
         {
@@ -123,6 +127,14 @@ namespace AFMSDataViewer
                 {
                     if (!isPopulatingSelectors) LoadData();
                 };
+            }
+            else if (chartType == ChartMainType.VTH)
+            {
+                TopLayout.uiComboMain.SelectedIndexChanged += (_, _) =>
+                {
+                    if (!isPopulatingSelectors) LoadData();
+                };
+                PopulatePowerValueSelector();
             }
 
             ConfigurePlot();
@@ -356,6 +368,26 @@ namespace AFMSDataViewer
             }
         }
 
+        private void PopulatePowerValueSelector()
+        {
+            PowerChartValueType previous = (TopLayout.uiComboMain.SelectedItem as PowerValueOption)?.ValueType
+                ?? PowerChartValueType.Input;
+            bool wasPopulating = isPopulatingSelectors;
+            isPopulatingSelectors = true;
+            try
+            {
+                TopLayout.uiComboMain.Items.Clear();
+                TopLayout.uiComboMain.Items.Add(new PowerValueOption(PowerChartValueType.Input, "입력전압"));
+                TopLayout.uiComboMain.Items.Add(new PowerValueOption(PowerChartValueType.Output, "출력전압"));
+                TopLayout.uiComboMain.SelectedItem = TopLayout.uiComboMain.Items.Cast<object>()
+                    .OfType<PowerValueOption>().First(option => option.ValueType == previous);
+            }
+            finally
+            {
+                isPopulatingSelectors = wasPopulating;
+            }
+        }
+
         private void PopulateDischargeMethodSelector()
         {
             string? selectedMethod = (TopLayout.uiComboSub.SelectedItem as DischargeMethodOption)?.Method;
@@ -522,8 +554,10 @@ namespace AFMSDataViewer
         {
             VelocityDeviceOption? velocity = TopLayout.uiComboMain.SelectedItem as VelocityDeviceOption;
             VelocityTransectOption? transect = TopLayout.uiComboSub.SelectedItem as VelocityTransectOption;
+            PowerValueOption? powerValue = TopLayout.uiComboMain.SelectedItem as PowerValueOption;
             return RealtimeChartQueryFactory.Create(chartType, rangeStart, rangeEnd,
-                velocity?.SourceType, velocity?.DeviceNo, transect?.TransectNo).Build();
+                velocity?.SourceType, velocity?.DeviceNo, transect?.TransectNo,
+                powerValue?.ValueType).Build();
         }
 
         private string GetDischargeSql() => new RealtimeDischargeChartQuery(rangeStart, rangeEnd).Build();
