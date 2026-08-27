@@ -15,7 +15,7 @@ namespace AFMSDll
     public static class AFMSLog
     {
         public const int DefaultTagWidth = 16;
-        public const int DefaultMessageWidth = 58;
+        public const int DefaultMessageWidth = 62;
 
         private static readonly object SyncRoot = new();
         private static bool initialized;
@@ -109,7 +109,7 @@ namespace AFMSDll
             layout.AddConverter("fixedlogger", typeof(FixedWidthLoggerPatternConverter));
             layout.AddConverter("blockmessage", typeof(BlockMessagePatternConverter));
             layout.ConversionPattern =
-                $"[%date{{yyyy-MM-dd HH:mm:ss,fff}}][%fixedlogger{{{tagWidth}}}] " +
+                $"[%date{{yy-MM-dd HH:mm:ss.ff}} %fixedlogger{{{tagWidth}}}] " +
                 $"%blockmessage{{{DefaultMessageWidth},{tagWidth}}}%newline%exception";
             layout.ActivateOptions();
             return layout;
@@ -146,7 +146,7 @@ namespace AFMSDll
     /// </summary>
     public sealed class BlockMessagePatternConverter : PatternLayoutConverter
     {
-        private const int DateAreaWidth = 25;
+        private const int DateAreaWidth = 21;
         private int messageWidth = AFMSLog.DefaultMessageWidth;
         private int tagWidth = AFMSLog.DefaultTagWidth;
         private bool optionRead;
