@@ -24,6 +24,7 @@ namespace AFMSDataViewer
 
         private readonly ChartMainType chartType;
         private readonly FormsPlot formsPlot = new();
+        private readonly AFMSSectionPanel chartSection = new();
         private readonly WinFormsLabel title = new();
         private readonly WinFormsLabel minimum = CreateStatLabel("최소");
         private readonly WinFormsLabel average = CreateStatLabel("평균", true);
@@ -47,9 +48,24 @@ namespace AFMSDataViewer
             Dock = DockStyle.Fill;
             BackColor = System.Drawing.Color.White;
             Margin = Padding.Empty;
-            //BuildLayout();
+
+            chartSection.Dock = DockStyle.Fill;
+            chartSection.Margin = Padding.Empty;
+            chartSection.BackColor = System.Drawing.Color.White;
+            chartSection.BorderRadius = 8;
+            chartSection.BorderColor = System.Drawing.Color.FromArgb(225, 229, 235);
+            chartSection.BorderThickness = 1F;
+            chartSection.HeaderText = GetTitle();
+            chartSection.HeaderBackColor = System.Drawing.Color.FromArgb(245, 247, 250);
+            chartSection.HeaderColor = System.Drawing.Color.FromArgb(55, 62, 72);
+            chartSection.HeaderLineColor = System.Drawing.Color.FromArgb(225, 229, 235);
+            chartSection.SectionStyle = AFMSSectionStyle.FilledHeader;
+            chartSection.Font = new System.Drawing.Font(ChartFontName, 9F, System.Drawing.FontStyle.Bold);
+
             uiTpMain = new TableLayoutPanel();
             uiTpMain.Dock = DockStyle.Fill;
+            uiTpMain.Margin = Padding.Empty;
+            uiTpMain.BackColor = System.Drawing.Color.Transparent;
             uiTpMain.RowStyles.Clear();
             uiTpMain.ColumnStyles.Clear();
             uiTpMain.RowCount = 2;
@@ -64,7 +80,8 @@ namespace AFMSDataViewer
             ConfigurePlot();
             uiTpMain.Controls.Add(TopLayout, 0, 0);
             uiTpMain.Controls.Add(formsPlot, 0, 1);
-            Controls.Add(uiTpMain);
+            chartSection.ContentLayout.Controls.Add(uiTpMain);
+            Controls.Add(chartSection);
         }
 
         public void SetTimeRange(DateTime start, DateTime end)
@@ -147,7 +164,7 @@ namespace AFMSDataViewer
                 if (chartType == ChartMainType.Level && compareDischarge.Checked) AddDischargeComparison(db);
                 PopulateSelector();
                 DrawSelectedSeries();
-                title.Text = GetTitle();
+                chartSection.HeaderText = GetTitle();
             }
             catch (Exception ex) { ShowMessage(ex.Message); }
         }
@@ -237,7 +254,7 @@ namespace AFMSDataViewer
         private void ShowMessage(string message)
         {
             availableSeries.Clear(); formsPlot.Plot.Clear(); formsPlot.Refresh();
-            title.Text = $"{GetTitle()} - 조회 오류: {message}"; UpdateStatistics(Array.Empty<double>());
+            chartSection.HeaderText = $"{GetTitle()} - 조회 오류: {message}"; UpdateStatistics(Array.Empty<double>());
         }
 
         private static DateTime ParseSourceTime(object value)
