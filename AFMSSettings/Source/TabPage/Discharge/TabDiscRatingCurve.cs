@@ -65,7 +65,7 @@ namespace AFMSSettings
             if (!string.IsNullOrEmpty(error)) MessageBox.Show(error, "관계곡선 조회 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
-        protected override void _TabDischargeBase_Enter(object? sender, EventArgs e) => LoadData();
+        protected override void OnPageActivated() => LoadData();
 
         public string LoadData()
         {

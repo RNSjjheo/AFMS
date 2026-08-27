@@ -378,7 +378,7 @@ namespace AFMSSettings
             return grid;
         }
 
-        protected override void _TabDischargeBase_Enter(object? sender, EventArgs e)
+        protected override void OnPageActivated()
         {
             LoadData();
         }

@@ -163,7 +163,7 @@ namespace AFMSSettings
                 case COMBO_TXT_MAPPING:
                     uiTpThis.ColumnStyles[1].Width = 0;
                     uiTpThis.ColumnStyles[2].Width = 0;
-                    uiTabMain.SelectedTab = uiTabPageMapping;
+                    SelectTabPage(uiTabPageMapping);
                     uiComboMethod.SelectedIndex = 0;
                     break;
 
@@ -219,20 +219,19 @@ namespace AFMSSettings
                 switch (method)
                 {
                     case DischargeMethod.SurfaceVelo:
-                        uiTabMain.SelectedTab = uiTabPageSurfaceVelo;
                         uiTabPageSurfaceVelo.SetHydroId(GetSelectedVelocityMeterId());
+                        SelectTabPage(uiTabPageSurfaceVelo);
                         break;
                     case DischargeMethod.MidSection:
-                        uiTabMain.SelectedTab = uiTabPageMidSection;
                         uiTabPageMidSection.SetHydroId(GetSelectedVelocityMeterId());
+                        SelectTabPage(uiTabPageMidSection);
                         break;
                     case DischargeMethod.VeloDist:
-                        uiTabMain.SelectedTab = uiTabPageVeloDist;
                         uiTabPageVeloDist.SetHydroId(GetSelectedVelocityMeterId());
+                        SelectTabPage(uiTabPageVeloDist);
                         break;
                     case DischargeMethod.RatingCurve:
-                        uiTabMain.SelectedTab = uiTabPageRatingCurve;
-                        uiTabPageRatingCurve.LoadData();
+                        SelectTabPage(uiTabPageRatingCurve);
                         break;
                 }
 
@@ -240,6 +239,13 @@ namespace AFMSSettings
 
                 return;
             }
+        }
+
+        private void SelectTabPage(_TabDischargeBase page)
+        {
+            bool pageChanged = uiTabMain.SelectedTab != page;
+            uiTabMain.SelectedTab = page;
+            if (pageChanged && IsHandleCreated) page.ActivatePage();
         }
 
         private void UiButtonAccept_Click(object? sender, EventArgs e)

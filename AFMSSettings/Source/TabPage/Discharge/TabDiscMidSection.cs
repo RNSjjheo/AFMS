@@ -75,7 +75,7 @@ namespace AFMSSettings
             if (!string.IsNullOrEmpty(error)) MessageBox.Show(error, "중간단면적 설정 조회 오류", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
 
-        protected override void _TabDischargeBase_Enter(object? sender, EventArgs e)
+        protected override void OnPageActivated()
         {
             LoadData();
         }

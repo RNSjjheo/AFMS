@@ -9,7 +9,7 @@ namespace AFMSSettings
     public abstract class _TabDischargeBase :TabPage
     {
         protected const string COL_NO = "NO";
-        protected abstract void _TabDischargeBase_Enter(object? sender, EventArgs e);
+        protected abstract void OnPageActivated();
         public abstract void BindingComplete(object? sender, DataGridViewBindingCompleteEventArgs e);
         protected abstract void UiButtonInput_Click(object? sender, EventArgs e);
         private Control _SubControl;
@@ -22,7 +22,6 @@ namespace AFMSSettings
 
         protected _TabDischargeBase(bool showLatestDataGuide)
         {
-            this.Enter += _TabDischargeBase_Enter;
             uiTpMain = new TableLayoutPanel();
             uiTpMain.Dock = DockStyle.Fill;
             uiTpMain.ColumnStyles.Clear();
@@ -71,6 +70,12 @@ namespace AFMSSettings
             CtlMain = uiGridMain;
 
             Controls.Add(uiTpMain);
+        }
+
+        public void ActivatePage()
+        {
+            if (IsDisposed || Disposing) return;
+            OnPageActivated();
         }
 
 

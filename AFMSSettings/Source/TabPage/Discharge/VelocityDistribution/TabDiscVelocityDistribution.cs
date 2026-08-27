@@ -61,7 +61,7 @@ namespace AFMSSettings
             ShowLoadError(_configListPanel.LoadData());
         }
 
-        protected override void _TabDischargeBase_Enter(object? sender, EventArgs e)
+        protected override void OnPageActivated()
         {
             ShowLoadError(LoadData());
         }

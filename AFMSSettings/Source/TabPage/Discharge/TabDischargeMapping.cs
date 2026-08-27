@@ -447,6 +447,6 @@ namespace AFMSSettings
 
         public override void BindingComplete(object? sender, DataGridViewBindingCompleteEventArgs e) { }
         protected override void UiButtonInput_Click(object? sender, EventArgs e) { }
-        protected override void _TabDischargeBase_Enter(object? sender, EventArgs e) => LoadData();
+        protected override void OnPageActivated() => LoadData();
     }
 }
