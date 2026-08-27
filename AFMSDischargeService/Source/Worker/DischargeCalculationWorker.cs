@@ -7,6 +7,7 @@ namespace AFMSDischargeService
         ILogger<DischargeCalculationWorker> logger) : BackgroundService
     {
         private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(10);
+        private static readonly TimeSpan BacklogDelay = TimeSpan.FromMilliseconds(20);
         private readonly List<QCalculatorBase> calculators = new();
         private readonly HashSet<string> loggedReadyMeasurements = new();
 
@@ -48,7 +49,11 @@ namespace AFMSDischargeService
                         LogCalculationCompleted(calculator);
                     }
 
-                    if (!calculationCompleted)
+                    if (calculationCompleted)
+                    {
+                        await Task.Delay(BacklogDelay, stoppingToken);
+                    }
+                    else
                     {
                         TimeSpan delay = nextTargetLogAt - DateTime.Now;
                         if (delay > PollInterval) delay = PollInterval;

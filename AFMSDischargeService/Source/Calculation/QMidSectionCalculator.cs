@@ -25,6 +25,7 @@ namespace AFMSDischargeService
             double area = 0.0;
             CrossSection crossSection = Configuration.CrossSection;
             QTransectMeasurement measurement;
+            error = string.Empty;
 
             if (!TryValidateCalculationInputs(out error)) return false;
 
@@ -43,7 +44,6 @@ namespace AFMSDischargeService
             Calculation.CrossSectionArea = area;
             Calculation.Velocity = area > 0.0 ? discharge / area : 0.0;
             Calculation.Value = discharge;
-            error = string.Empty;
 
             return true;
         }
