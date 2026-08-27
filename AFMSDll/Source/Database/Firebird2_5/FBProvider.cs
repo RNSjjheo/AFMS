@@ -64,10 +64,6 @@ namespace AFMSDll
             Tables.Add(new FbtSETUP());
             Tables.Add(new FbtAFMSCrossSection());
             Tables.Add(new FbtAFMSHydroMeter());
-            Tables.Add(new FbtAFMSDiscAttrMidSection());
-            Tables.Add(new FbtAFMSDiscAttrSurfaceVelo());
-            Tables.Add(new FbtAFMSDiscAttrRatingCurve());
-            Tables.Add(new FbtAFMSDiscAttrVelocityDistribution());
             Tables.Add(new FbtAFMSDischargeConfig());
             Tables.Add(new FbtAFMSDischargeMethodConfig());
             Tables.Add(new FbtAFMSDischargeTimeslot());
