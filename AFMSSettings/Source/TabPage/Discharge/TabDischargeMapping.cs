@@ -24,6 +24,8 @@ namespace AFMSSettings
         private readonly HashSet<int> _midSectionConfiguredHydroIds = new();
         private readonly HashSet<int> _velocityDistributionConfiguredHydroIds = new();
         private readonly Dictionary<int, int> _transectCounts = new();
+        private readonly Dictionary<int, int> _latestTransectConfigIds = new();
+        private readonly HashSet<int> _staleHydroIds = new();
         private bool _hasRatingCurveConfig;
         private AFMSGuidePanel uiGuide;
 
@@ -202,6 +204,8 @@ namespace AFMSSettings
             _velocityDistributionConfiguredHydroIds.Clear();
             _methodConfigIds.Clear();
             _transectCounts.Clear();
+            _latestTransectConfigIds.Clear();
+            _staleHydroIds.Clear();
 
             LoadLatestMethodConfigIds(db, FbtAFMSDiscAttrSurfaceVelo.TABLE_NAME,
                 FbtAFMSDiscAttrSurfaceVelo.COL_HYDRO_ID, DischargeMethod.SurfaceVelo, _surfaceConfiguredHydroIds);
@@ -219,7 +223,7 @@ namespace AFMSSettings
                     SYSTEM_WATER_LEVEL_DEVICE_ID, DischargeMethod.RatingCurve)] = Convert.ToInt32(rating.Rows[0][0]);
             }
 
-            string transectSql = $"SELECT A.{FbtAFMSHydroTransect.COL_HYDRO_ID}, A.{FbtAFMSHydroTransect.COL_TRANSECT_COUNT}";
+            string transectSql = $"SELECT A.{FbtAFMSHydroTransect.COL_ID}, A.{FbtAFMSHydroTransect.COL_HYDRO_ID}, A.{FbtAFMSHydroTransect.COL_TRANSECT_COUNT}";
             transectSql += $" FROM {FbtAFMSHydroTransect.TABLE_NAME} A WHERE A.{FbtAFMSHydroTransect.COL_ID} = (";
             transectSql += $"SELECT MAX(B.{FbtAFMSHydroTransect.COL_ID}) FROM {FbtAFMSHydroTransect.TABLE_NAME} B";
             transectSql += $" WHERE B.{FbtAFMSHydroTransect.COL_HYDRO_ID} = A.{FbtAFMSHydroTransect.COL_HYDRO_ID})";
@@ -227,8 +231,13 @@ namespace AFMSSettings
             if (string.IsNullOrEmpty(transectError))
             {
                 foreach (DataRow row in transects.Rows)
-                    _transectCounts[Convert.ToInt32(row[0])] = Convert.ToInt32(row[1]);
+                {
+                    int hydroId = Convert.ToInt32(row[FbtAFMSHydroTransect.COL_HYDRO_ID]);
+                    _transectCounts[hydroId] = Convert.ToInt32(row[FbtAFMSHydroTransect.COL_TRANSECT_COUNT]);
+                    _latestTransectConfigIds[hydroId] = Convert.ToInt32(row[FbtAFMSHydroTransect.COL_ID]);
+                }
             }
+            LoadStaleHydroIds(db);
         }
 
         private void LoadLatestMethodConfigIds(FBDatabase db, string tableName, string hydroColumn,
@@ -248,11 +257,60 @@ namespace AFMSSettings
             }
         }
 
+        private void LoadStaleHydroIds(FBDatabase db)
+        {
+            Dictionary<int, HashSet<DischargeMethod>> freshMethods = new();
+            string sql = $"SELECT C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_ID}, C.{FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD}, C.{FbtAFMSDischargeMethodConfig.COL_TRANSECT_CONFIG_ID}";
+            sql += $" FROM {FbtAFMSDischargeMethodConfig.TABLE_NAME} C";
+            sql += $" WHERE C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_TYPE} = '{MeasurementDeviceType.VelocityMeter}'";
+            sql += $" AND C.{FbtAFMSDischargeMethodConfig.COL_ID} = (SELECT MAX(C2.{FbtAFMSDischargeMethodConfig.COL_ID})";
+            sql += $" FROM {FbtAFMSDischargeMethodConfig.TABLE_NAME} C2";
+            sql += $" WHERE C2.{FbtAFMSDischargeMethodConfig.COL_DEVICE_TYPE} = C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_TYPE}";
+            sql += $" AND C2.{FbtAFMSDischargeMethodConfig.COL_DEVICE_ID} = C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_ID}";
+            sql += $" AND C2.{FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD} = C.{FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD})";
+
+            DataTable table = db.Execute(sql, out string error);
+            if (string.IsNullOrEmpty(error))
+            {
+                foreach (DataRow row in table.Rows)
+                {
+                    int hydroId = Convert.ToInt32(row[FbtAFMSDischargeMethodConfig.COL_DEVICE_ID]);
+                    int transectId = row[FbtAFMSDischargeMethodConfig.COL_TRANSECT_CONFIG_ID] == DBNull.Value
+                        ? -1 : Convert.ToInt32(row[FbtAFMSDischargeMethodConfig.COL_TRANSECT_CONFIG_ID]);
+                    if (!_latestTransectConfigIds.TryGetValue(hydroId, out int latestId) || transectId != latestId)
+                    {
+                        _staleHydroIds.Add(hydroId);
+                        continue;
+                    }
+                    if (!Enum.TryParse(Convert.ToString(row[FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD]), out DischargeMethod method)) continue;
+                    if (!freshMethods.TryGetValue(hydroId, out HashSet<DischargeMethod>? methods))
+                    {
+                        methods = new HashSet<DischargeMethod>();
+                        freshMethods[hydroId] = methods;
+                    }
+                    methods.Add(method);
+                }
+            }
+
+            IEnumerable<int> configuredHydros = _surfaceConfiguredHydroIds
+                .Union(_midSectionConfiguredHydroIds)
+                .Union(_velocityDistributionConfiguredHydroIds);
+            foreach (int hydroId in configuredHydros)
+            {
+                int required = (_surfaceConfiguredHydroIds.Contains(hydroId) ? 1 : 0) +
+                               (_midSectionConfiguredHydroIds.Contains(hydroId) ? 1 : 0) +
+                               (_velocityDistributionConfiguredHydroIds.Contains(hydroId) ? 1 : 0);
+                if (!freshMethods.TryGetValue(hydroId, out HashSet<DischargeMethod>? methods) || methods.Count < required)
+                    _staleHydroIds.Add(hydroId);
+            }
+        }
+
         private bool IsMethodAvailable(MeasurementDeviceType type, int deviceId, int transectCount, DischargeMethod method)
         {
             if (type == MeasurementDeviceType.WaterLevelGauge)
                 return method == DischargeMethod.RatingCurve && _hasRatingCurveConfig;
             if (type != MeasurementDeviceType.VelocityMeter || method == DischargeMethod.RatingCurve) return false;
+            if (_staleHydroIds.Contains(deviceId)) return false;
 
             return method switch
             {
@@ -293,6 +351,7 @@ namespace AFMSSettings
             uiGuide.Add(GuideLevelType.Level0, "유속계에는 유속 기반 산정법만 표시됩니다.");
             uiGuide.Add(GuideLevelType.Level0, "수위계에는 수위-유량 관계법만 표시됩니다.");
             uiGuide.Add(GuideLevelType.Level0, "변경된 설정은 유량 서비스를 재시작한 후 반영됩니다.");
+            uiGuide.Add(GuideLevelType.Level0, "최신 측선이 입력되면 해당 유속계의 모든 유량 산정법을 다시 설정해야 합니다.");
             CtlSub = uiGuide;
         }
 

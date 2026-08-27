@@ -132,7 +132,10 @@ namespace AFMSSettings
             query.Value(FbtAFMSDiscAttrRatingCurve.COL_DIS_ATTR, JsonSerializer.Serialize(config.Coefficients));
             using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
             db.Execute(query, out string error);
-            return error;
+            if (!string.IsNullOrEmpty(error)) return error;
+            return DischargeMethodConfigStore.Save(
+                MeasurementDeviceType.WaterLevelGauge, 0, DischargeMethod.RatingCurve,
+                config, "수위-유량곡선법 설정");
         }
 
         private static AFMSSectionPanel CreateDetailPanel(out Label curveName, out AFMSDataGridView grid)

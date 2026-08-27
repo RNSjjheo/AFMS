@@ -291,8 +291,10 @@ namespace AFMSSettings
 
             using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
             db.Execute(query, out string error);
-
-            return error;
+            if (!string.IsNullOrEmpty(error)) return error;
+            return DischargeMethodConfigStore.Save(
+                MeasurementDeviceType.VelocityMeter, config.HydroId, DischargeMethod.SurfaceVelo,
+                config, "지표유속법 설정");
         }
 
         private static string SerializeAttributes(SurfaceVelocityConfig config)

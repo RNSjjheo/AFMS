@@ -69,6 +69,7 @@ namespace AFMSDll
             Tables.Add(new FbtAFMSDiscAttrRatingCurve());
             Tables.Add(new FbtAFMSDiscAttrVelocityDistribution());
             Tables.Add(new FbtAFMSDischargeConfig());
+            Tables.Add(new FbtAFMSDischargeMethodConfig());
             Tables.Add(new FbtAFMSDischargeTimeslot());
             Tables.Add(new FbtAFMSDischargeResult());
             Tables.Add(new FbtAFMSReplicatorSetting());

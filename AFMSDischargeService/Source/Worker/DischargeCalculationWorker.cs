@@ -212,6 +212,17 @@ namespace AFMSDischargeService
             {
                 stoppingToken.ThrowIfCancellationRequested();
 
+                if (!HasCurrentDeviceConfigurations(db, calculator, out string freshnessError))
+                {
+                    logger.LogWarning(
+                        "유량 설정 필요: {DeviceType} {DeviceId}, {MethodName}, {Reason}",
+                        calculator.Configuration.DeviceType,
+                        calculator.Configuration.DeviceId,
+                        GetMethodLogName(calculator.Configuration.Method),
+                        freshnessError);
+                    continue;
+                }
+
                 calculator.Configuration.MethodConfigId = GetLatestMethodConfigId(
                     db,
                     calculator.Configuration.Method,
@@ -273,6 +284,70 @@ namespace AFMSDischargeService
 
             calculators.Clear();
             calculators.AddRange(initializedCalculators);
+        }
+
+        private static bool HasCurrentTransectConfiguration(
+            FBDatabase db,
+            QCalculatorBase calculator,
+            out string error)
+        {
+            if (calculator.Configuration.DeviceType != MeasurementDeviceType.VelocityMeter)
+            {
+                error = string.Empty;
+                return true;
+            }
+
+            string sql = $"SELECT FIRST 1 C.{FbtAFMSDischargeMethodConfig.COL_TRANSECT_CONFIG_ID}";
+            sql += $" FROM {FbtAFMSDischargeMethodConfig.TABLE_NAME} C";
+            sql += $" WHERE C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_TYPE} = '{calculator.Configuration.DeviceType}'";
+            sql += $" AND C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_ID} = {calculator.Configuration.DeviceId}";
+            sql += $" AND C.{FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD} = '{calculator.Configuration.Method}'";
+            sql += $" AND C.{FbtAFMSDischargeMethodConfig.COL_ENABLED} = 1";
+            sql += $" ORDER BY C.{FbtAFMSDischargeMethodConfig.COL_ID} DESC";
+            DataTable config = db.Execute(sql, out error);
+            if (!string.IsNullOrEmpty(error)) return false;
+            if (config.Rows.Count == 0 || config.Rows[0][0] == DBNull.Value)
+            {
+                error = "통합 유량 설정이 없습니다.";
+                return false;
+            }
+
+            int configuredTransectId = Convert.ToInt32(config.Rows[0][0]);
+            string latestSql = $"SELECT MAX({FbtAFMSHydroTransect.COL_ID}) FROM {FbtAFMSHydroTransect.TABLE_NAME}";
+            latestSql += $" WHERE {FbtAFMSHydroTransect.COL_HYDRO_ID} = {calculator.Configuration.DeviceId}";
+            DataTable latest = db.Execute(latestSql, out error);
+            if (!string.IsNullOrEmpty(error)) return false;
+            if (latest.Rows.Count == 0 || latest.Rows[0][0] == DBNull.Value)
+            {
+                error = "최신 측선 설정이 없습니다.";
+                return false;
+            }
+
+            int latestTransectId = Convert.ToInt32(latest.Rows[0][0]);
+            if (configuredTransectId != latestTransectId)
+            {
+                error = $"측선 설정이 변경되었습니다({configuredTransectId} → {latestTransectId}). 모든 유량 산정법을 다시 설정해야 합니다.";
+                return false;
+            }
+
+            error = string.Empty;
+            return true;
+        }
+
+        private bool HasCurrentDeviceConfigurations(
+            FBDatabase db,
+            QCalculatorBase calculator,
+            out string error)
+        {
+            foreach (QCalculatorBase configured in calculators.Where(item =>
+                         item.Configuration.DeviceType == calculator.Configuration.DeviceType &&
+                         item.Configuration.DeviceId == calculator.Configuration.DeviceId))
+            {
+                if (!HasCurrentTransectConfiguration(db, configured, out error)) return false;
+            }
+
+            error = string.Empty;
+            return true;
         }
 
         private static QCalculatorBase? CreateCalculator(DischargeMethod method)

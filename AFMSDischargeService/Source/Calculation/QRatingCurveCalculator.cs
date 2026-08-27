@@ -20,18 +20,5 @@ namespace AFMSDischargeService
             return false;
         }
 
-        public static AFMSMathLabel GetExample(DiscVerRatingCurve version)
-        {
-            AFMSMathLabel item = new AFMSMathLabel();
-            item.ClearMath();
-            item.Add("Q = ");
-            item.Add(VER1_ATTR_NODE1);
-            item.Add(" × (h - ");
-            item.Add(VER1_ATTR_NODE2);
-            item.Add(")");
-            item.Add(VER1_ATTR_NODE3, AFMSMathTextType.Superscript);
-
-            return item;
-        }
     }
 }

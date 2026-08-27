@@ -91,7 +91,10 @@ namespace AFMSSettings
 
             using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
             db.Execute(query, out string error);
-            return error;
+            if (!string.IsNullOrEmpty(error)) return error;
+            return DischargeMethodConfigStore.Save(
+                MeasurementDeviceType.VelocityMeter, config.HydroId, DischargeMethod.VeloDist,
+                config, "유속분포법 설정");
         }
 
         public void ClearSelection()
