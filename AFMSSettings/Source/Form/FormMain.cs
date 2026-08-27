@@ -13,6 +13,8 @@ namespace AFMSSettings
         public FormMain()
         {
             InitializeComponent();
+            ShowIcon = true;
+            Icon = AFMSIcon.SettingIcon(32, 32, Color.White);
             this.Width = 1260;
             this.Height = 620;
 

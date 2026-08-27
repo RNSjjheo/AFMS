@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Runtime.InteropServices;
 
 namespace AFMSDll
 {
@@ -31,6 +32,23 @@ namespace AFMSDll
         public static Bitmap SearchOn(int width, int height) => AFMSSvgHelper.ToBitmap(Res.icon_search_on, width, height);
 
         public static Bitmap Setting(int width, int height) => AFMSSvgHelper.ToBitmap(Res.icon_setting, width, height);
+        public static Bitmap Setting(int width, int height, Color color) =>
+            AFMSSvgHelper.ToBitmap(Res.icon_setting, width, height, color);
+
+        public static Icon SettingIcon(int width, int height, Color color)
+        {
+            using Bitmap bitmap = Setting(width, height, color);
+            IntPtr iconHandle = bitmap.GetHicon();
+            try
+            {
+                using Icon temporaryIcon = Icon.FromHandle(iconHandle);
+                return (Icon)temporaryIcon.Clone();
+            }
+            finally
+            {
+                DestroyIcon(iconHandle);
+            }
+        }
 
         public static Bitmap TitlebarClose(int width, int height) => AFMSSvgHelper.ToBitmap(Res.icon_titlebar_close, width, height);
         public static Bitmap TitlebarCloseW(int width, int height) => AFMSSvgHelper.ToBitmap(Res.icon_titlebar_close_w, width, height);
@@ -48,5 +66,8 @@ namespace AFMSDll
         public static Bitmap ToggleOffW(int width, int height) => AFMSSvgHelper.ToBitmap(Res.toggle_off_w, width, height);
         public static Bitmap ToggleOn(int width, int height) => AFMSSvgHelper.ToBitmap(Res.toggle_on, width, height);
         public static Bitmap ToggleOnW(int width, int height) => AFMSSvgHelper.ToBitmap(Res.toggle_on_w, width, height);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool DestroyIcon(IntPtr iconHandle);
     }
 }
