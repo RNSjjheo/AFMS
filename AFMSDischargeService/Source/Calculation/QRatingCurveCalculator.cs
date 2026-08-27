@@ -35,6 +35,7 @@ namespace AFMSDischargeService
             double discharge;
             double area;
             double velocity;
+            string formula;
             CrossSectionPointCollection points = Configuration.CrossSection.Points;
             RatingCurveCoefficient coefficient;
             error = string.Empty;
@@ -47,6 +48,8 @@ namespace AFMSDischargeService
                 area = points.Area;
                 discharge = 0.0;
                 velocity = 0.0;
+                formula = $"Q=0({FormatFormulaNumber(waterLevel)}" +
+                    $"<{FormatFormulaNumber(coefficients[0].B)})";
 
                 if (!TryValidateBelowMinimumResults(waterLevel, area, out error)) return false;
 
@@ -54,6 +57,7 @@ namespace AFMSDischargeService
                     area,
                     velocity,
                     discharge,
+                    formula,
                     DischargeCalculationStatus.BelowRatingCurveMinimum,
                     $"수위 {waterLevel:G17}가 첫 구간 최저 적용 수위 {coefficients[0].B:G17}보다 낮아 유량을 0으로 처리했습니다.");
                 return true;
@@ -66,11 +70,14 @@ namespace AFMSDischargeService
             area = points.Area;
             discharge = coefficient.A * Math.Pow(waterLevel - coefficient.B, coefficient.C);
             velocity = area > 0.0 ? discharge / area : 0.0;
+            formula = $"Q={FormatFormulaNumber(coefficient.A)}*" +
+                $"({FormatFormulaNumber(waterLevel)}-({FormatFormulaNumber(coefficient.B)}))" +
+                $"^{FormatFormulaNumber(coefficient.C)}";
 
             if (!TryValidateCalculationResults(
                     waterLevel, coefficient, area, velocity, discharge, out error)) return false;
 
-            SetCalculationResults(area, velocity, discharge);
+            SetCalculationResults(area, velocity, discharge, formula);
 
             return true;
         }
@@ -79,6 +86,7 @@ namespace AFMSDischargeService
             double area,
             double velocity,
             double discharge,
+            string formula,
             DischargeCalculationStatus status = DischargeCalculationStatus.Calculated,
             string statusMessage = "")
         {
@@ -88,6 +96,7 @@ namespace AFMSDischargeService
             Calculation.Uncertainty = 0.0;
             Calculation.Status = status;
             Calculation.StatusMessage = statusMessage;
+            Calculation.Formula = formula;
         }
 
         private bool TryValidateCalculationInputs(out string error)
