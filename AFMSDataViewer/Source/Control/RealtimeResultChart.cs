@@ -115,9 +115,9 @@ namespace AFMSDataViewer.Source.Control
                 if (!string.IsNullOrEmpty(error)) { ShowMessage(error); return; }
 
                 availableSeries.Clear();
-                foreach (IGrouping<string, DataRow> group in table.Rows.Cast<DataRow>().Where(row => row["VALUE"] != DBNull.Value).GroupBy(row => row["SERIES"].ToText()))
+                foreach (IGrouping<string, DataRow> group in table.Rows.Cast<DataRow>().Where(row => row["CHART_VALUE"] != DBNull.Value).GroupBy(row => row["SERIES"].ToText()))
                 {
-                    List<ChartPoint> points = group.Reverse().Select(row => new ChartPoint(ParseSourceTime(row["SOURCE_TIME"]), Convert.ToDouble(row["VALUE"])))
+                    List<ChartPoint> points = group.Reverse().Select(row => new ChartPoint(ParseSourceTime(row["SOURCE_TIME"]), Convert.ToDouble(row["CHART_VALUE"])))
                         .Where(point => double.IsFinite(point.Value)).ToList();
                     if (points.Count > 0) availableSeries.Add(new ChartSeries(group.Key, SeriesColors[availableSeries.Count % SeriesColors.Length], points));
                 }
@@ -134,8 +134,8 @@ namespace AFMSDataViewer.Source.Control
         {
             DataTable table = db.Execute(GetDischargeSql(), out string error);
             if (!string.IsNullOrEmpty(error)) return;
-            List<ChartPoint> points = table.Rows.Cast<DataRow>().Reverse().Where(row => row["VALUE"] != DBNull.Value)
-                .Select(row => new ChartPoint(ParseSourceTime(row["SOURCE_TIME"]), Convert.ToDouble(row["VALUE"]))).Where(point => double.IsFinite(point.Value)).ToList();
+            List<ChartPoint> points = table.Rows.Cast<DataRow>().Reverse().Where(row => row["CHART_VALUE"] != DBNull.Value)
+                .Select(row => new ChartPoint(ParseSourceTime(row["SOURCE_TIME"]), Convert.ToDouble(row["CHART_VALUE"]))).Where(point => double.IsFinite(point.Value)).ToList();
             if (points.Count > 0) availableSeries.Add(new ChartSeries("유량 비교", SeriesColors[0], points, true));
         }
 
@@ -235,14 +235,43 @@ namespace AFMSDataViewer.Source.Control
 
         private string GetSql() => chartType switch
         {
-            ChartMainType.Level => $"SELECT ({_FBTableBase.COL_MEASURE_DATE} || ' ' || {_FBTableBase.COL_MEASURE_TIME}) AS SOURCE_TIME, '수위계' AS SERIES, {FbtWATERLEVEL.COL_AVG_WATER_LEVEL} AS VALUE FROM {FbtWATERLEVEL.TABLE_NAME} WHERE {FbtWATERLEVEL.COL_AVG_WATER_LEVEL} IS NOT NULL AND {GetMeasurementTimeCondition()} ORDER BY {_FBTableBase.COL_MEASURE_DATE} DESC, {_FBTableBase.COL_MEASURE_TIME} DESC",
+            ChartMainType.Level => $"SELECT ({_FBTableBase.COL_MEASURE_DATE} || ' ' || {_FBTableBase.COL_MEASURE_TIME}) AS SOURCE_TIME, '수위계' AS SERIES, {FbtWATERLEVEL.COL_AVG_WATER_LEVEL} AS CHART_VALUE FROM {FbtWATERLEVEL.TABLE_NAME} WHERE {FbtWATERLEVEL.COL_AVG_WATER_LEVEL} IS NOT NULL AND {GetMeasurementTimeCondition()} ORDER BY {_FBTableBase.COL_MEASURE_DATE} DESC, {_FBTableBase.COL_MEASURE_TIME} DESC",
             ChartMainType.Discharge => GetDischargeSql(),
-            ChartMainType.VTH => $"SELECT ({_FBTableBase.COL_MEASURE_DATE} || ' ' || {_FBTableBase.COL_MEASURE_TIME}) AS SOURCE_TIME, '전압' AS SERIES, {FbtVTHLOGGER.COL_VOLT} AS VALUE FROM {FbtVTHLOGGER.TABLE_NAME} WHERE {FbtVTHLOGGER.COL_VOLT} IS NOT NULL AND {GetMeasurementTimeCondition()} ORDER BY {_FBTableBase.COL_MEASURE_DATE} DESC, {_FBTableBase.COL_MEASURE_TIME} DESC",
+            ChartMainType.VTH => GetPowerSql(),
             _ => GetVelocitySql()
         };
 
-        private string GetDischargeSql() => $"SELECT {FbtAFMSDischargeResult.COL_SOURCE_TIME} AS SOURCE_TIME, TRIM({FbtAFMSDischargeResult.COL_DISCHARGE_METHOD}) AS SERIES, {FbtAFMSDischargeResult.COL_DISCHARGE} AS VALUE FROM {FbtAFMSDischargeResult.TABLE_NAME} WHERE {FbtAFMSDischargeResult.COL_DISCHARGE} IS NOT NULL AND {FbtAFMSDischargeResult.COL_SOURCE_TIME} >= '{rangeStart:yyyy-MM-dd HH:mm:ss}' AND {FbtAFMSDischargeResult.COL_SOURCE_TIME} <= '{rangeEnd:yyyy-MM-dd HH:mm:ss}' ORDER BY {FbtAFMSDischargeResult.COL_SOURCE_TIME} DESC";
-        private string GetVelocitySql() => $"SELECT (M.{_FBTableBase.COL_MEASURE_DATE} || ' ' || M.{_FBTableBase.COL_MEASURE_TIME}) AS SOURCE_TIME, 'MPDS ' || C.{FbtHYDROMETERMPDSCELL.COL_DEV_NO} AS SERIES, C.{FbtHYDROMETERMPDSCELL.COL_VELOCITY} AS VALUE FROM {FbtHYDROMETERMPDS.TABLE_NAME} M JOIN {FbtHYDROMETERMPDSCELL.TABLE_NAME} C ON C.{FbtHYDROMETERMPDSCELL.COL_MPDS_ID}=M.{_FBTableBase.COL_ID} WHERE C.{FbtHYDROMETERMPDSCELL.COL_VELOCITY} IS NOT NULL AND {GetMeasurementTimeCondition("M")} ORDER BY M.{_FBTableBase.COL_MEASURE_DATE} DESC, M.{_FBTableBase.COL_MEASURE_TIME} DESC";
+        private string GetDischargeSql() => $"SELECT {FbtAFMSDischargeResult.COL_SOURCE_TIME} AS SOURCE_TIME, TRIM({FbtAFMSDischargeResult.COL_DISCHARGE_METHOD}) || ' ' || TRIM({FbtAFMSDischargeResult.COL_SOURCE_DEVICE_TYPE}) || ' ' || CAST({FbtAFMSDischargeResult.COL_SOURCE_DEVICE_ID} AS VARCHAR(12)) AS SERIES, {FbtAFMSDischargeResult.COL_DISCHARGE} AS CHART_VALUE FROM {FbtAFMSDischargeResult.TABLE_NAME} WHERE {FbtAFMSDischargeResult.COL_DISCHARGE} IS NOT NULL AND {FbtAFMSDischargeResult.COL_SOURCE_TIME} >= '{rangeStart:yyyy-MM-dd HH:mm:ss}' AND {FbtAFMSDischargeResult.COL_SOURCE_TIME} <= '{rangeEnd:yyyy-MM-dd HH:mm:ss}' ORDER BY {FbtAFMSDischargeResult.COL_SOURCE_TIME} DESC";
+
+        private string GetVelocitySql()
+        {
+            string sql = $"SELECT (M.{_FBTableBase.COL_MEASURE_DATE} || ' ' || M.{_FBTableBase.COL_MEASURE_TIME}) AS SOURCE_TIME,";
+            sql += $" 'MPDS ' || CAST(C.{FbtHYDROMETERMPDSCELL.COL_DEV_NO} AS VARCHAR(12)) AS SERIES,";
+            sql += $" C.{FbtHYDROMETERMPDSCELL.COL_VELOCITY} AS CHART_VALUE";
+            sql += $" FROM {FbtHYDROMETERMPDS.TABLE_NAME} M";
+            sql += $" JOIN {FbtHYDROMETERMPDSCELL.TABLE_NAME} C ON C.{FbtHYDROMETERMPDSCELL.COL_MPDS_ID}=M.{_FBTableBase.COL_ID}";
+            sql += $" WHERE C.{FbtHYDROMETERMPDSCELL.COL_VELOCITY} IS NOT NULL AND {GetMeasurementTimeCondition("M")}";
+            sql += " UNION ALL ";
+            sql += $"SELECT (V.{_FBTableBase.COL_MEASURE_DATE} || ' ' || V.{_FBTableBase.COL_MEASURE_TIME}) AS SOURCE_TIME,";
+            sql += $" '영상 ' || CAST(C.{FbtHYDROMETERVIDEOCELL.COL_CELL_NO} AS VARCHAR(12)) AS SERIES,";
+            sql += $" C.{FbtHYDROMETERVIDEOCELL.COL_VELOCITY} AS CHART_VALUE";
+            sql += $" FROM {FbtHYDROMETERVIDEO.TABLE_NAME} V";
+            sql += $" JOIN {FbtHYDROMETERVIDEOCELL.TABLE_NAME} C ON C.{FbtHYDROMETERVIDEOCELL.COL_VIDEO_ID}=V.{_FBTableBase.COL_ID}";
+            sql += $" WHERE C.{FbtHYDROMETERVIDEOCELL.COL_VELOCITY} IS NOT NULL AND {GetMeasurementTimeCondition("V")}";
+            sql += " ORDER BY 1 DESC";
+            return sql;
+        }
+
+        private string GetPowerSql()
+        {
+            string sourceTime = $"({_FBTableBase.COL_MEASURE_DATE} || ' ' || {_FBTableBase.COL_MEASURE_TIME})";
+            string condition = GetMeasurementTimeCondition();
+            string sql = $"SELECT {sourceTime} AS SOURCE_TIME, '입력 전압' AS SERIES, {FbtVTHLOGGER.COL_VOLT} AS CHART_VALUE FROM {FbtVTHLOGGER.TABLE_NAME} WHERE {FbtVTHLOGGER.COL_VOLT} IS NOT NULL AND {condition}";
+            sql += $" UNION ALL SELECT {sourceTime} AS SOURCE_TIME, '충전 전압' AS SERIES, {FbtVTHLOGGER.COL_DCCHARGE} AS CHART_VALUE FROM {FbtVTHLOGGER.TABLE_NAME} WHERE {FbtVTHLOGGER.COL_DCCHARGE} IS NOT NULL AND {condition}";
+            sql += $" UNION ALL SELECT {sourceTime} AS SOURCE_TIME, '배터리 전압' AS SERIES, {FbtVTHLOGGER.COL_DCBATTERY} AS CHART_VALUE FROM {FbtVTHLOGGER.TABLE_NAME} WHERE {FbtVTHLOGGER.COL_DCBATTERY} IS NOT NULL AND {condition}";
+            sql += " ORDER BY 1 DESC";
+            return sql;
+        }
 
         private string GetTitle() => chartType switch { ChartMainType.Velocity => "유속계", ChartMainType.Level => "수위계", ChartMainType.Discharge => "유량계", _ => "전원" };
         private string GetUnit() => chartType switch { ChartMainType.Velocity => "m/s", ChartMainType.Level => "m", ChartMainType.Discharge => "m³/s", _ => "V" };
