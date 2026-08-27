@@ -24,6 +24,10 @@ namespace AFMSDataViewer
         {
             public override string ToString() => DisplayText;
         }
+        private sealed record VelocityDeviceOption(int DeviceId, string SourceType, int DeviceNo, string DisplayText)
+        {
+            public override string ToString() => DisplayText;
+        }
 
         private static readonly System.Drawing.Color[] SeriesColors =
         {
@@ -101,6 +105,13 @@ namespace AFMSDataViewer
                 TopLayout.uiComboSub.SelectedIndexChanged += (_, _) =>
                 {
                     if (!isPopulatingSelectors) DrawSelectedSeries();
+                };
+            }
+            else if (chartType == ChartMainType.Velocity)
+            {
+                TopLayout.uiComboMain.SelectedIndexChanged += (_, _) =>
+                {
+                    if (!isPopulatingSelectors) LoadData();
                 };
             }
 
@@ -190,6 +201,7 @@ namespace AFMSDataViewer
             try
             {
                 using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
+                if (chartType == ChartMainType.Velocity) PopulateVelocityDeviceSelector(db);
                 DataTable table = db.Execute(GetSql(), out string error);
                 if (!string.IsNullOrEmpty(error)) { ShowMessage(error); return; }
 
@@ -272,6 +284,36 @@ namespace AFMSDataViewer
                     .FirstOrDefault(option => option.DeviceType == selectedType && option.DeviceId == selectedId);
                 TopLayout.uiComboMain.SelectedItem = selected ?? TopLayout.uiComboMain.Items.Cast<object>().FirstOrDefault();
                 PopulateDischargeMethodSelector();
+            }
+            finally
+            {
+                isPopulatingSelectors = false;
+            }
+        }
+
+        private void PopulateVelocityDeviceSelector(FBDatabase db)
+        {
+            VelocityDeviceOption? previous = TopLayout.uiComboMain.SelectedItem as VelocityDeviceOption;
+            RealtimeVelocityChartQuery query = new(rangeStart, rangeEnd);
+            DataTable devices = db.Execute(query.BuildDeviceList(), out string error);
+            if (!string.IsNullOrEmpty(error)) return;
+
+            isPopulatingSelectors = true;
+            try
+            {
+                TopLayout.uiComboMain.Items.Clear();
+                foreach (DataRow row in devices.Rows)
+                {
+                    string sourceType = row["SOURCE_TYPE"].ToText().Trim();
+                    int deviceId = Convert.ToInt32(row["DEVICE_ID"]);
+                    int deviceNo = row["DEVICE_NO"] == DBNull.Value ? deviceId : Convert.ToInt32(row["DEVICE_NO"]);
+                    TopLayout.uiComboMain.Items.Add(new VelocityDeviceOption(deviceId, sourceType, deviceNo, $"{deviceNo}번 유속계"));
+                }
+
+                VelocityDeviceOption? selected = TopLayout.uiComboMain.Items.Cast<object>()
+                    .OfType<VelocityDeviceOption>()
+                    .FirstOrDefault(option => option.DeviceId == previous?.DeviceId);
+                TopLayout.uiComboMain.SelectedItem = selected ?? TopLayout.uiComboMain.Items.Cast<object>().FirstOrDefault();
             }
             finally
             {
@@ -441,7 +483,12 @@ namespace AFMSDataViewer
             return Convert.ToDateTime(value, CultureInfo.InvariantCulture);
         }
 
-        private string GetSql() => RealtimeChartQueryFactory.Create(chartType, rangeStart, rangeEnd).Build();
+        private string GetSql()
+        {
+            VelocityDeviceOption? velocity = TopLayout.uiComboMain.SelectedItem as VelocityDeviceOption;
+            return RealtimeChartQueryFactory.Create(chartType, rangeStart, rangeEnd,
+                velocity?.SourceType, velocity?.DeviceNo).Build();
+        }
 
         private string GetDischargeSql() => new RealtimeDischargeChartQuery(rangeStart, rangeEnd).Build();
 

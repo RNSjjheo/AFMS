@@ -23,8 +23,12 @@ namespace AFMSDataViewer
         protected string MeasurementTimeCondition(string? alias = null)
         {
             string prefix = string.IsNullOrEmpty(alias) ? string.Empty : alias + ".";
-            string sourceTime = $"({prefix}{_FBTableBase.COL_MEASURE_DATE} || ' ' || {prefix}{_FBTableBase.COL_MEASURE_TIME})";
-            return $"{sourceTime} >= '{RangeStart:yyyyMMdd HHmmss}' AND {sourceTime} <= '{RangeEnd:yyyyMMdd HHmmss}'";
+            string measureDate = $"{prefix}{_FBTableBase.COL_MEASURE_DATE}";
+            string measureTime = $"{prefix}{_FBTableBase.COL_MEASURE_TIME}";
+
+            return $"{measureDate} BETWEEN '{RangeStart:yyyyMMdd}' AND '{RangeEnd:yyyyMMdd}'" +
+                $" AND ({measureDate} > '{RangeStart:yyyyMMdd}' OR {measureTime} >= '{RangeStart:HHmmss}')" +
+                $" AND ({measureDate} < '{RangeEnd:yyyyMMdd}' OR {measureTime} <= '{RangeEnd:HHmmss}')";
         }
 
         protected string SlotTimeCondition(string alias = "S") =>
@@ -34,10 +38,11 @@ namespace AFMSDataViewer
 
     internal static class RealtimeChartQueryFactory
     {
-        public static IRealtimeChartQuery Create(ChartMainType chartType, DateTime rangeStart, DateTime rangeEnd) => chartType switch
+        public static IRealtimeChartQuery Create(ChartMainType chartType, DateTime rangeStart, DateTime rangeEnd,
+            string? velocitySourceType = null, int? velocityDeviceNo = null) => chartType switch
         {
             ChartMainType.Discharge => new RealtimeDischargeChartQuery(rangeStart, rangeEnd),
-            ChartMainType.Velocity => new RealtimeVelocityChartQuery(rangeStart, rangeEnd),
+            ChartMainType.Velocity => new RealtimeVelocityChartQuery(rangeStart, rangeEnd, velocitySourceType, velocityDeviceNo),
             ChartMainType.Level => new RealtimeLevelChartQuery(rangeStart, rangeEnd),
             _ => new RealtimePowerChartQuery(rangeStart, rangeEnd)
         };
