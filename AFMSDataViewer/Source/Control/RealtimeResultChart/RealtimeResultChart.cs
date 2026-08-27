@@ -4,12 +4,15 @@ using ScottPlot.Plottables;
 using ScottPlot.WinForms;
 using System.Data;
 using System.Globalization;
+using System.Reflection.Metadata;
 using WinFormsLabel = System.Windows.Forms.Label;
 
-namespace AFMSDataViewer.Source.Control
+namespace AFMSDataViewer
 {
     internal sealed class RealtimeResultChart : UserControl
     {
+        private const string ChartFontName = "맑은 고딕";
+
         private sealed record ChartPoint(DateTime Time, double Value);
         private sealed record ChartSeries(string Name, System.Drawing.Color Color, List<ChartPoint> Points, bool SecondaryAxis = false);
 
@@ -33,6 +36,8 @@ namespace AFMSDataViewer.Source.Control
         private DateTime rangeEnd;
 
         public event EventHandler? MaximizeRequested;
+        public RealtimeResultChartControl TopLayout;
+        private TableLayoutPanel uiTpMain;
 
         public RealtimeResultChart(ChartMainType chartType, DateTime rangeStart, DateTime rangeEnd)
         {
@@ -42,8 +47,24 @@ namespace AFMSDataViewer.Source.Control
             Dock = DockStyle.Fill;
             BackColor = System.Drawing.Color.White;
             Margin = Padding.Empty;
-            BuildLayout();
+            //BuildLayout();
+            uiTpMain = new TableLayoutPanel();
+            uiTpMain.Dock = DockStyle.Fill;
+            uiTpMain.RowStyles.Clear();
+            uiTpMain.ColumnStyles.Clear();
+            uiTpMain.RowCount = 2;
+            uiTpMain.ColumnCount = 1;
+            uiTpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 50F));
+            uiTpMain.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            uiTpMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+
+            TopLayout = new RealtimeResultChartControl(chartType);
+            TopLayout.Dock = DockStyle.Fill;
+
             ConfigurePlot();
+            uiTpMain.Controls.Add(TopLayout, 0, 0);
+            uiTpMain.Controls.Add(formsPlot, 0, 1);
+            Controls.Add(uiTpMain);
         }
 
         public void SetTimeRange(DateTime start, DateTime end)
@@ -97,6 +118,7 @@ namespace AFMSDataViewer.Source.Control
         private void ConfigurePlot()
         {
             formsPlot.Dock = DockStyle.Fill;
+            formsPlot.Plot.Font.Set(ChartFontName);
             formsPlot.Plot.FigureBackground.Color = ScottPlot.Color.FromHex("#FFFFFF");
             formsPlot.Plot.DataBackground.Color = ScottPlot.Color.FromHex("#FFFFFF");
             formsPlot.Plot.Grid.MajorLineColor = ScottPlot.Color.FromHex("#E1EAF2");

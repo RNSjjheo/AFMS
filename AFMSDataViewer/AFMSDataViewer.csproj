@@ -25,9 +25,7 @@
       <DataReplicatorRuntimeFiles Include="$(MSBuildProjectDirectory)\..\AFMSDataReplicator\bin\$(Configuration)\$(TargetFramework)\**\*" />
     </ItemGroup>
 
-    <Copy SourceFiles="@(DataReplicatorRuntimeFiles)"
-          DestinationFiles="@(DataReplicatorRuntimeFiles->'$(OutDir)%(RecursiveDir)%(Filename)%(Extension)')"
-          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(DataReplicatorRuntimeFiles)" DestinationFiles="@(DataReplicatorRuntimeFiles->'$(OutDir)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
   </Target>
 
   <ItemGroup>
