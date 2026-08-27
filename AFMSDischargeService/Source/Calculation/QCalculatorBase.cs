@@ -9,6 +9,12 @@ namespace AFMSDischargeService
     internal abstract class QCalculatorBase : _QBase
     {
         private readonly ILog log;
+        private readonly TransectCollection calculationTransects = new();
+
+        /// <summary>단면 구간 계산에 사용하는 전체 측선 목록입니다.</summary>
+        public TransectCollection Transects => Configuration.CrossSection.Transects;
+        /// <summary>현재 유량 산정법 설정에서 실제 연산에 사용하는 측선 목록입니다.</summary>
+        public IReadOnlyList<Transect> CalculationTransects => calculationTransects;
 
         protected QCalculatorBase(DischargeMethod method) : base(method)
         {
@@ -19,6 +25,68 @@ namespace AFMSDischargeService
         /// 준비된 설정, 수집자료 및 슬롯을 사용하여 유량을 산정합니다.
         /// </summary>
         public abstract bool Calculate(out string error);
+
+        /// <summary>연속된 측선 번호 범위를 현재 산정법의 연산 대상으로 설정합니다.</summary>
+        protected bool TrySetCalculationTransects(int minNo, int maxNo, out string error)
+        {
+            calculationTransects.Clear();
+
+            if (minNo < 1 || maxNo < minNo)
+            {
+                error = $"산정 측선 범위가 올바르지 않습니다: {minNo}~{maxNo}";
+                return false;
+            }
+
+            calculationTransects.AddRange(Transects.Where(item =>
+                item.No >= minNo && item.No <= maxNo));
+            if (calculationTransects.Count == 0)
+            {
+                error = $"산정 범위에 포함되는 측선이 없습니다: {minNo}~{maxNo}";
+                return false;
+            }
+
+            error = string.Empty;
+            return true;
+        }
+
+        /// <summary>측선 번호 목록을 현재 산정법의 연산 대상으로 설정합니다.</summary>
+        protected bool TrySetCalculationTransects(IEnumerable<int> transectNos, out string error)
+        {
+            HashSet<int> selectedNos;
+            List<int> missingNos;
+
+            ArgumentNullException.ThrowIfNull(transectNos);
+            calculationTransects.Clear();
+
+            selectedNos = transectNos.ToHashSet();
+            if (selectedNos.Count == 0)
+            {
+                error = "산정에 사용할 측선이 설정되지 않았습니다.";
+                return false;
+            }
+
+            calculationTransects.AddRange(Transects.Where(item => selectedNos.Contains(item.No)));
+            missingNos = selectedNos
+                .Except(calculationTransects.Select(item => item.No))
+                .OrderBy(item => item)
+                .ToList();
+            if (missingNos.Count > 0)
+            {
+                calculationTransects.Clear();
+                error = $"설정된 측선 정보를 찾을 수 없습니다: {string.Join(", ", missingNos)}";
+                return false;
+            }
+
+            error = string.Empty;
+            return true;
+        }
+
+        /// <summary>전체 측선과 산정 대상 측선을 초기화합니다.</summary>
+        protected void ClearTransects()
+        {
+            Transects.Clear();
+            calculationTransects.Clear();
+        }
 
         /// <summary>
         /// 현재 자료를 산정하고 결과 저장이 완료되면 다음 원시자료와 슬롯을 준비합니다.

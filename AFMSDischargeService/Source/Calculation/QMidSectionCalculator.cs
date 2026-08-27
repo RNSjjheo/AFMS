@@ -8,8 +8,6 @@ namespace AFMSDischargeService
     {
         public override bool IsImplemented => true;
 
-        /// <summary>현재 유속계에 설정된 최신 측선 목록입니다.</summary>
-        public TransectCollection Transects => Configuration.CrossSection.Transects;
         /// <summary>현재 원시자료에서 수집된 측선별 유속정보입니다.</summary>
         public IReadOnlyList<QTransectMeasurement> TransectMeasurements => Measurement.Transects;
         public DiscVerMidSection Version { get; private set; }
@@ -23,18 +21,19 @@ namespace AFMSDischargeService
 
         public override bool Calculate(out string error)
         {
-            error = ValidateCalculationInputs();
-            if (!string.IsNullOrEmpty(error)) return false;
-
             double discharge = 0.0;
             double area = 0.0;
             CrossSection crossSection = Configuration.CrossSection;
+            QTransectMeasurement measurement;
+
+            error = ValidateCalculationInputs();
+            if (!string.IsNullOrEmpty(error)) return false;
 
             crossSection.CalculateTransectAreas(Measurement.WaterLevel);
 
-            foreach (Transect transect in Transects.Where(item => item.No >= CellRangeMin && item.No <= CellRangeMax))
+            foreach (Transect transect in CalculationTransects)
             {
-                QTransectMeasurement measurement = TransectMeasurements.First(item => item.No == transect.No);
+                measurement = TransectMeasurements.First(item => item.No == transect.No);
 
                 area += transect.SectionArea;
                 discharge += transect.SectionArea * measurement.Velocity * ConversionFactor;
@@ -56,6 +55,14 @@ namespace AFMSDischargeService
 
         private string ValidateCalculationInputs()
         {
+            List<CrossSectionPoint> section;
+            double sectionStart;
+            double sectionEnd;
+            List<Transect> orderedTransects;
+            Transect transect;
+            double center;
+            QTransectMeasurement? measurement;
+
             if (Calculation.SlotId < 0) return "산정 슬롯이 준비되지 않았습니다.";
             if (!Measurement.HasWaterLevel) return "산정할 수위자료가 준비되지 않았습니다.";
             if (!double.IsFinite(Measurement.WaterLevel)) return "산정할 수위값이 올바르지 않습니다.";
@@ -65,46 +72,41 @@ namespace AFMSDischargeService
                 return $"중간단면적법 환산계수가 올바르지 않습니다: {ConversionFactor}";
             if (Configuration.CrossSection.Points.Count < 2) return "단면정보가 준비되지 않았습니다.";
             if (Transects.Count == 0) return "설정된 측선정보가 없습니다.";
+            if (CalculationTransects.Count == 0) return "산정에 사용할 측선정보가 없습니다.";
             if (TransectMeasurements.Count == 0) return "수집된 측선 유속자료가 없습니다.";
 
-            List<CrossSectionPoint> section = Configuration.CrossSection.Points
+            section = Configuration.CrossSection.Points
                 .OrderBy(point => point.LeftBankDistance)
                 .ToList();
             if (section.Any(point =>
                     !double.IsFinite(point.LeftBankDistance) || !double.IsFinite(point.Elevation)))
                 return "단면 좌표에 올바르지 않은 값이 있습니다.";
 
-            double sectionStart = section[0].LeftBankDistance;
-            double sectionEnd = section[^1].LeftBankDistance;
+            sectionStart = section[0].LeftBankDistance;
+            sectionEnd = section[^1].LeftBankDistance;
             if (sectionStart > 0.0 || sectionEnd <= 0.0)
                 return "단면 좌표에는 좌안 거리 0과 그보다 큰 우안 거리가 포함되어야 합니다.";
 
-            List<Transect> orderedTransects = Transects
+            orderedTransects = Transects
                 .OrderBy(transect => transect.CenterLeftBankDistance)
                 .ToList();
             for (int index = 0; index < orderedTransects.Count; index++)
             {
-                Transect transect = orderedTransects[index];
-                double center = transect.CenterLeftBankDistance;
+                transect = orderedTransects[index];
+                center = transect.CenterLeftBankDistance;
                 if (!double.IsFinite(center) || center < 0.0 || center > sectionEnd)
                     return $"{transect.No}번 측선의 중심 위치가 단면 범위를 벗어났습니다.";
                 if (index > 0 && orderedTransects[index - 1].CenterLeftBankDistance == center)
                     return $"측선 중심 위치가 중복되어 있습니다: {center}";
             }
 
-            List<Transect> calculationTransects = Transects.Where(item =>
-                    item.No >= CellRangeMin && item.No <= CellRangeMax)
-                .ToList();
-            if (calculationTransects.Count == 0)
-                return $"산정 셀 범위에 포함되는 측선이 없습니다: {CellRangeMin}~{CellRangeMax}";
-
-            foreach (Transect transect in calculationTransects)
+            foreach (Transect calculationTransect in CalculationTransects)
             {
-                QTransectMeasurement? measurement = TransectMeasurements
-                    .FirstOrDefault(item => item.No == transect.No);
-                if (measurement == null) return $"{transect.No}번 측선의 유속자료가 없습니다.";
+                measurement = TransectMeasurements
+                    .FirstOrDefault(item => item.No == calculationTransect.No);
+                if (measurement == null) return $"{calculationTransect.No}번 측선의 유속자료가 없습니다.";
                 if (!double.IsFinite(measurement.Velocity))
-                    return $"{transect.No}번 측선의 유속값이 올바르지 않습니다.";
+                    return $"{calculationTransect.No}번 측선의 유속값이 올바르지 않습니다.";
             }
 
             return string.Empty;
@@ -114,7 +116,7 @@ namespace AFMSDischargeService
         {
             ArgumentNullException.ThrowIfNull(db);
 
-            Transects.Clear();
+            ClearTransects();
             Configuration.CrossSection.Points.Clear();
             Configuration.CrossSection.Id = -1;
             Configuration.CrossSection.Description = string.Empty;
@@ -122,6 +124,7 @@ namespace AFMSDischargeService
 
             if (!TryLoadMethodConfiguration(db, out error)) return false;
             if (!TryLoadTransects(db, out error)) return false;
+            if (!TrySetCalculationTransects(CellRangeMin, CellRangeMax, out error)) return false;
             return TryLoadCrossSection(db, out error);
         }
 
