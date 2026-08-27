@@ -141,6 +141,10 @@ namespace AFMSDataViewer
         {
             if (sender is not AFMSButtonGroup buttonGroup || buttonGroup.SelectedItem?.Tag is not MaximizableTableLayoutType layoutType) return;
 
+            uiChart1.ResetToChartSelection();
+            uiChart2.ResetToChartSelection();
+            uiChart3.ResetToChartSelection();
+            uiChart4.ResetToChartSelection();
             uiTpField.SetLayout(layoutType, uiChart1, uiChart2, uiChart3, uiChart4);
         }
 
@@ -154,6 +158,7 @@ namespace AFMSDataViewer
             panel.BackColor = DllColorHelper.HexToColor("#F0F4F9");
             panel.uiTpBtnArr.BackColor = panel.BackColor;
             panel.BorderColor = DllColorHelper.GetCommonBorder();
+            panel.MaximizeRequested += (_, _) => uiTpField.ToggleMaximize(panel);
 
             return panel;
         }

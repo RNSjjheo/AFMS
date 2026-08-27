@@ -31,7 +31,7 @@ namespace AFMSDataViewer.Source.Control
         private readonly ToolTip hoverTip = new() { InitialDelay = 0, ReshowDelay = 0, AutoPopDelay = 5000 };
         private readonly List<ChartSeries> availableSeries = new();
 
-        public event EventHandler? BackRequested;
+        public event EventHandler? MaximizeRequested;
 
         public RealtimeResultChart(ChartMainType chartType)
         {
@@ -49,12 +49,11 @@ namespace AFMSDataViewer.Source.Control
             root.RowStyles.Add(new RowStyle(SizeType.Absolute, 66F));
             root.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
-            TableLayoutPanel header = new() { Dock = DockStyle.Fill, Margin = Padding.Empty, ColumnCount = 8, BackColor = System.Drawing.Color.FromArgb(247, 250, 253) };
+            TableLayoutPanel header = new() { Dock = DockStyle.Fill, Margin = Padding.Empty, ColumnCount = 7, BackColor = System.Drawing.Color.FromArgb(247, 250, 253) };
             header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 54F));
             header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 142F));
             header.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             for (int i = 0; i < 3; i++) header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 64F));
-            header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 78F));
             header.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 36F));
 
             title.Dock = DockStyle.Fill;
@@ -74,12 +73,13 @@ namespace AFMSDataViewer.Source.Control
             compareDischarge.Visible = chartType == ChartMainType.Level;
             compareDischarge.CheckedChanged += (_, _) => LoadData();
 
-            Button back = new() { Text = "×", Dock = DockStyle.Fill, FlatStyle = FlatStyle.Flat, Margin = new Padding(2) };
-            back.FlatAppearance.BorderSize = 0;
-            back.Click += (_, _) => BackRequested?.Invoke(this, EventArgs.Empty);
+            Button maximize = new() { Text = "□", Dock = DockStyle.Fill, FlatStyle = FlatStyle.Flat, Margin = new Padding(2) };
+            maximize.FlatAppearance.BorderSize = 0;
+            maximize.Click += (_, _) => MaximizeRequested?.Invoke(this, EventArgs.Empty);
 
             header.Controls.Add(title, 0, 0); header.Controls.Add(seriesSelector, 1, 0); header.Controls.Add(compareDischarge, 2, 0);
-            header.Controls.Add(minimum, 3, 0); header.Controls.Add(average, 4, 0); header.Controls.Add(maximum, 5, 0); header.Controls.Add(back, 7, 0);
+            header.Controls.Add(minimum, 3, 0); header.Controls.Add(average, 4, 0); header.Controls.Add(maximum, 5, 0);
+            header.Controls.Add(maximize, 6, 0);
             root.Controls.Add(header, 0, 0); root.Controls.Add(formsPlot, 0, 1); Controls.Add(root);
         }
 

@@ -10,6 +10,7 @@ namespace AFMSDataViewer.Source.Control
     public class ChartSelectPanel:AFMSPanel
     {
         public event EventHandler<ChartSelectedEventArgs>? ChartSelected;
+        public event EventHandler? MaximizeRequested;
 
         private TableLayoutPanel uiTpMain;
         public TableLayoutPanel uiTpBtnArr;
@@ -121,16 +122,29 @@ namespace AFMSDataViewer.Source.Control
         {
             uiResultChart?.Dispose();
             uiResultChart = new RealtimeResultChart(chartType);
-            uiResultChart.BackRequested += UiResultChart_BackRequested;
+            uiResultChart.MaximizeRequested += UiResultChart_MaximizeRequested;
             Controls.Clear();
             Controls.Add(uiResultChart);
             uiResultChart.LoadData();
         }
 
-        private void UiResultChart_BackRequested(object? sender, EventArgs e)
+        /// <summary>표시 중인 실시간 차트를 제거하고 차트 선택 화면으로 돌아갑니다.</summary>
+        public void ResetToChartSelection()
         {
+            if (uiResultChart != null)
+            {
+                uiResultChart.MaximizeRequested -= UiResultChart_MaximizeRequested;
+                uiResultChart.Dispose();
+                uiResultChart = null;
+            }
+
             Controls.Clear();
             Controls.Add(uiTpMain);
+        }
+
+        private void UiResultChart_MaximizeRequested(object? sender, EventArgs e)
+        {
+            MaximizeRequested?.Invoke(this, EventArgs.Empty);
         }
     }
 }
