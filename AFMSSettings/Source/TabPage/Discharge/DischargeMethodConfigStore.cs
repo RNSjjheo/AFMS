@@ -89,6 +89,46 @@ namespace AFMSSettings
             return result;
         }
 
+        public static string SetEnabled(
+            MeasurementDeviceType deviceType,
+            int deviceId,
+            DischargeMethod method,
+            bool enabled)
+        {
+            string sql = $"SELECT FIRST 1 * FROM {FbtAFMSDischargeMethodConfig.TABLE_NAME}";
+            sql += $" WHERE {FbtAFMSDischargeMethodConfig.COL_DEVICE_TYPE} = '{deviceType}'";
+            sql += $" AND {FbtAFMSDischargeMethodConfig.COL_DEVICE_ID} = {deviceId}";
+            sql += $" AND {FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD} = '{method}'";
+            sql += $" ORDER BY {FbtAFMSDischargeMethodConfig.COL_ID} DESC";
+            using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
+            DataTable table = db.Execute(sql, out string error);
+            if (!string.IsNullOrEmpty(error)) return error;
+            if (table.Rows.Count == 0) return $"{method} 설정을 먼저 저장해주세요.";
+
+            DataRow source = table.Rows[0];
+            int? transectConfigId = source[FbtAFMSDischargeMethodConfig.COL_TRANSECT_CONFIG_ID] == DBNull.Value
+                ? null : Convert.ToInt32(source[FbtAFMSDischargeMethodConfig.COL_TRANSECT_CONFIG_ID]);
+            int? crossSectionId = source[FbtAFMSDischargeMethodConfig.COL_CROSS_SECTION_ID] == DBNull.Value
+                ? null : Convert.ToInt32(source[FbtAFMSDischargeMethodConfig.COL_CROSS_SECTION_ID]);
+            QueryBuilderInsert query = new();
+            query.Table = FbtAFMSDischargeMethodConfig.TABLE_NAME;
+            query.AutoIncrement = FbtAFMSDischargeMethodConfig.COL_ID;
+            query.Value(FbtAFMSDischargeMethodConfig.COL_DEVICE_TYPE, deviceType.ToString());
+            query.Value(FbtAFMSDischargeMethodConfig.COL_DEVICE_ID, deviceId);
+            query.Value(FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD, method.ToString());
+            query.Value(FbtAFMSDischargeMethodConfig.COL_TRANSECT_CONFIG_ID, transectConfigId);
+            query.Value(FbtAFMSDischargeMethodConfig.COL_CROSS_SECTION_ID, crossSectionId);
+            query.Value(FbtAFMSDischargeMethodConfig.COL_CONFIG_VERSION, Convert.ToInt32(source[FbtAFMSDischargeMethodConfig.COL_CONFIG_VERSION]));
+            query.Value(FbtAFMSDischargeMethodConfig.COL_CONFIG_JSON, source[FbtAFMSDischargeMethodConfig.COL_CONFIG_JSON].ToText());
+            query.Value(FbtAFMSDischargeMethodConfig.COL_ENABLED, enabled ? 1 : 0);
+            query.Value(FbtAFMSDischargeMethodConfig.COL_CREATED_AT, DateTime.Now, typeof(DateTime));
+            query.Value(FbtAFMSDischargeMethodConfig.COL_DESCRIPTION,
+                source[FbtAFMSDischargeMethodConfig.COL_DESCRIPTION] == DBNull.Value
+                    ? null : source[FbtAFMSDischargeMethodConfig.COL_DESCRIPTION].ToText());
+            db.Execute(query, out error);
+            return error;
+        }
+
         private static int? GetLatestId(FBDatabase db, string table, string? filterColumn, int? filterValue)
         {
             string sql = $"SELECT MAX({_FBTableBase.COL_ID}) FROM {table}";

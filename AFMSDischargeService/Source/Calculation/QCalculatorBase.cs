@@ -72,7 +72,7 @@ namespace AFMSDischargeService
             query.Value(FbtAFMSDischargeResult.COL_SOURCE_DEVICE_ID, Configuration.DeviceId);
             query.Value(FbtAFMSDischargeResult.COL_DISCHARGE_METHOD, Configuration.Method.ToString());
             query.Value(FbtAFMSDischargeResult.COL_HYDRO_CONFIG_ID, Configuration.DeviceId);
-            query.Value(FbtAFMSDischargeResult.COL_DISCHARGE_CONFIG_ID, Configuration.DischargeConfigId);
+            query.Value(FbtAFMSDischargeResult.COL_DISCHARGE_CONFIG_ID, Configuration.MethodConfigId);
             query.Value(FbtAFMSDischargeResult.COL_CROSS_SECTION_ID, Configuration.CrossSection.Id);
             query.Value(FbtAFMSDischargeResult.COL_TRANSECT_CONFIG_ID, Configuration.TransectConfigId);
             query.Value(FbtAFMSDischargeResult.COL_METHOD_CONFIG_ID, Configuration.MethodConfigId);

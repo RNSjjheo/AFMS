@@ -165,19 +165,19 @@ namespace AFMSDischargeService
         {
             calculators.Clear();
 
-            string sql = $"SELECT C.{FbtAFMSDischargeConfig.COL_ID},";
-            sql += $" C.{FbtAFMSDischargeConfig.COL_DEVICE_TYPE},";
-            sql += $" C.{FbtAFMSDischargeConfig.COL_DEVICE_ID},";
-            sql += $" C.{FbtAFMSDischargeConfig.COL_DISCHARGE_METHOD}";
-            sql += $" FROM {FbtAFMSDischargeConfig.TABLE_NAME} C";
-            sql += $" WHERE C.{FbtAFMSDischargeConfig.COL_ID} = (";
-            sql += $"SELECT MAX(C2.{FbtAFMSDischargeConfig.COL_ID})";
-            sql += $" FROM {FbtAFMSDischargeConfig.TABLE_NAME} C2";
-            sql += $" WHERE C2.{FbtAFMSDischargeConfig.COL_DEVICE_TYPE} = C.{FbtAFMSDischargeConfig.COL_DEVICE_TYPE}";
-            sql += $" AND C2.{FbtAFMSDischargeConfig.COL_DEVICE_ID} = C.{FbtAFMSDischargeConfig.COL_DEVICE_ID}";
-            sql += $" AND C2.{FbtAFMSDischargeConfig.COL_DISCHARGE_METHOD} = C.{FbtAFMSDischargeConfig.COL_DISCHARGE_METHOD})";
-            sql += $" AND C.{FbtAFMSDischargeConfig.COL_ENABLED} = 1";
-            sql += $" ORDER BY C.{FbtAFMSDischargeConfig.COL_DEVICE_TYPE}, C.{FbtAFMSDischargeConfig.COL_DEVICE_ID}";
+            string sql = $"SELECT C.{FbtAFMSDischargeMethodConfig.COL_ID},";
+            sql += $" C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_TYPE},";
+            sql += $" C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_ID},";
+            sql += $" C.{FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD}";
+            sql += $" FROM {FbtAFMSDischargeMethodConfig.TABLE_NAME} C";
+            sql += $" WHERE C.{FbtAFMSDischargeMethodConfig.COL_ID} = (";
+            sql += $"SELECT MAX(C2.{FbtAFMSDischargeMethodConfig.COL_ID})";
+            sql += $" FROM {FbtAFMSDischargeMethodConfig.TABLE_NAME} C2";
+            sql += $" WHERE C2.{FbtAFMSDischargeMethodConfig.COL_DEVICE_TYPE} = C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_TYPE}";
+            sql += $" AND C2.{FbtAFMSDischargeMethodConfig.COL_DEVICE_ID} = C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_ID}";
+            sql += $" AND C2.{FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD} = C.{FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD})";
+            sql += $" AND C.{FbtAFMSDischargeMethodConfig.COL_ENABLED} = 1";
+            sql += $" ORDER BY C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_TYPE}, C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_ID}";
 
             using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
             DataTable table = db.Execute(sql, out string error);
@@ -188,17 +188,17 @@ namespace AFMSDischargeService
             {
                 stoppingToken.ThrowIfCancellationRequested();
 
-                if (!Enum.TryParse(Convert.ToString(row[FbtAFMSDischargeConfig.COL_DEVICE_TYPE]), true,
+                if (!Enum.TryParse(Convert.ToString(row[FbtAFMSDischargeMethodConfig.COL_DEVICE_TYPE]), true,
                         out MeasurementDeviceType deviceType) ||
-                    !Enum.TryParse(Convert.ToString(row[FbtAFMSDischargeConfig.COL_DISCHARGE_METHOD]), true,
+                    !Enum.TryParse(Convert.ToString(row[FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD]), true,
                         out DischargeMethod method)) continue;
 
                 QCalculatorBase? calculator = CreateCalculator(method);
                 if (calculator == null || !IsSupportedDevice(method, deviceType)) continue;
 
-                calculator.Configuration.DischargeConfigId = Convert.ToInt32(row[FbtAFMSDischargeConfig.COL_ID]);
+                calculator.Configuration.MethodConfigId = Convert.ToInt32(row[FbtAFMSDischargeMethodConfig.COL_ID]);
                 calculator.Configuration.DeviceType = deviceType;
-                calculator.Configuration.DeviceId = Convert.ToInt32(row[FbtAFMSDischargeConfig.COL_DEVICE_ID]);
+                calculator.Configuration.DeviceId = Convert.ToInt32(row[FbtAFMSDischargeMethodConfig.COL_DEVICE_ID]);
                 calculators.Add(calculator);
             }
         }
@@ -223,11 +223,6 @@ namespace AFMSDischargeService
                     continue;
                 }
 
-                calculator.Configuration.MethodConfigId = GetLatestMethodConfigId(
-                    db,
-                    calculator.Configuration.Method,
-                    calculator.Configuration.DeviceType,
-                    calculator.Configuration.DeviceId);
                 if (calculator.Configuration.MethodConfigId < 0) continue;
 
                 if (!calculator.TryLoadConfiguration(db, out string configurationError))
@@ -381,46 +376,5 @@ namespace AFMSDischargeService
                 : deviceType == MeasurementDeviceType.VelocityMeter;
         }
 
-        private static int GetLatestMethodConfigId(
-            FBDatabase db,
-            DischargeMethod method,
-            MeasurementDeviceType deviceType,
-            int deviceId)
-        {
-            string tableName;
-            string? deviceColumn;
-
-            switch (method)
-            {
-                case DischargeMethod.MidSection:
-                    tableName = FbtAFMSDiscAttrMidSection.TABLE_NAME;
-                    deviceColumn = FbtAFMSDiscAttrMidSection.COL_HYDRO_ID;
-                    break;
-                case DischargeMethod.SurfaceVelo:
-                    tableName = FbtAFMSDiscAttrSurfaceVelo.TABLE_NAME;
-                    deviceColumn = FbtAFMSDiscAttrSurfaceVelo.COL_HYDRO_ID;
-                    break;
-                case DischargeMethod.VeloDist:
-                    tableName = FbtAFMSDiscAttrVelocityDistribution.TABLE_NAME;
-                    deviceColumn = FbtAFMSDiscAttrVelocityDistribution.COL_HYDRO_ID;
-                    break;
-                case DischargeMethod.RatingCurve:
-                    tableName = FbtAFMSDiscAttrRatingCurve.TABLE_NAME;
-                    deviceColumn = null;
-                    break;
-                default:
-                    return -1;
-            }
-
-            string sql = $"SELECT MAX({FbtAFMSDischargeConfig.COL_ID}) FROM {tableName}";
-            if (deviceType == MeasurementDeviceType.VelocityMeter && deviceColumn != null)
-                sql += $" WHERE {deviceColumn} = {deviceId}";
-
-            DataTable table = db.Execute(sql, out string error);
-            if (!string.IsNullOrEmpty(error) || table.Rows.Count == 0 || table.Rows[0][0] == DBNull.Value)
-                return -1;
-
-            return Convert.ToInt32(table.Rows[0][0]);
-        }
     }
 }

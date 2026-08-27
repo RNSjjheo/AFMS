@@ -104,13 +104,11 @@ namespace AFMSDischargeService
             CellRangeMax = 0;
             ConversionFactor = 0.0;
 
-            string sql = $"SELECT FIRST 1 {FbtAFMSDiscAttrMidSection.COL_DIS_VER},";
-            sql += $" {FbtAFMSDiscAttrMidSection.COL_CELL_RANGE_MIN},";
-            sql += $" {FbtAFMSDiscAttrMidSection.COL_CELL_RANGE_MAX},";
-            sql += $" {FbtAFMSDiscAttrMidSection.COL_CONVERSION_FACTOR}";
-            sql += $" FROM {FbtAFMSDiscAttrMidSection.TABLE_NAME}";
-            sql += $" WHERE {FbtAFMSDiscAttrMidSection.COL_ID} = {Configuration.MethodConfigId}";
-            sql += $" AND {FbtAFMSDiscAttrMidSection.COL_HYDRO_ID} = {Configuration.DeviceId}";
+            string sql = $"SELECT FIRST 1 {FbtAFMSDischargeMethodConfig.COL_CONFIG_JSON}";
+            sql += $" FROM {FbtAFMSDischargeMethodConfig.TABLE_NAME}";
+            sql += $" WHERE {FbtAFMSDischargeMethodConfig.COL_ID} = {Configuration.MethodConfigId}";
+            sql += $" AND {FbtAFMSDischargeMethodConfig.COL_DEVICE_ID} = {Configuration.DeviceId}";
+            sql += $" AND {FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD} = '{DischargeMethod.MidSection}'";
 
             DataTable table = db.Execute(sql, out error);
             if (!string.IsNullOrEmpty(error)) return false;
@@ -120,16 +118,25 @@ namespace AFMSDischargeService
                 return false;
             }
 
-            DataRow row = table.Rows[0];
-            if (row[FbtAFMSDiscAttrMidSection.COL_CONVERSION_FACTOR] == DBNull.Value)
+            int disVer;
+            int cellRangeMin;
+            int cellRangeMax;
+            double conversionFactor;
+            try
             {
-                error = $"중간단면적법 환산계수가 설정되지 않았습니다: ConfigId={Configuration.MethodConfigId}";
+                using JsonDocument document = JsonDocument.Parse(
+                    table.Rows[0][FbtAFMSDischargeMethodConfig.COL_CONFIG_JSON].ToText());
+                JsonElement calculation = document.RootElement.GetProperty("calculation");
+                disVer = calculation.GetProperty("DisVer").GetInt32();
+                cellRangeMin = calculation.GetProperty("CellMin").GetInt32();
+                cellRangeMax = calculation.GetProperty("CellMax").GetInt32();
+                conversionFactor = calculation.GetProperty("ConversionFactor").GetDouble();
+            }
+            catch (Exception ex) when (ex is JsonException or InvalidOperationException or KeyNotFoundException)
+            {
+                error = $"중간단면적법 설정 JSON을 읽을 수 없습니다: {ex.Message}";
                 return false;
             }
-
-            int cellRangeMin = Convert.ToInt32(row[FbtAFMSDiscAttrMidSection.COL_CELL_RANGE_MIN]);
-            int cellRangeMax = Convert.ToInt32(row[FbtAFMSDiscAttrMidSection.COL_CELL_RANGE_MAX]);
-            double conversionFactor = Convert.ToDouble(row[FbtAFMSDiscAttrMidSection.COL_CONVERSION_FACTOR]);
             if (cellRangeMin < 1 || cellRangeMax < cellRangeMin)
             {
                 error = $"중간단면적법 셀 범위가 올바르지 않습니다: {cellRangeMin}~{cellRangeMax}";
@@ -141,7 +148,7 @@ namespace AFMSDischargeService
                 return false;
             }
 
-            Version = (DiscVerMidSection)Convert.ToInt32(row[FbtAFMSDiscAttrMidSection.COL_DIS_VER]);
+            Version = (DiscVerMidSection)disVer;
             CellRangeMin = cellRangeMin;
             CellRangeMax = cellRangeMax;
             ConversionFactor = conversionFactor;

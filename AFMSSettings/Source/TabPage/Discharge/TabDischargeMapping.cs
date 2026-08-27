@@ -109,23 +109,7 @@ namespace AFMSSettings
                     bool enabled = GetCurrentValue(row, method);
                     if (original.TryGetValue(method, out bool oldValue) && oldValue == enabled) continue;
 
-                    int id = FBProvider.Instance.GetNextID(FbtAFMSDischargeConfig.TABLE_NAME);
-                    DateTime now = DateTime.Now;
-                    string methodConfigKey = GetMethodKey(deviceType, deviceId, method);
-                    string methodConfigId = _methodConfigIds.TryGetValue(methodConfigKey, out int configId)
-                        ? configId.ToString()
-                        : "NULL";
-
-                    string sql = $"INSERT INTO {FbtAFMSDischargeConfig.TABLE_NAME} (";
-                    sql += $"{FbtAFMSDischargeConfig.COL_ID}, {FbtAFMSDischargeConfig.COL_MEASURE_DATE}, ";
-                    sql += $"{FbtAFMSDischargeConfig.COL_MEASURE_TIME}, {FbtAFMSDischargeConfig.COL_DEVICE_TYPE}, ";
-                    sql += $"{FbtAFMSDischargeConfig.COL_DEVICE_ID}, {FbtAFMSDischargeConfig.COL_DISCHARGE_METHOD}, ";
-                    sql += $"{FbtAFMSDischargeConfig.COL_METHOD_CONFIG_ID}, {FbtAFMSDischargeConfig.COL_ENABLED}) VALUES (";
-                    sql += $"{id}, '{now:yyyyMMdd}', '{now:HHmmss}', '{deviceType}', {deviceId}, '{method}', ";
-                    sql += $"{methodConfigId}, {(enabled ? 1 : 0)})";
-
-                    using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
-                    string error = db.RunNonQuery(sql);
+                    string error = DischargeMethodConfigStore.SetEnabled(deviceType, deviceId, method, enabled);
                     if (!string.IsNullOrEmpty(error)) return error;
 
                     original[method] = enabled;
@@ -174,24 +158,24 @@ namespace AFMSSettings
         private Dictionary<string, bool> LoadLatestSelections(FBDatabase db)
         {
             Dictionary<string, bool> result = new();
-            string sql = $"SELECT C.{FbtAFMSDischargeConfig.COL_DEVICE_TYPE}, C.{FbtAFMSDischargeConfig.COL_DEVICE_ID},";
-            sql += $" C.{FbtAFMSDischargeConfig.COL_DISCHARGE_METHOD}, C.{FbtAFMSDischargeConfig.COL_ENABLED}";
-            sql += $" FROM {FbtAFMSDischargeConfig.TABLE_NAME} C WHERE C.{FbtAFMSDischargeConfig.COL_ID} = (";
-            sql += $"SELECT MAX(C2.{FbtAFMSDischargeConfig.COL_ID}) FROM {FbtAFMSDischargeConfig.TABLE_NAME} C2";
-            sql += $" WHERE C2.{FbtAFMSDischargeConfig.COL_DEVICE_TYPE} = C.{FbtAFMSDischargeConfig.COL_DEVICE_TYPE}";
-            sql += $" AND C2.{FbtAFMSDischargeConfig.COL_DEVICE_ID} = C.{FbtAFMSDischargeConfig.COL_DEVICE_ID}";
-            sql += $" AND C2.{FbtAFMSDischargeConfig.COL_DISCHARGE_METHOD} = C.{FbtAFMSDischargeConfig.COL_DISCHARGE_METHOD})";
+            string sql = $"SELECT C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_TYPE}, C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_ID},";
+            sql += $" C.{FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD}, C.{FbtAFMSDischargeMethodConfig.COL_ENABLED}";
+            sql += $" FROM {FbtAFMSDischargeMethodConfig.TABLE_NAME} C WHERE C.{FbtAFMSDischargeMethodConfig.COL_ID} = (";
+            sql += $"SELECT MAX(C2.{FbtAFMSDischargeMethodConfig.COL_ID}) FROM {FbtAFMSDischargeMethodConfig.TABLE_NAME} C2";
+            sql += $" WHERE C2.{FbtAFMSDischargeMethodConfig.COL_DEVICE_TYPE} = C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_TYPE}";
+            sql += $" AND C2.{FbtAFMSDischargeMethodConfig.COL_DEVICE_ID} = C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_ID}";
+            sql += $" AND C2.{FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD} = C.{FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD})";
 
             DataTable table = db.Execute(sql, out string error);
             if (!string.IsNullOrEmpty(error)) return result;
 
             foreach (DataRow row in table.Rows)
             {
-                if (!Enum.TryParse(Convert.ToString(row[FbtAFMSDischargeConfig.COL_DEVICE_TYPE]), true, out MeasurementDeviceType type) ||
-                    !Enum.TryParse(Convert.ToString(row[FbtAFMSDischargeConfig.COL_DISCHARGE_METHOD]), true, out DischargeMethod method)) continue;
+                if (!Enum.TryParse(Convert.ToString(row[FbtAFMSDischargeMethodConfig.COL_DEVICE_TYPE]), true, out MeasurementDeviceType type) ||
+                    !Enum.TryParse(Convert.ToString(row[FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD]), true, out DischargeMethod method)) continue;
 
-                int deviceId = Convert.ToInt32(row[FbtAFMSDischargeConfig.COL_DEVICE_ID]);
-                result[GetMethodKey(type, deviceId, method)] = Convert.ToInt32(row[FbtAFMSDischargeConfig.COL_ENABLED]) == 1;
+                int deviceId = Convert.ToInt32(row[FbtAFMSDischargeMethodConfig.COL_DEVICE_ID]);
+                result[GetMethodKey(type, deviceId, method)] = Convert.ToInt32(row[FbtAFMSDischargeMethodConfig.COL_ENABLED]) == 1;
             }
 
             return result;
