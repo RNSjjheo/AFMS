@@ -14,7 +14,8 @@ namespace AFMSSettings
         {
             InitializeComponent();
             ShowIcon = true;
-            Icon = AFMSIcon.SettingIcon(32, 32, Color.White);
+            ShowTitleBarIcon = false;
+            Icon = AFMSIcon.SettingIcon(32, 32);
             this.Width = 1260;
             this.Height = 620;
 

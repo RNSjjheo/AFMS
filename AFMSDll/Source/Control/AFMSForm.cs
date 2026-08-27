@@ -42,6 +42,8 @@ namespace AFMSDll
         private Color _contentBackColor = Color.White;
         private Color _windowBorderColor = Color.FromArgb(143, 156, 150);
         private Color _inactiveWindowBorderColor = Color.FromArgb(190, 199, 195);
+        private Image? _titleBarImage;
+        private bool _showTitleBarIcon = true;
 
         private int _titleBarHeight = 31;
         private int _windowBorderThickness = 1;
@@ -178,6 +180,32 @@ namespace AFMSDll
         }
 
         [Category("AFMS Appearance")]
+        [DefaultValue(null)]
+        public Image? TitleBarImage
+        {
+            get => _titleBarImage;
+            set
+            {
+                Image? previous = _titleBarImage;
+                _titleBarImage = value == null ? null : new Bitmap(value);
+                previous?.Dispose();
+                Invalidate(new Rectangle(0, 0, ClientSize.Width, TitleBarHeight));
+            }
+        }
+
+        [Category("AFMS Appearance")]
+        [DefaultValue(true)]
+        public bool ShowTitleBarIcon
+        {
+            get => _showTitleBarIcon;
+            set
+            {
+                _showTitleBarIcon = value;
+                Invalidate(new Rectangle(0, 0, ClientSize.Width, TitleBarHeight));
+            }
+        }
+
+        [Category("AFMS Appearance")]
         [DefaultValue(1)]
         public int WindowBorderThickness
         {
@@ -306,15 +334,21 @@ namespace AFMSDll
 
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             e.Graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+            e.Graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+            e.Graphics.CompositingQuality = CompositingQuality.HighQuality;
 
             int border = WindowBorderThickness;
             int iconSize = 16;
             int iconX = border + 16;
             int iconY = border + ((TitleBarHeight - border - iconSize) / 2);
 
-            if (ShowIcon && Icon != null)
+            if (ShowTitleBarIcon && ShowIcon && (_titleBarImage != null || Icon != null))
             {
-                e.Graphics.DrawIcon(Icon, new Rectangle(iconX, iconY, iconSize, iconSize));
+                Rectangle iconRect = new Rectangle(iconX, iconY, iconSize, iconSize);
+                if (_titleBarImage != null)
+                    e.Graphics.DrawImage(_titleBarImage, iconRect);
+                else
+                    e.Graphics.DrawIcon(Icon!, iconRect);
                 iconX += iconSize + 8;
             }
 
@@ -662,6 +696,8 @@ namespace AFMSDll
 
                 _modalClickTimer.Dispose();
                 _shakeTimer.Dispose();
+                _titleBarImage?.Dispose();
+                _titleBarImage = null;
             }
 
             base.Dispose(disposing);

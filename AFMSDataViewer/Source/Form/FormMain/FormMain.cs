@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 using System.Windows.Forms;
 using AFMSDataViewer.Properties;
+using System.Diagnostics;
 
 namespace AFMSDataViewer
 {
@@ -48,6 +49,7 @@ namespace AFMSDataViewer
             uiTpMain.ColumnStyles[0].Width = MAIN_LAYOUT_COL1;
 
             afmsTabBar1.RightButtonImage = AFMSIcon.Setting(24, 24);
+            afmsTabBar1.RightButtonClick += AfmsTabBar1_RightButtonClick;
 
             _ViewRealtime = new ViewRealtime();
             _ViewRealtime.uiPnHeader.BorderRadius = 5;
@@ -126,6 +128,42 @@ namespace AFMSDataViewer
 
             content.Dock = DockStyle.Fill;
             uiPnMain.Controls.Add(content);
+        }
+
+        private void AfmsTabBar1_RightButtonClick(object? sender, EventArgs e)
+        {
+            string settingsPath = Path.Combine(AppContext.BaseDirectory, "AFMSSettings.exe");
+            if (!File.Exists(settingsPath))
+            {
+                Log.Error($"설정 프로그램을 찾을 수 없습니다: {settingsPath}");
+                System.Windows.Forms.MessageBox.Show(
+                    this,
+                    $"설정 프로그램을 찾을 수 없습니다.\n{settingsPath}",
+                    "설정 실행 오류",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+                return;
+            }
+
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = settingsPath,
+                    WorkingDirectory = AppContext.BaseDirectory,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception exception)
+            {
+                Log.Error("설정 프로그램 실행에 실패했습니다.", exception);
+                System.Windows.Forms.MessageBox.Show(
+                    this,
+                    $"설정 프로그램을 실행하지 못했습니다.\n{exception.Message}",
+                    "설정 실행 오류",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
         }
     }
 }

@@ -35,9 +35,20 @@ namespace AFMSDll
         public static Bitmap Setting(int width, int height, Color color) =>
             AFMSSvgHelper.ToBitmap(Res.icon_setting, width, height, color);
 
+        public static Icon SettingIcon(int width, int height)
+        {
+            using Bitmap bitmap = Setting(width, height);
+            return ToIcon(bitmap);
+        }
+
         public static Icon SettingIcon(int width, int height, Color color)
         {
             using Bitmap bitmap = Setting(width, height, color);
+            return ToIcon(bitmap);
+        }
+
+        private static Icon ToIcon(Bitmap bitmap)
+        {
             IntPtr iconHandle = bitmap.GetHicon();
             try
             {
