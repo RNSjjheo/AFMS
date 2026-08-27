@@ -144,12 +144,26 @@ namespace AFMSDischargeService
             QMeasurementContext measurement = calculator.Measurement;
             QCalculationContext calculation = calculator.Calculation;
 
+            if (calculation.Status == DischargeCalculationStatus.CalculationFailed)
+            {
+                logger.LogWarning(
+                    "[Q ERROR] {MethodName} | 장비={DeviceKey} | 원시={SourceKey} | 슬롯={SlotKey} | 상태={Status} | 오류={Error} | 결과 저장됨",
+                    DischargeLogFormatter.GetMethodName(config.Method),
+                    DischargeLogFormatter.GetDeviceKey(config, measurement),
+                    sourceKey,
+                    slotKey,
+                    calculation.Status,
+                    calculation.StatusMessage);
+                return;
+            }
+
             logger.LogInformation(
-                "[Q DONE ] {MethodName} | 장비={DeviceKey} | 원시={SourceKey} | 슬롯={SlotKey} | Q={Discharge:0.###} | V={Velocity:0.###} | A={Area:0.###}",
+                "[Q DONE ] {MethodName} | 장비={DeviceKey} | 원시={SourceKey} | 슬롯={SlotKey} | 상태={Status} | Q={Discharge:0.###} | V={Velocity:0.###} | A={Area:0.###}",
                 DischargeLogFormatter.GetMethodName(config.Method),
                 DischargeLogFormatter.GetDeviceKey(config, measurement),
                 sourceKey,
                 slotKey,
+                calculation.Status,
                 calculation.Value,
                 calculation.Velocity,
                 calculation.CrossSectionArea);

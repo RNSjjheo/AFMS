@@ -8,6 +8,7 @@ namespace AFMSDischargeService
 {
     internal abstract class QCalculatorBase : _QBase
     {
+        private const int MaxStatusMessageLength = 255;
         private readonly ILog log;
         private readonly TransectCollection calculationTransects = new();
         private readonly DateTime calculationStartTime;
@@ -102,11 +103,17 @@ namespace AFMSDischargeService
             Calculation.Status = DischargeCalculationStatus.Calculated;
             Calculation.StatusMessage = string.Empty;
             Calculation.Formula = string.Empty;
+            Calculation.CrossSectionArea = 0.0;
+            Calculation.Velocity = 0.0;
+            Calculation.Value = 0.0;
+            Calculation.Uncertainty = 0.0;
 
             if (!Calculate(out string error))
             {
+                Calculation.Status = DischargeCalculationStatus.CalculationFailed;
+                Calculation.StatusMessage = NormalizeStatusMessage(error);
+                Calculation.Formula = string.Empty;
                 LogFailure("계산 실패", error);
-                return false;
             }
 
             if (!TrySaveCalculationResult(db, out error))
@@ -154,9 +161,13 @@ namespace AFMSDischargeService
             query.Value(FbtAFMSDischargeResult.COL_METHOD_CONFIG_ID, Configuration.MethodConfigId);
             query.Value(FbtAFMSDischargeResult.COL_WATER_LEVEL,
                 Measurement.HasWaterLevel ? Measurement.WaterLevel : null);
-            query.Value(FbtAFMSDischargeResult.COL_VELOCITY, Calculation.Velocity);
-            query.Value(FbtAFMSDischargeResult.COL_CROSS_SECTION_AREA, Calculation.CrossSectionArea);
-            query.Value(FbtAFMSDischargeResult.COL_DISCHARGE, Calculation.Value);
+            bool calculationFailed = Calculation.Status == DischargeCalculationStatus.CalculationFailed;
+            query.Value(FbtAFMSDischargeResult.COL_VELOCITY,
+                calculationFailed ? null : Calculation.Velocity);
+            query.Value(FbtAFMSDischargeResult.COL_CROSS_SECTION_AREA,
+                calculationFailed ? null : Calculation.CrossSectionArea);
+            query.Value(FbtAFMSDischargeResult.COL_DISCHARGE,
+                calculationFailed ? null : Calculation.Value);
             query.Value(FbtAFMSDischargeResult.COL_CALCULATION_STATUS, Calculation.Status.ToString());
             query.Value(FbtAFMSDischargeResult.COL_STATUS_MESSAGE, Calculation.StatusMessage);
             query.Value(FbtAFMSDischargeResult.COL_CALCULATION_FORMULA, Calculation.Formula);
@@ -165,6 +176,16 @@ namespace AFMSDischargeService
 
             db.Execute(query, out error);
             return string.IsNullOrEmpty(error);
+        }
+
+        private static string NormalizeStatusMessage(string error)
+        {
+            string message = string.IsNullOrWhiteSpace(error)
+                ? "유량 산정 조건을 만족하지 못했습니다."
+                : error.Trim();
+            return message.Length <= MaxStatusMessageLength
+                ? message
+                : message[..MaxStatusMessageLength];
         }
 
         /// <summary>

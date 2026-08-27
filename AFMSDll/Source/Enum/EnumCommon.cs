@@ -86,7 +86,8 @@ namespace AFMSDll
     public enum DischargeCalculationStatus
     {
         Calculated = 0,
-        BelowRatingCurveMinimum = 1
+        BelowRatingCurveMinimum = 1,
+        CalculationFailed = 2
     }
 
     public enum DiscVerSurfaceVelo
