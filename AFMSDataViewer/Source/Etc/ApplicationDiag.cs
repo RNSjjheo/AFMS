@@ -6,6 +6,6 @@ namespace AFMSDataViewer
 {
     internal static class ApplicationDiag
     {
-        public static bool IsRunning = true;
+        public static volatile bool IsRunning = true;
     }
 }

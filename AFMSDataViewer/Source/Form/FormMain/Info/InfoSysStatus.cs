@@ -87,7 +87,11 @@ namespace AFMSDataViewer
             tableLayoutPanel3.Controls.Add(uiTIProgSender, 1, 0);
             tableLayoutPanel3.Margin = Padding.Empty;
 
-            Thread diagprocess = new Thread(RunDiagProcess);
+            Thread diagprocess = new Thread(RunDiagProcess)
+            {
+                IsBackground = true,
+                Name = "AFMSDataViewer.SystemStatus"
+            };
             diagprocess.Start();
         }
 

@@ -91,6 +91,12 @@ namespace AFMSDataViewer
             }));
         }
 
+        protected override void OnFormClosed(FormClosedEventArgs e)
+        {
+            ApplicationDiag.IsRunning = false;
+            base.OnFormClosed(e);
+        }
+
         private void RefreshMainLayout()
         {
             SuspendLayout();
