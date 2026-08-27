@@ -28,9 +28,9 @@ namespace AFMSDataViewer
             ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 124F));
             ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 124F));
             ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 66F));
-            ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 66F));
-            ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 66F));
+            ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 50F));
+            ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 50F));
+            ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 50F));
 
             uiPnIcon = new Panel();
             uiPnIcon.Dock = DockStyle.Fill;

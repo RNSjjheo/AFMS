@@ -74,7 +74,7 @@ namespace AFMSDataViewer
             uiTpMain.ColumnStyles.Clear();
             uiTpMain.RowCount = 2;
             uiTpMain.ColumnCount = 1;
-            uiTpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 50F));
+            uiTpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 45F));
             uiTpMain.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             uiTpMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
