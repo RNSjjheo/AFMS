@@ -10,6 +10,8 @@ namespace AFMSDll
     public class AFMSButtonGroupItem
     {
         public string Text { get; set; } = string.Empty;
+        public Image? Image { get; set; }
+        public Image? SelectedImage { get; set; }
         public object? Tag { get; set; }
 
         public override string ToString()
@@ -209,6 +211,40 @@ namespace AFMSDll
             return item;
         }
 
+        public AFMSButtonGroupItem AddButton(Image image, object? tag = null)
+        {
+            ArgumentNullException.ThrowIfNull(image);
+
+            AFMSButtonGroupItem item = new AFMSButtonGroupItem
+            {
+                Image = image,
+                Tag = tag
+            };
+
+            _items.Add(item);
+            if (_selectedIndex < 0) _selectedIndex = 0;
+            Invalidate();
+            return item;
+        }
+
+        public AFMSButtonGroupItem AddButton(Image image, Image selectedImage, object? tag = null)
+        {
+            ArgumentNullException.ThrowIfNull(image);
+            ArgumentNullException.ThrowIfNull(selectedImage);
+
+            AFMSButtonGroupItem item = new AFMSButtonGroupItem
+            {
+                Image = image,
+                SelectedImage = selectedImage,
+                Tag = tag
+            };
+
+            _items.Add(item);
+            if (_selectedIndex < 0) _selectedIndex = 0;
+            Invalidate();
+            return item;
+        }
+
         public bool RemoveButton(AFMSButtonGroupItem item)
         {
             int index = _items.IndexOf(item);
@@ -334,6 +370,22 @@ namespace AFMSDll
             {
                 Rectangle rect = GetSegmentRectangle(i);
                 Color foreColor = i == SelectedIndex ? SelectedForeColor : NormalForeColor;
+
+                Image? image = i == SelectedIndex
+                    ? _items[i].SelectedImage ?? _items[i].Image
+                    : _items[i].Image;
+                if (image != null)
+                {
+                    int width = Math.Min(image.Width, Math.Max(1, rect.Width - 10));
+                    int height = Math.Min(image.Height, Math.Max(1, rect.Height - 10));
+                    Rectangle imageRect = new(
+                        rect.Left + (rect.Width - width) / 2,
+                        rect.Top + (rect.Height - height) / 2,
+                        width,
+                        height);
+                    g.DrawImage(image, imageRect);
+                    continue;
+                }
 
                 TextRenderer.DrawText(
                     g,

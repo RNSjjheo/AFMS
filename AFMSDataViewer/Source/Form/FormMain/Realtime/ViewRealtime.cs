@@ -18,6 +18,7 @@ namespace AFMSDataViewer
         private ChartSelectPanel uiChart2;
         private ChartSelectPanel uiChart3;
         private ChartSelectPanel uiChart4;
+        private DateTime selectedDateTime;
 
         public ViewRealtime()
         {
@@ -67,19 +68,40 @@ namespace AFMSDataViewer
             uiBtnGroups.AddButton("일");
             uiBtnGroups.AddButton("주");
             uiBtnGroups.AddButton("월");
+            uiBtnGroups.SelectedIndexChanged += (_, _) => UpdateNavigatorText();
 
             uiBtnTemp = new AFMSButtonGroup();
             uiBtnTemp.Dock = DockStyle.Fill;
+            uiBtnTemp.SelectedBackColor = DllColorHelper.HexToColor("#ECFDF5");
             uiBtnTemp.Click += UiBtnTemp_Click;
 
-            AFMSButtonGroupItem x1 = uiBtnTemp.AddButton("1", MaximizableTableLayoutType.Layout2_2);
-            AFMSButtonGroupItem x2 = uiBtnTemp.AddButton("2", MaximizableTableLayoutType.Layout2_1);
-            AFMSButtonGroupItem x3 = uiBtnTemp.AddButton("3", MaximizableTableLayoutType.Layout1_2);
-            AFMSButtonGroupItem x4 = uiBtnTemp.AddButton("4", MaximizableTableLayoutType.Layout1_1);
+            const int layoutIconSize = 16;
+            AFMSButtonGroupItem x1 = uiBtnTemp.AddButton(
+                AFMSIcon.Layout22Off(layoutIconSize, layoutIconSize),
+                AFMSIcon.Layout22On(layoutIconSize, layoutIconSize),
+                MaximizableTableLayoutType.Layout2_2);
+            AFMSButtonGroupItem x2 = uiBtnTemp.AddButton(
+                AFMSIcon.Layout21Off(layoutIconSize, layoutIconSize),
+                AFMSIcon.Layout21On(layoutIconSize, layoutIconSize),
+                MaximizableTableLayoutType.Layout2_1);
+            AFMSButtonGroupItem x3 = uiBtnTemp.AddButton(
+                AFMSIcon.Layout12Off(layoutIconSize, layoutIconSize),
+                AFMSIcon.Layout12On(layoutIconSize, layoutIconSize),
+                MaximizableTableLayoutType.Layout1_2);
+            AFMSButtonGroupItem x4 = uiBtnTemp.AddButton(
+                AFMSIcon.Layout11Off(layoutIconSize, layoutIconSize),
+                AFMSIcon.Layout11On(layoutIconSize, layoutIconSize),
+                MaximizableTableLayoutType.Layout1_1);
 
             uiNavigator = new AFMSNavigatorBox();
             uiNavigator.Dock = DockStyle.Fill;
-            uiNavigator.InnerTextBox.Enabled = false;
+            uiNavigator.ReadOnly = true;
+            uiNavigator.LeftButtonClick += (_, _) => MoveSelectedDate(-1);
+            uiNavigator.RightButtonClick += (_, _) => MoveSelectedDate(1);
+            DateTime now = DateTime.Now;
+            selectedDateTime = new DateTime(
+                now.Year, now.Month, now.Day, now.Hour, now.Minute / 10 * 10, 0, now.Kind);
+            UpdateNavigatorText();
 
             uiChart1 = CreateChartPanel();
             uiChart2 = CreateChartPanel();
@@ -96,6 +118,23 @@ namespace AFMSDataViewer
             Controls.Add(uiTpField, 0, 1);
 
             uiBtnTemp.PerformClick(x2);
+        }
+
+        private void MoveSelectedDate(int direction)
+        {
+            selectedDateTime = uiBtnGroups.SelectedIndex switch
+            {
+                1 => selectedDateTime.AddDays(7 * direction),
+                2 => selectedDateTime.AddMonths(direction),
+                _ => selectedDateTime.AddDays(direction)
+            };
+            UpdateNavigatorText();
+        }
+
+        private void UpdateNavigatorText()
+        {
+            if (uiNavigator == null) return;
+            uiNavigator.Text = selectedDateTime.ToString("yyyy-MM-dd HH:mm");
         }
 
         private void UiBtnTemp_Click(object? sender, EventArgs e)

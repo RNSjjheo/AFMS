@@ -130,21 +130,6 @@
   <data name="IconChart3" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Image\IconChart3.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
-  <data name="IconLayout1_1" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Image\IconLayout1_1.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="IconLayout1_2" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Image\IconLayout1_2.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="IconLayout2_1" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Image\IconLayout2_1.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="IconLayout2_2" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Image\IconLayout2_2.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
-  <data name="IconLayoutClean" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>..\Image\IconLayoutClean.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
-  </data>
   <data name="IconRealtimeFocusOff" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>..\Image\IconRealtimeFocusOff.png;System.Drawing.Bitmap, System.Drawing, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a</value>
   </data>
