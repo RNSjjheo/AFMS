@@ -206,21 +206,29 @@ namespace AFMSSettings
             _transectCounts.Clear();
             _latestTransectConfigIds.Clear();
             _staleHydroIds.Clear();
+            _hasRatingCurveConfig = false;
 
-            LoadLatestMethodConfigIds(db, FbtAFMSDiscAttrSurfaceVelo.TABLE_NAME,
-                FbtAFMSDiscAttrSurfaceVelo.COL_HYDRO_ID, DischargeMethod.SurfaceVelo, _surfaceConfiguredHydroIds);
-            LoadLatestMethodConfigIds(db, FbtAFMSDiscAttrMidSection.TABLE_NAME,
-                FbtAFMSDiscAttrMidSection.COL_HYDRO_ID, DischargeMethod.MidSection, _midSectionConfiguredHydroIds);
-            LoadLatestMethodConfigIds(db, FbtAFMSDiscAttrVelocityDistribution.TABLE_NAME,
-                FbtAFMSDiscAttrVelocityDistribution.COL_HYDRO_ID, DischargeMethod.VeloDist, _velocityDistributionConfiguredHydroIds);
-
-            string ratingSql = $"SELECT FIRST 1 {FbtAFMSDiscAttrRatingCurve.COL_ID} FROM {FbtAFMSDiscAttrRatingCurve.TABLE_NAME} ORDER BY {FbtAFMSDiscAttrRatingCurve.COL_ID} DESC";
-            DataTable rating = db.Execute(ratingSql, out string ratingError);
-            _hasRatingCurveConfig = string.IsNullOrEmpty(ratingError) && rating.Rows.Count > 0;
-            if (_hasRatingCurveConfig)
+            string methodSql = $"SELECT C.{FbtAFMSDischargeMethodConfig.COL_ID}, C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_TYPE}, C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_ID}, C.{FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD}";
+            methodSql += $" FROM {FbtAFMSDischargeMethodConfig.TABLE_NAME} C WHERE C.{FbtAFMSDischargeMethodConfig.COL_ENABLED} = 1";
+            methodSql += $" AND C.{FbtAFMSDischargeMethodConfig.COL_ID} = (SELECT MAX(C2.{FbtAFMSDischargeMethodConfig.COL_ID}) FROM {FbtAFMSDischargeMethodConfig.TABLE_NAME} C2";
+            methodSql += $" WHERE C2.{FbtAFMSDischargeMethodConfig.COL_DEVICE_TYPE} = C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_TYPE}";
+            methodSql += $" AND C2.{FbtAFMSDischargeMethodConfig.COL_DEVICE_ID} = C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_ID}";
+            methodSql += $" AND C2.{FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD} = C.{FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD})";
+            DataTable methodConfigs = db.Execute(methodSql, out string methodError);
+            if (string.IsNullOrEmpty(methodError))
             {
-                _methodConfigIds[GetMethodKey(MeasurementDeviceType.WaterLevelGauge,
-                    SYSTEM_WATER_LEVEL_DEVICE_ID, DischargeMethod.RatingCurve)] = Convert.ToInt32(rating.Rows[0][0]);
+                foreach (DataRow row in methodConfigs.Rows)
+                {
+                    if (!Enum.TryParse(row[FbtAFMSDischargeMethodConfig.COL_DEVICE_TYPE].ToText(), out MeasurementDeviceType type) ||
+                        !Enum.TryParse(row[FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD].ToText(), out DischargeMethod method)) continue;
+                    int deviceId = Convert.ToInt32(row[FbtAFMSDischargeMethodConfig.COL_DEVICE_ID]);
+                    _methodConfigIds[GetMethodKey(type, deviceId, method)] = Convert.ToInt32(row[FbtAFMSDischargeMethodConfig.COL_ID]);
+                    if (type == MeasurementDeviceType.WaterLevelGauge && method == DischargeMethod.RatingCurve) _hasRatingCurveConfig = true;
+                    if (type != MeasurementDeviceType.VelocityMeter) continue;
+                    if (method == DischargeMethod.SurfaceVelo) _surfaceConfiguredHydroIds.Add(deviceId);
+                    if (method == DischargeMethod.MidSection) _midSectionConfiguredHydroIds.Add(deviceId);
+                    if (method == DischargeMethod.VeloDist) _velocityDistributionConfiguredHydroIds.Add(deviceId);
+                }
             }
 
             string transectSql = $"SELECT A.{FbtAFMSHydroTransect.COL_ID}, A.{FbtAFMSHydroTransect.COL_HYDRO_ID}, A.{FbtAFMSHydroTransect.COL_TRANSECT_COUNT}";
@@ -238,23 +246,6 @@ namespace AFMSSettings
                 }
             }
             LoadStaleHydroIds(db);
-        }
-
-        private void LoadLatestMethodConfigIds(FBDatabase db, string tableName, string hydroColumn,
-            DischargeMethod method, HashSet<int> configuredIds)
-        {
-            string sql = $"SELECT A.{FbtAFMSDischargeConfig.COL_ID}, A.{hydroColumn} FROM {tableName} A";
-            sql += $" WHERE A.{FbtAFMSDischargeConfig.COL_ID} = (SELECT MAX(B.{FbtAFMSDischargeConfig.COL_ID})";
-            sql += $" FROM {tableName} B WHERE B.{hydroColumn} = A.{hydroColumn})";
-            DataTable table = db.Execute(sql, out string error);
-            if (!string.IsNullOrEmpty(error)) return;
-
-            foreach (DataRow row in table.Rows)
-            {
-                int hydroId = Convert.ToInt32(row[hydroColumn]);
-                configuredIds.Add(hydroId);
-                _methodConfigIds[GetMethodKey(MeasurementDeviceType.VelocityMeter, hydroId, method)] = Convert.ToInt32(row[0]);
-            }
         }
 
         private void LoadStaleHydroIds(FBDatabase db)

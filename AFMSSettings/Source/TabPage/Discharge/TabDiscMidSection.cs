@@ -261,24 +261,23 @@ namespace AFMSSettings
                 return string.Empty;
             }
 
-            QueryBuilderSelect query = new QueryBuilderSelect();
-            query.Table = FbtAFMSDiscAttrMidSection.TABLE_NAME;
-
-            query.Add(FbtAFMSDiscAttrMidSection.COL_ID);
-            query.Add(FbtAFMSDiscAttrMidSection.COL_DIS_VER);
-            query.Add(FbtAFMSDiscAttrMidSection.COL_HYDRO_ID);
-            query.Add(FbtAFMSDiscAttrMidSection.COL_CELL_RANGE_MIN);
-            query.Add(FbtAFMSDiscAttrMidSection.COL_CELL_RANGE_MAX);
-            query.AsAlias(FbtAFMSDiscAttrMidSection.COL_CONVERSION_FACTOR, "환산계수");
-            query.Add(FbtAFMSDiscAttrMidSection.COL_DIS_ATTR);
-
-            query.Where(FbtAFMSDiscAttrMidSection.COL_HYDRO_ID, "=", _hydroId);
-            query.OrderBy(FbtAFMSDiscAttrMidSection.COL_ID);
-
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
-            DataTable table = db.Execute(query, out string error);
-
+            List<DischargeMethodConfigStore.StoredConfig<FormDischargeMidSection.MidSectionConfig>> configs =
+                DischargeMethodConfigStore.Load<FormDischargeMidSection.MidSectionConfig>(
+                    MeasurementDeviceType.VelocityMeter, _hydroId, DischargeMethod.MidSection, out string error);
             if (!string.IsNullOrEmpty(error)) return error;
+
+            DataTable table = new();
+            table.Columns.Add(FbtAFMSDiscAttrMidSection.COL_ID, typeof(int));
+            table.Columns.Add(FbtAFMSDiscAttrMidSection.COL_DIS_VER, typeof(int));
+            table.Columns.Add(FbtAFMSDiscAttrMidSection.COL_HYDRO_ID, typeof(int));
+            table.Columns.Add(FbtAFMSDiscAttrMidSection.COL_CELL_RANGE_MIN, typeof(int));
+            table.Columns.Add(FbtAFMSDiscAttrMidSection.COL_CELL_RANGE_MAX, typeof(int));
+            table.Columns.Add("환산계수", typeof(double));
+            table.Columns.Add(FbtAFMSDiscAttrMidSection.COL_DIS_ATTR, typeof(string));
+            foreach (var stored in configs)
+                table.Rows.Add(stored.Id, stored.Calculation.DisVer, stored.Calculation.HydroId,
+                    stored.Calculation.CellMin, stored.Calculation.CellMax,
+                    stored.Calculation.ConversionFactor, string.Empty);
 
             table.AddRowNo(COL_NO);
             uiGridMain.DataSource = table;
@@ -288,23 +287,6 @@ namespace AFMSSettings
 
         private static string SaveConfig(FormDischargeMidSection.MidSectionConfig config)
         {
-            DateTime now = DateTime.Now;
-
-            QueryBuilderInsert query = new QueryBuilderInsert();
-            query.Table = FbtAFMSDiscAttrMidSection.TABLE_NAME;
-            query.AutoIncrement = FbtAFMSDiscAttrMidSection.COL_ID;
-
-            query.Value(FbtAFMSDiscAttrMidSection.COL_MEASURE_DATE, now.ToString("yyyyMMdd"));
-            query.Value(FbtAFMSDiscAttrMidSection.COL_MEASURE_TIME, now.ToString("HHmmss"));
-            query.Value(FbtAFMSDiscAttrMidSection.COL_DIS_VER, config.DisVer);
-            query.Value(FbtAFMSDiscAttrMidSection.COL_HYDRO_ID, config.HydroId);
-            query.Value(FbtAFMSDiscAttrMidSection.COL_CELL_RANGE_MIN, config.CellMin);
-            query.Value(FbtAFMSDiscAttrMidSection.COL_CELL_RANGE_MAX, config.CellMax);
-            query.Value(FbtAFMSDiscAttrMidSection.COL_CONVERSION_FACTOR, config.ConversionFactor);
-
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
-            db.Execute(query, out string error);
-            if (!string.IsNullOrEmpty(error)) return error;
             return DischargeMethodConfigStore.Save(
                 MeasurementDeviceType.VelocityMeter, config.HydroId, DischargeMethod.MidSection,
                 config, "중간단면적법 설정");

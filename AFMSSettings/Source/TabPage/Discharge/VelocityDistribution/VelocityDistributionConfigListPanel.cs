@@ -45,23 +45,28 @@ namespace AFMSSettings
                 return string.Empty;
             }
 
-            QueryBuilderSelect query = new();
-            query.Table = FbtAFMSDiscAttrVelocityDistribution.TABLE_NAME;
-            query.Add(FbtAFMSDiscAttrVelocityDistribution.COL_ID);
-            query.Add(FbtAFMSDiscAttrVelocityDistribution.COL_DIS_VER);
-            query.Add(FbtAFMSDiscAttrVelocityDistribution.COL_HYDRO_ID);
-            query.Add(FbtAFMSDiscAttrVelocityDistribution.COL_PHI);
-            query.Add(FbtAFMSDiscAttrVelocityDistribution.COL_HORIZONTAL_GRID_M);
-            query.Add(FbtAFMSDiscAttrVelocityDistribution.COL_VERTICAL_GRID_M);
-            query.Add(FbtAFMSDiscAttrVelocityDistribution.COL_MAX_VELOCITY_DEPTH_RATIO);
-            query.Add(FbtAFMSDiscAttrVelocityDistribution.COL_MIN_POSITIVE_MEASUREMENTS);
-            query.Add(FbtAFMSDiscAttrVelocityDistribution.COL_TRANSECT_NOS);
-            query.Where(FbtAFMSDiscAttrVelocityDistribution.COL_HYDRO_ID, "=", _hydroId);
-            query.OrderBy(FbtAFMSDiscAttrVelocityDistribution.COL_ID);
-
-            using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
-            DataTable table = db.Execute(query, out string error);
+            List<DischargeMethodConfigStore.StoredConfig<FormDischargeVelocityDistribution.VelocityDistributionConfig>> configs =
+                DischargeMethodConfigStore.Load<FormDischargeVelocityDistribution.VelocityDistributionConfig>(
+                    MeasurementDeviceType.VelocityMeter, _hydroId, DischargeMethod.VeloDist, out string error);
             if (!string.IsNullOrEmpty(error)) return error;
+
+            DataTable table = new();
+            table.Columns.Add(FbtAFMSDiscAttrVelocityDistribution.COL_ID, typeof(int));
+            table.Columns.Add(FbtAFMSDiscAttrVelocityDistribution.COL_DIS_VER, typeof(int));
+            table.Columns.Add(FbtAFMSDiscAttrVelocityDistribution.COL_HYDRO_ID, typeof(int));
+            table.Columns.Add(FbtAFMSDiscAttrVelocityDistribution.COL_PHI, typeof(double));
+            table.Columns.Add(FbtAFMSDiscAttrVelocityDistribution.COL_HORIZONTAL_GRID_M, typeof(double));
+            table.Columns.Add(FbtAFMSDiscAttrVelocityDistribution.COL_VERTICAL_GRID_M, typeof(double));
+            table.Columns.Add(FbtAFMSDiscAttrVelocityDistribution.COL_MAX_VELOCITY_DEPTH_RATIO, typeof(double));
+            table.Columns.Add(FbtAFMSDiscAttrVelocityDistribution.COL_MIN_POSITIVE_MEASUREMENTS, typeof(int));
+            table.Columns.Add(FbtAFMSDiscAttrVelocityDistribution.COL_TRANSECT_NOS, typeof(string));
+            foreach (var stored in configs)
+            {
+                var config = stored.Calculation;
+                table.Rows.Add(stored.Id, config.DisVer, config.HydroId, config.Phi,
+                    config.HorizontalGridM, config.VerticalGridM, config.MaxVelocityDepthRatio,
+                    config.MinimumPositiveMeasurements, JsonSerializer.Serialize(config.TransectNos));
+            }
 
             table.AddRowNo(COL_NO);
             Grid.DataSource = table;
@@ -70,28 +75,6 @@ namespace AFMSSettings
 
         public string SaveConfig(FormDischargeVelocityDistribution.VelocityDistributionConfig config)
         {
-            DateTime now = DateTime.Now;
-            QueryBuilderInsert query = new();
-            query.Table = FbtAFMSDiscAttrVelocityDistribution.TABLE_NAME;
-            query.AutoIncrement = FbtAFMSDiscAttrVelocityDistribution.COL_ID;
-            query.Value(FbtAFMSDiscAttrVelocityDistribution.COL_MEASURE_DATE, now.ToString("yyyyMMdd"));
-            query.Value(FbtAFMSDiscAttrVelocityDistribution.COL_MEASURE_TIME, now.ToString("HHmmss"));
-            query.Value(FbtAFMSDiscAttrVelocityDistribution.COL_DIS_VER, config.DisVer);
-            query.Value(FbtAFMSDiscAttrVelocityDistribution.COL_HYDRO_ID, config.HydroId);
-            query.Value(FbtAFMSDiscAttrVelocityDistribution.COL_PHI, config.Phi);
-            query.Value(FbtAFMSDiscAttrVelocityDistribution.COL_HORIZONTAL_GRID_M, config.HorizontalGridM);
-            query.Value(FbtAFMSDiscAttrVelocityDistribution.COL_VERTICAL_GRID_M, config.VerticalGridM);
-            query.Value(FbtAFMSDiscAttrVelocityDistribution.COL_MAX_VELOCITY_DEPTH_RATIO, config.MaxVelocityDepthRatio);
-            query.Value(FbtAFMSDiscAttrVelocityDistribution.COL_FIT_MODE, (int)config.FitMode);
-            query.Value(FbtAFMSDiscAttrVelocityDistribution.COL_MIN_POSITIVE_MEASUREMENTS, config.MinimumPositiveMeasurements);
-            query.Value(FbtAFMSDiscAttrVelocityDistribution.COL_FLOW_CENTER_X, config.FlowCenterX);
-            query.Value(FbtAFMSDiscAttrVelocityDistribution.COL_BETA_LEFT, config.BetaLeft);
-            query.Value(FbtAFMSDiscAttrVelocityDistribution.COL_BETA_RIGHT, config.BetaRight);
-            query.Value(FbtAFMSDiscAttrVelocityDistribution.COL_TRANSECT_NOS, JsonSerializer.Serialize(config.TransectNos));
-
-            using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
-            db.Execute(query, out string error);
-            if (!string.IsNullOrEmpty(error)) return error;
             return DischargeMethodConfigStore.Save(
                 MeasurementDeviceType.VelocityMeter, config.HydroId, DischargeMethod.VeloDist,
                 config, "유속분포법 설정");

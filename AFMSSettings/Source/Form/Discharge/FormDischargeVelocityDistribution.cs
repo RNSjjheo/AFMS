@@ -20,7 +20,7 @@ namespace AFMSSettings
             public double? FlowCenterX { get; set; }
             public double? BetaLeft { get; set; }
             public double? BetaRight { get; set; }
-            public List<int> TransectNos { get; } = new();
+            public List<int> TransectNos { get; set; } = new();
         }
 
         private sealed class VersionOption

@@ -69,17 +69,19 @@ namespace AFMSSettings
 
         public string LoadData()
         {
-            QueryBuilderSelect query = new QueryBuilderSelect();
-            query.Table = FbtAFMSDiscAttrRatingCurve.TABLE_NAME;
-            query.Add(FbtAFMSDiscAttrRatingCurve.COL_ID);
-            query.Add(FbtAFMSDiscAttrRatingCurve.COL_DIS_VER);
-            query.Add(FbtAFMSDiscAttrRatingCurve.COL_COEFF_COUNT);
-            query.Add(FbtAFMSDiscAttrRatingCurve.COL_DIS_ATTR);
-            query.Add(_FBTableBase.COL_MEASURE_DATE);
-            query.OrderBy(FbtAFMSDiscAttrRatingCurve.COL_ID);
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
-            DataTable table = db.Execute(query, out string error);
+            List<DischargeMethodConfigStore.StoredConfig<RatingCurveConfig>> configs =
+                DischargeMethodConfigStore.Load<RatingCurveConfig>(MeasurementDeviceType.WaterLevelGauge,
+                    0, DischargeMethod.RatingCurve, out string error);
             if (!string.IsNullOrEmpty(error)) return error;
+            DataTable table = new();
+            table.Columns.Add(FbtAFMSDiscAttrRatingCurve.COL_ID, typeof(int));
+            table.Columns.Add(FbtAFMSDiscAttrRatingCurve.COL_DIS_VER, typeof(int));
+            table.Columns.Add(FbtAFMSDiscAttrRatingCurve.COL_COEFF_COUNT, typeof(int));
+            table.Columns.Add(FbtAFMSDiscAttrRatingCurve.COL_DIS_ATTR, typeof(string));
+            table.Columns.Add(_FBTableBase.COL_MEASURE_DATE, typeof(string));
+            foreach (var stored in configs)
+                table.Rows.Add(stored.Id, stored.Calculation.DisVer, stored.Calculation.Coefficients.Count,
+                    JsonSerializer.Serialize(stored.Calculation.Coefficients), stored.CreatedAt.ToString("yyyyMMdd"));
             table.AddRowNo(COL_NO);
             uiGridMain.DataSource = table;
             ClearSelectionAndDetail();
@@ -121,18 +123,6 @@ namespace AFMSSettings
 
         private static string SaveConfig(RatingCurveConfig config)
         {
-            DateTime now = DateTime.Now;
-            QueryBuilderInsert query = new QueryBuilderInsert();
-            query.Table = FbtAFMSDiscAttrRatingCurve.TABLE_NAME;
-            query.AutoIncrement = FbtAFMSDiscAttrRatingCurve.COL_ID;
-            query.Value(_FBTableBase.COL_MEASURE_DATE, now.ToString("yyyyMMdd"));
-            query.Value(_FBTableBase.COL_MEASURE_TIME, now.ToString("HHmmss"));
-            query.Value(FbtAFMSDiscAttrRatingCurve.COL_DIS_VER, config.DisVer);
-            query.Value(FbtAFMSDiscAttrRatingCurve.COL_COEFF_COUNT, config.Coefficients.Count);
-            query.Value(FbtAFMSDiscAttrRatingCurve.COL_DIS_ATTR, JsonSerializer.Serialize(config.Coefficients));
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
-            db.Execute(query, out string error);
-            if (!string.IsNullOrEmpty(error)) return error;
             return DischargeMethodConfigStore.Save(
                 MeasurementDeviceType.WaterLevelGauge, 0, DischargeMethod.RatingCurve,
                 config, "수위-유량곡선법 설정");

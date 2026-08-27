@@ -30,7 +30,7 @@ namespace AFMSSettings
             public int CoeffCount { get; set; }
             public double? UcertVst { get; set; }
             public double? UcertVindex { get; set; }
-            public List<SurfaceVelocityCoefficient> Coefficients { get; } = new List<SurfaceVelocityCoefficient>();
+            public List<SurfaceVelocityCoefficient> Coefficients { get; set; } = new List<SurfaceVelocityCoefficient>();
         }
 
         private int _hydroId = -1;
@@ -220,29 +220,27 @@ namespace AFMSSettings
                 return string.Empty;
             }
 
-            QueryBuilderSelect query = new QueryBuilderSelect();
-            query.Table = FbtAFMSDiscAttrSurfaceVelo.TABLE_NAME;
-
-            query.Add(FbtAFMSDiscAttrSurfaceVelo.COL_ID);
-            query.Add(FbtAFMSDiscAttrSurfaceVelo.COL_DIS_VER);
-            query.Add(FbtAFMSDiscAttrSurfaceVelo.COL_HYDRO_ID);
-            query.Add(FbtAFMSDiscAttrSurfaceVelo.COL_CELL_RANGE_MIN);
-            query.Add(FbtAFMSDiscAttrSurfaceVelo.COL_CELL_RANGE_MAX);
-            query.Add(FbtAFMSDiscAttrSurfaceVelo.COL_UCERT_V_ST);
-            query.Add(FbtAFMSDiscAttrSurfaceVelo.COL_UCERT_V_INDEX);
-            query.AsAlias(FbtAFMSDiscAttrSurfaceVelo.COL_COEFF_COUNT, COL_COEFF_COUNT);
-            query.Add(FbtAFMSDiscAttrSurfaceVelo.COL_DIS_ATTR);
-
-            query.Where(FbtAFMSDiscAttrSurfaceVelo.COL_HYDRO_ID, "=", _hydroId);
-            query.OrderBy(FbtAFMSDiscAttrSurfaceVelo.COL_ID);
-
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
-            DataTable table = db.Execute(query, out string error);
-
+            List<DischargeMethodConfigStore.StoredConfig<SurfaceVelocityConfig>> configs =
+                DischargeMethodConfigStore.Load<SurfaceVelocityConfig>(MeasurementDeviceType.VelocityMeter,
+                    _hydroId, DischargeMethod.SurfaceVelo, out string error);
             if (!string.IsNullOrEmpty(error)) return error;
-
-            table.AddRowNo(COL_NO);
-
+            DataTable table = new();
+            table.Columns.Add(FbtAFMSDiscAttrSurfaceVelo.COL_ID, typeof(int));
+            table.Columns.Add(FbtAFMSDiscAttrSurfaceVelo.COL_DIS_VER, typeof(int));
+            table.Columns.Add(FbtAFMSDiscAttrSurfaceVelo.COL_HYDRO_ID, typeof(int));
+            table.Columns.Add(FbtAFMSDiscAttrSurfaceVelo.COL_CELL_RANGE_MIN, typeof(int));
+            table.Columns.Add(FbtAFMSDiscAttrSurfaceVelo.COL_CELL_RANGE_MAX, typeof(int));
+            table.Columns.Add(FbtAFMSDiscAttrSurfaceVelo.COL_UCERT_V_ST, typeof(double));
+            table.Columns.Add(FbtAFMSDiscAttrSurfaceVelo.COL_UCERT_V_INDEX, typeof(double));
+            table.Columns.Add(COL_COEFF_COUNT, typeof(int));
+            table.Columns.Add(FbtAFMSDiscAttrSurfaceVelo.COL_DIS_ATTR, typeof(string));
+            foreach (var stored in configs)
+            {
+                SurfaceVelocityConfig config = stored.Calculation;
+                table.Rows.Add(stored.Id, config.DisVer, config.HydroId, config.CellMin, config.CellMax,
+                    config.UcertVst ?? (object)DBNull.Value, config.UcertVindex ?? (object)DBNull.Value,
+                    config.Coefficients.Count, SerializeAttributes(config));
+            }
             uiGridMain.DataSource = table.AddRowNo(COL_NO);
 
             return string.Empty;
@@ -272,26 +270,6 @@ namespace AFMSSettings
 
         private string SaveConfig(SurfaceVelocityConfig config)
         {
-            DateTime now = DateTime.Now;
-
-            QueryBuilderInsert query = new QueryBuilderInsert();
-            query.Table = FbtAFMSDiscAttrSurfaceVelo.TABLE_NAME;
-            query.AutoIncrement = FbtAFMSDiscAttrSurfaceVelo.COL_ID;
-
-            query.Value(FbtAFMSDiscAttrSurfaceVelo.COL_MEASURE_DATE, now.ToString("yyyyMMdd"));
-            query.Value(FbtAFMSDiscAttrSurfaceVelo.COL_MEASURE_TIME, now.ToString("HHmmss"));
-            query.Value(FbtAFMSDiscAttrSurfaceVelo.COL_DIS_VER, config.DisVer);
-            query.Value(FbtAFMSDiscAttrSurfaceVelo.COL_HYDRO_ID, config.HydroId);
-            query.Value(FbtAFMSDiscAttrSurfaceVelo.COL_CELL_RANGE_MIN, config.CellMin);
-            query.Value(FbtAFMSDiscAttrSurfaceVelo.COL_CELL_RANGE_MAX, config.CellMax);
-            query.Value(FbtAFMSDiscAttrSurfaceVelo.COL_UCERT_V_ST, config.UcertVst);
-            query.Value(FbtAFMSDiscAttrSurfaceVelo.COL_UCERT_V_INDEX, config.UcertVindex);
-            query.Value(FbtAFMSDiscAttrSurfaceVelo.COL_COEFF_COUNT, config.CoeffCount);
-            query.Value(FbtAFMSDiscAttrSurfaceVelo.COL_DIS_ATTR, SerializeAttributes(config));
-
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
-            db.Execute(query, out string error);
-            if (!string.IsNullOrEmpty(error)) return error;
             return DischargeMethodConfigStore.Save(
                 MeasurementDeviceType.VelocityMeter, config.HydroId, DischargeMethod.SurfaceVelo,
                 config, "지표유속법 설정");

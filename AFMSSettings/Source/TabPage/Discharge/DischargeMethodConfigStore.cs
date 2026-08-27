@@ -6,6 +6,7 @@ namespace AFMSSettings
 {
     internal static class DischargeMethodConfigStore
     {
+        internal sealed record StoredConfig<T>(int Id, DateTime CreatedAt, T Calculation);
         private const int CurrentVersion = 1;
 
         public static string Save(
@@ -45,6 +46,47 @@ namespace AFMSSettings
             query.Value(FbtAFMSDischargeMethodConfig.COL_DESCRIPTION, description);
             db.Execute(query, out string error);
             return error;
+        }
+
+        public static List<StoredConfig<T>> Load<T>(
+            MeasurementDeviceType deviceType,
+            int deviceId,
+            DischargeMethod method,
+            out string error)
+        {
+            QueryBuilderSelect query = new();
+            query.Table = FbtAFMSDischargeMethodConfig.TABLE_NAME;
+            query.Add(FbtAFMSDischargeMethodConfig.COL_ID);
+            query.Add(FbtAFMSDischargeMethodConfig.COL_CREATED_AT);
+            query.Add(FbtAFMSDischargeMethodConfig.COL_CONFIG_JSON);
+            query.Where(FbtAFMSDischargeMethodConfig.COL_DEVICE_TYPE, "=", deviceType.ToString());
+            query.Where(FbtAFMSDischargeMethodConfig.COL_DEVICE_ID, "=", deviceId);
+            query.Where(FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD, "=", method.ToString());
+            query.OrderBy(FbtAFMSDischargeMethodConfig.COL_ID);
+
+            using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
+            DataTable table = db.Execute(query, out error);
+            List<StoredConfig<T>> result = new();
+            if (!string.IsNullOrEmpty(error)) return result;
+
+            try
+            {
+                foreach (DataRow row in table.Rows)
+                {
+                    using JsonDocument document = JsonDocument.Parse(row[FbtAFMSDischargeMethodConfig.COL_CONFIG_JSON].ToText());
+                    T? calculation = document.RootElement.GetProperty("calculation").Deserialize<T>();
+                    if (calculation == null) continue;
+                    result.Add(new StoredConfig<T>(
+                        Convert.ToInt32(row[FbtAFMSDischargeMethodConfig.COL_ID]),
+                        Convert.ToDateTime(row[FbtAFMSDischargeMethodConfig.COL_CREATED_AT]),
+                        calculation));
+                }
+            }
+            catch (JsonException ex)
+            {
+                error = $"유량 설정 JSON을 읽을 수 없습니다: {ex.Message}";
+            }
+            return result;
         }
 
         private static int? GetLatestId(FBDatabase db, string table, string? filterColumn, int? filterValue)
