@@ -13,6 +13,9 @@ namespace AFMSDischargeService
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
+            string completedSourceKey;
+            string completedSlotKey;
+
             LoadCalculators(stoppingToken);
             InitializeCalculators(stoppingToken);
 
@@ -43,10 +46,12 @@ namespace AFMSDischargeService
                         stoppingToken.ThrowIfCancellationRequested();
                         if (!calculator.IsImplemented) continue;
                         if (!calculator.PrepareNextCalculation(db)) continue;
+                        completedSourceKey = DischargeLogFormatter.GetSourceKey(calculator.Measurement);
+                        completedSlotKey = DischargeLogFormatter.GetSlotKey(calculator.Calculation);
                         LogReadyMeasurement(calculator);
                         if (!calculator.CalculateAndMoveNext(db)) continue;
                         calculationCompleted = true;
-                        LogCalculationCompleted(calculator);
+                        LogCalculationCompleted(calculator, completedSourceKey, completedSlotKey);
                     }
 
                     if (calculationCompleted)
@@ -128,17 +133,24 @@ namespace AFMSDischargeService
             return boundary.AddMinutes(10);
         }
 
-        private void LogCalculationCompleted(QCalculatorBase calculator)
+        private void LogCalculationCompleted(
+            QCalculatorBase calculator,
+            string sourceKey,
+            string slotKey)
         {
+            QConfiguration config = calculator.Configuration;
+            QMeasurementContext measurement = calculator.Measurement;
+            QCalculationContext calculation = calculator.Calculation;
+
             logger.LogInformation(
-                "유량 완료: {DeviceType} {DeviceId} ({DeviceName}), {MethodName}, 유량 {Discharge}, 평균유속 {Velocity}, 단면적 {Area}",
-                calculator.Configuration.DeviceType,
-                calculator.Configuration.DeviceId,
-                calculator.Measurement.DeviceName,
-                GetMethodLogName(calculator.Configuration.Method),
-                calculator.Calculation.Value,
-                calculator.Calculation.Velocity,
-                calculator.Calculation.CrossSectionArea);
+                "[Q DONE ] {MethodName} | 장비={DeviceKey} | 원시={SourceKey} | 슬롯={SlotKey} | Q={Discharge:0.###} | V={Velocity:0.###} | A={Area:0.###}",
+                DischargeLogFormatter.GetMethodName(config.Method),
+                DischargeLogFormatter.GetDeviceKey(config, measurement),
+                sourceKey,
+                slotKey,
+                calculation.Value,
+                calculation.Velocity,
+                calculation.CrossSectionArea);
         }
 
         private void LogReadyMeasurement(QCalculatorBase calculator)
@@ -154,16 +166,11 @@ namespace AFMSDischargeService
             if (!loggedReadyMeasurements.Add(key)) return;
 
             logger.LogInformation(
-                "산정 가능 데이터 발견: {DeviceType} {DeviceId} ({DeviceName}), {MethodName}, 측정 테이블 {MeasurementTable}, 측정값 {MeasurementId} ({MeasurementDate} {MeasurementTime}), 슬롯 {SlotId}",
-                config.DeviceType,
-                config.DeviceId,
-                measurement.DeviceName,
-                GetMethodLogName(config.Method),
-                measurement.Table!.GetTableName(),
-                measurement.SourceId,
-                measurement.SourceDate,
-                measurement.SourceTime,
-                calculation.SlotId);
+                "[Q READY] {MethodName} | 장비={DeviceKey} | 원시={SourceKey} | 슬롯={SlotKey}",
+                DischargeLogFormatter.GetMethodName(config.Method),
+                DischargeLogFormatter.GetDeviceKey(config, measurement),
+                DischargeLogFormatter.GetSourceKey(measurement),
+                DischargeLogFormatter.GetSlotKey(calculation));
         }
 
         private void LoadCalculators(CancellationToken stoppingToken)
@@ -364,14 +371,7 @@ namespace AFMSDischargeService
 
         private static string GetMethodLogName(DischargeMethod method)
         {
-            return method switch
-            {
-                DischargeMethod.VeloDist => "유속분포법",
-                DischargeMethod.MidSection => "중간단면적법",
-                DischargeMethod.SurfaceVelo => "지표유속법",
-                DischargeMethod.RatingCurve => "수위-유량곡선법",
-                _ => $"{method}법"
-            };
+            return DischargeLogFormatter.GetMethodName(method);
         }
 
         private static bool IsSupportedDevice(DischargeMethod method, MeasurementDeviceType deviceType)

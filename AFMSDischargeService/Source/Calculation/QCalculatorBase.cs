@@ -230,7 +230,12 @@ namespace AFMSDischargeService
 
         private void LogFailure(string operation, string error)
         {
-            log.Error($"유량 산정 {operation}: {GetLogContext()}, 오류 {error}");
+            log.Error(
+                $"[Q FAIL ] {DischargeLogFormatter.GetMethodName(Configuration.Method)}" +
+                $" | 장비={DischargeLogFormatter.GetDeviceKey(Configuration, Measurement)}" +
+                $" | 원시={DischargeLogFormatter.GetSourceKey(Measurement)}" +
+                $" | 슬롯={DischargeLogFormatter.GetSlotKey(Calculation)}" +
+                $" | 단계={operation} | 오류={error}");
         }
 
         private string GetLogContext()
