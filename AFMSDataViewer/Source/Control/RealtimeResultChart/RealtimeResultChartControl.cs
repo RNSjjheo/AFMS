@@ -105,12 +105,12 @@ namespace AFMSDataViewer
         {
             ChartMainType.Velocity => "1번 유속계",
             ChartMainType.Level => "1번 수위계",
-            ChartMainType.Discharge => "1번 유량계",
+            ChartMainType.Discharge => "장비 선택",
             _ => "1번 전원계"
         };
 
         private static string GetSubPlaceholder(ChartMainType chartType) => chartType == ChartMainType.Discharge
-            ? "유량법 선택"
+            ? "유량 산정법 선택"
             : "측정값 선택";
     }
 }

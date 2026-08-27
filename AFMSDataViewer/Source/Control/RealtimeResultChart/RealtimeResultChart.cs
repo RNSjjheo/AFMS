@@ -13,8 +13,17 @@ namespace AFMSDataViewer
     {
         private const string ChartFontName = "맑은 고딕";
 
-        private sealed record ChartPoint(DateTime Time, double Value);
-        private sealed record ChartSeries(string Name, System.Drawing.Color Color, List<ChartPoint> Points, bool SecondaryAxis = false);
+        private sealed record ChartPoint(DateTime Time, double Value, bool IsMissing = false);
+        private sealed record ChartSeries(string Name, System.Drawing.Color Color, List<ChartPoint> Points,
+            bool SecondaryAxis = false, string? DeviceType = null, int? DeviceId = null, string? DischargeMethod = null);
+        private sealed record DischargeDeviceOption(string DeviceType, int DeviceId, string DisplayText)
+        {
+            public override string ToString() => DisplayText;
+        }
+        private sealed record DischargeMethodOption(string Method, string DisplayText)
+        {
+            public override string ToString() => DisplayText;
+        }
 
         private static readonly System.Drawing.Color[] SeriesColors =
         {
@@ -37,6 +46,7 @@ namespace AFMSDataViewer
         private DateTime rangeStart;
         private DateTime rangeEnd;
         private bool isMaximized;
+        private bool isPopulatingSelectors;
 
         public event EventHandler? MaximizeRequested;
         public RealtimeResultChartControl TopLayout;
@@ -80,6 +90,19 @@ namespace AFMSDataViewer
 
             TopLayout = new RealtimeResultChartControl(chartType);
             TopLayout.Dock = DockStyle.Fill;
+            if (chartType == ChartMainType.Discharge)
+            {
+                TopLayout.uiComboMain.SelectedIndexChanged += (_, _) =>
+                {
+                    if (isPopulatingSelectors) return;
+                    PopulateDischargeMethodSelector();
+                    DrawSelectedSeries();
+                };
+                TopLayout.uiComboSub.SelectedIndexChanged += (_, _) =>
+                {
+                    if (!isPopulatingSelectors) DrawSelectedSeries();
+                };
+            }
 
             ConfigurePlot();
             uiTpMain.Controls.Add(TopLayout, 0, 0);
@@ -211,15 +234,30 @@ namespace AFMSDataViewer
                 if (!string.IsNullOrEmpty(error)) { ShowMessage(error); return; }
 
                 availableSeries.Clear();
-                foreach (IGrouping<string, DataRow> group in table.Rows.Cast<DataRow>().Where(row => row["CHART_VALUE"] != DBNull.Value).GroupBy(row => row["SERIES"].ToText()))
+                foreach (IGrouping<string, DataRow> group in table.Rows.Cast<DataRow>()
+                    .Where(row => row["SERIES"] != DBNull.Value && !string.IsNullOrWhiteSpace(row["SERIES"].ToText()))
+                    .GroupBy(row => row["SERIES"].ToText()))
                 {
-                    List<ChartPoint> points = group.Reverse().Select(row => new ChartPoint(ParseSourceTime(row["SOURCE_TIME"]), Convert.ToDouble(row["CHART_VALUE"])))
-                        .Where(point => double.IsFinite(point.Value)).ToList();
-                    if (points.Count > 0) availableSeries.Add(new ChartSeries(group.Key, GetSeriesColor(availableSeries.Count), points));
+                    List<ChartPoint> points = group.Reverse().Select(row =>
+                    {
+                        bool isMissing = row["CHART_VALUE"] == DBNull.Value;
+                        double value = isMissing ? 0D : Convert.ToDouble(row["CHART_VALUE"]);
+                        return new ChartPoint(ParseSourceTime(row["SOURCE_TIME"]), value, isMissing);
+                    }).Where(point => double.IsFinite(point.Value)).ToList();
+                    if (points.Count > 0)
+                    {
+                        DataRow first = group.First();
+                        string? deviceType = table.Columns.Contains("DEVICE_TYPE") ? first["DEVICE_TYPE"].ToText().Trim() : null;
+                        int? deviceId = table.Columns.Contains("DEVICE_ID") ? Convert.ToInt32(first["DEVICE_ID"]) : null;
+                        string? method = table.Columns.Contains("DISCHARGE_METHOD") ? first["DISCHARGE_METHOD"].ToText().Trim() : null;
+                        availableSeries.Add(new ChartSeries(group.Key, GetSeriesColor(availableSeries.Count), points,
+                            DeviceType: deviceType, DeviceId: deviceId, DischargeMethod: method));
+                    }
                 }
 
                 if (chartType == ChartMainType.Level && compareDischarge.Checked) AddDischargeComparison(db);
-                PopulateSelector();
+                if (chartType == ChartMainType.Discharge) PopulateDischargeSelectors();
+                else PopulateSelector();
                 DrawSelectedSeries();
                 chartSection.HeaderText = GetTitle();
             }
@@ -230,8 +268,15 @@ namespace AFMSDataViewer
         {
             DataTable table = db.Execute(GetDischargeSql(), out string error);
             if (!string.IsNullOrEmpty(error)) return;
-            List<ChartPoint> points = table.Rows.Cast<DataRow>().Reverse().Where(row => row["CHART_VALUE"] != DBNull.Value)
-                .Select(row => new ChartPoint(ParseSourceTime(row["SOURCE_TIME"]), Convert.ToDouble(row["CHART_VALUE"]))).Where(point => double.IsFinite(point.Value)).ToList();
+            List<ChartPoint> points = table.Rows.Cast<DataRow>()
+                .GroupBy(row => ParseSourceTime(row["SOURCE_TIME"]))
+                .OrderBy(group => group.Key)
+                .Select(group =>
+                {
+                    double[] values = group.Where(row => row["CHART_VALUE"] != DBNull.Value)
+                        .Select(row => Convert.ToDouble(row["CHART_VALUE"])).Where(double.IsFinite).ToArray();
+                    return new ChartPoint(group.Key, values.Length == 0 ? 0D : values.Average(), values.Length == 0);
+                }).ToList();
             if (points.Count > 0) availableSeries.Add(new ChartSeries("유량 비교", SeriesColors[0], points, true));
         }
 
@@ -244,12 +289,93 @@ namespace AFMSDataViewer
             seriesSelector.EndUpdate();
         }
 
+        private void PopulateDischargeSelectors()
+        {
+            string? selectedType = (TopLayout.uiComboMain.SelectedItem as DischargeDeviceOption)?.DeviceType;
+            int? selectedId = (TopLayout.uiComboMain.SelectedItem as DischargeDeviceOption)?.DeviceId;
+
+            isPopulatingSelectors = true;
+            try
+            {
+                TopLayout.uiComboMain.Items.Clear();
+                foreach (DischargeDeviceOption device in availableSeries
+                    .Where(series => series.DeviceType != null && series.DeviceId.HasValue)
+                    .GroupBy(series => (series.DeviceType!, series.DeviceId!.Value))
+                    .Select(group => CreateDeviceOption(group.Key.Item1, group.Key.Item2))
+                    .OrderBy(option => option.DeviceType == nameof(MeasurementDeviceType.VelocityMeter) ? 0 : 1)
+                    .ThenBy(option => option.DeviceId))
+                {
+                    TopLayout.uiComboMain.Items.Add(device);
+                }
+
+                DischargeDeviceOption? selected = TopLayout.uiComboMain.Items.Cast<DischargeDeviceOption>()
+                    .FirstOrDefault(option => option.DeviceType == selectedType && option.DeviceId == selectedId);
+                TopLayout.uiComboMain.SelectedItem = selected ?? TopLayout.uiComboMain.Items.Cast<object>().FirstOrDefault();
+                PopulateDischargeMethodSelector();
+            }
+            finally
+            {
+                isPopulatingSelectors = false;
+            }
+        }
+
+        private void PopulateDischargeMethodSelector()
+        {
+            string? selectedMethod = (TopLayout.uiComboSub.SelectedItem as DischargeMethodOption)?.Method;
+            DischargeDeviceOption? device = TopLayout.uiComboMain.SelectedItem as DischargeDeviceOption;
+
+            bool wasPopulating = isPopulatingSelectors;
+            isPopulatingSelectors = true;
+            try
+            {
+                TopLayout.uiComboSub.Items.Clear();
+                TopLayout.uiComboSub.Items.Add("전체");
+                if (device != null)
+                {
+                    foreach (string method in availableSeries
+                        .Where(series => series.DeviceType == device.DeviceType && series.DeviceId == device.DeviceId)
+                        .Where(series => !string.IsNullOrWhiteSpace(series.DischargeMethod))
+                        .Select(series => series.DischargeMethod!)
+                        .Distinct(StringComparer.Ordinal)
+                        .OrderBy(GetDischargeMethodOrder))
+                    {
+                        TopLayout.uiComboSub.Items.Add(new DischargeMethodOption(method, GetDischargeMethodDisplay(method)));
+                    }
+                }
+
+                DischargeMethodOption? selected = TopLayout.uiComboSub.Items.Cast<object>()
+                    .OfType<DischargeMethodOption>().FirstOrDefault(option => option.Method == selectedMethod);
+                TopLayout.uiComboSub.SelectedItem = selected ?? TopLayout.uiComboSub.Items[0];
+            }
+            finally
+            {
+                isPopulatingSelectors = wasPopulating;
+            }
+        }
+
+        private static DischargeDeviceOption CreateDeviceOption(string deviceType, int deviceId)
+        {
+            string display = deviceType switch
+            {
+                nameof(MeasurementDeviceType.VelocityMeter) => $"{deviceId}번 유속계",
+                nameof(MeasurementDeviceType.WaterLevelGauge) => deviceId > 0 ? $"{deviceId}번 수위계" : "수위계",
+                _ => $"{deviceType} {deviceId}"
+            };
+            return new DischargeDeviceOption(deviceType, deviceId, display);
+        }
+
+        private static string GetDischargeMethodDisplay(string method) =>
+            Enum.TryParse(method, true, out DischargeMethod parsed) ? EnumPaser.GetKorString(parsed) : method;
+
+        private static int GetDischargeMethodOrder(string method) =>
+            Enum.TryParse(method, true, out DischargeMethod parsed) ? (int)parsed : int.MaxValue;
+
         private void DrawSelectedSeries()
         {
             string selected = seriesSelector.SelectedItem?.ToString() ?? "전체";
             formsPlot.Plot.Clear();
             formsPlot.Plot.Axes.Right.IsVisible = false;
-            List<ChartSeries> visible = availableSeries.Where(series => selected == "전체" || series.Name == selected || series.SecondaryAxis).ToList();
+            List<ChartSeries> visible = GetVisibleSeries(selected);
 
             foreach (ChartSeries source in visible)
             {
@@ -259,10 +385,12 @@ namespace AFMSDataViewer
                 scatter.LegendText = source.Name;
                 scatter.Color = ToScottColor(source.Color);
                 scatter.LineWidth = 2;
-                scatter.MarkerSize = 5;
+                scatter.MarkerSize = 0;
                 scatter.FillY = true;
                 scatter.FillYValue = 0;
                 scatter.FillYColor = ToScottColor(System.Drawing.Color.FromArgb(45, source.Color));
+                AddPointMarkers(source, false, source.Color);
+                AddPointMarkers(source, true, System.Drawing.Color.FromArgb(75, 85, 99));
                 if (source.SecondaryAxis)
                 {
                     scatter.Axes.YAxis = formsPlot.Plot.Axes.Right;
@@ -274,9 +402,36 @@ namespace AFMSDataViewer
             formsPlot.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.DateTimeAutomatic();
             formsPlot.Plot.Axes.AutoScale();
             formsPlot.Plot.Axes.SetLimitsX(rangeStart.ToOADate(), rangeEnd.ToOADate());
-            formsPlot.Plot.ShowLegend(Alignment.UpperRight);
+            formsPlot.Plot.HideLegend();
             formsPlot.Refresh();
             UpdateStatistics(visible.Where(series => !series.SecondaryAxis).SelectMany(series => series.Points).Select(point => point.Value));
+        }
+
+        private void AddPointMarkers(ChartSeries source, bool missing, System.Drawing.Color color)
+        {
+            ChartPoint[] points = source.Points.Where(point => point.IsMissing == missing).ToArray();
+            if (points.Length == 0) return;
+
+            Scatter markers = formsPlot.Plot.Add.Scatter(
+                points.Select(point => point.Time.ToOADate()).ToArray(),
+                points.Select(point => point.Value).ToArray());
+            markers.Color = ToScottColor(color);
+            markers.LineWidth = 0;
+            markers.MarkerSize = 5;
+            if (source.SecondaryAxis) markers.Axes.YAxis = formsPlot.Plot.Axes.Right;
+        }
+
+        private List<ChartSeries> GetVisibleSeries(string selected = "전체")
+        {
+            if (chartType == ChartMainType.Discharge)
+            {
+                DischargeDeviceOption? device = TopLayout.uiComboMain.SelectedItem as DischargeDeviceOption;
+                DischargeMethodOption? method = TopLayout.uiComboSub.SelectedItem as DischargeMethodOption;
+                return availableSeries.Where(series => device != null &&
+                    series.DeviceType == device.DeviceType && series.DeviceId == device.DeviceId &&
+                    (method == null || series.DischargeMethod == method.Method)).ToList();
+            }
+            return availableSeries.Where(series => selected == "전체" || series.Name == selected || series.SecondaryAxis).ToList();
         }
 
         private void FormsPlot_MouseMove(object? sender, MouseEventArgs e)
@@ -288,7 +443,7 @@ namespace AFMSDataViewer
             ChartPoint? nearestPoint = null;
             double nearestSeconds = double.MaxValue;
             string selected = seriesSelector.SelectedItem?.ToString() ?? "전체";
-            foreach (ChartSeries series in availableSeries.Where(series => selected == "전체" || series.Name == selected || series.SecondaryAxis))
+            foreach (ChartSeries series in GetVisibleSeries(selected))
             {
                 ChartPoint? point = series.Points.MinBy(point => Math.Abs((point.Time - cursorTime).TotalSeconds));
                 if (point == null) continue;
@@ -297,7 +452,8 @@ namespace AFMSDataViewer
                 nearestSeconds = seconds; nearestPoint = point; nearestSeries = series;
             }
             if (nearestPoint == null || nearestSeries == null) return;
-            hoverTip.Show($"{nearestSeries.Name}\n{nearestPoint.Value:0.00} {(nearestSeries.SecondaryAxis ? "m³/s" : GetUnit())}\n{nearestPoint.Time:yyyy-MM-dd HH:mm}", formsPlot, e.X + 14, e.Y + 14, 1000);
+            string missingText = nearestPoint.IsMissing ? " (데이터 없음)" : string.Empty;
+            hoverTip.Show($"{nearestSeries.Name}\n{nearestPoint.Value:0.00} {(nearestSeries.SecondaryAxis ? "m³/s" : GetUnit())}{missingText}\n{nearestPoint.Time:yyyy-MM-dd HH:mm}", formsPlot, e.X + 14, e.Y + 14, 1000);
         }
 
         private void UpdateStatistics(IEnumerable<double> values)
@@ -332,42 +488,103 @@ namespace AFMSDataViewer
             return $"{sourceTime} >= '{rangeStart:yyyyMMdd HHmmss}' AND {sourceTime} <= '{rangeEnd:yyyyMMdd HHmmss}'";
         }
 
+        private string GetSlotTimeCondition(string alias = "S") =>
+            $"{alias}.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} >= '{rangeStart:yyyy-MM-dd HH:mm:ss}' AND " +
+            $"{alias}.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} <= '{rangeEnd:yyyy-MM-dd HH:mm:ss}'";
+
         private string GetSql() => chartType switch
         {
-            ChartMainType.Level => $"SELECT ({_FBTableBase.COL_MEASURE_DATE} || ' ' || {_FBTableBase.COL_MEASURE_TIME}) AS SOURCE_TIME, '수위계' AS SERIES, {FbtWATERLEVEL.COL_AVG_WATER_LEVEL} AS CHART_VALUE FROM {FbtWATERLEVEL.TABLE_NAME} WHERE {FbtWATERLEVEL.COL_AVG_WATER_LEVEL} IS NOT NULL AND {GetMeasurementTimeCondition()} ORDER BY {_FBTableBase.COL_MEASURE_DATE} DESC, {_FBTableBase.COL_MEASURE_TIME} DESC",
+            ChartMainType.Level => GetLevelSql(),
             ChartMainType.Discharge => GetDischargeSql(),
             ChartMainType.VTH => GetPowerSql(),
             _ => GetVelocitySql()
         };
 
-        private string GetDischargeSql() => $"SELECT {FbtAFMSDischargeResult.COL_SOURCE_TIME} AS SOURCE_TIME, TRIM({FbtAFMSDischargeResult.COL_DISCHARGE_METHOD}) || ' ' || TRIM({FbtAFMSDischargeResult.COL_SOURCE_DEVICE_TYPE}) || ' ' || CAST({FbtAFMSDischargeResult.COL_SOURCE_DEVICE_ID} AS VARCHAR(12)) AS SERIES, {FbtAFMSDischargeResult.COL_DISCHARGE} AS CHART_VALUE FROM {FbtAFMSDischargeResult.TABLE_NAME} WHERE {FbtAFMSDischargeResult.COL_DISCHARGE} IS NOT NULL AND {FbtAFMSDischargeResult.COL_SOURCE_TIME} >= '{rangeStart:yyyy-MM-dd HH:mm:ss}' AND {FbtAFMSDischargeResult.COL_SOURCE_TIME} <= '{rangeEnd:yyyy-MM-dd HH:mm:ss}' ORDER BY {FbtAFMSDischargeResult.COL_SOURCE_TIME} DESC";
+        private string GetLevelSql()
+        {
+            string sql = $"SELECT S.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} AS SOURCE_TIME, '수위계' AS SERIES, W.CHART_VALUE";
+            sql += $" FROM {FbtAFMSDischargeTimeslot.TABLE_NAME} S";
+            sql += $" LEFT JOIN (SELECT {_FBTableBase.COL_MEASURE_DATE} AS M_DATE, {_FBTableBase.COL_MEASURE_TIME} AS M_TIME,";
+            sql += $" AVG({FbtWATERLEVEL.COL_AVG_WATER_LEVEL}) AS CHART_VALUE FROM {FbtWATERLEVEL.TABLE_NAME}";
+            sql += $" WHERE {GetMeasurementTimeCondition()}";
+            sql += $" GROUP BY {_FBTableBase.COL_MEASURE_DATE}, {_FBTableBase.COL_MEASURE_TIME}) W";
+            sql += $" ON W.M_DATE = S.{_FBTableBase.COL_MEASURE_DATE} AND W.M_TIME = S.{_FBTableBase.COL_MEASURE_TIME}";
+            sql += $" WHERE {GetSlotTimeCondition()} ORDER BY S.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} DESC";
+            return sql;
+        }
+
+        private string GetDischargeSql()
+        {
+            string type = FbtAFMSDischargeResult.COL_SOURCE_DEVICE_TYPE;
+            string deviceId = FbtAFMSDischargeResult.COL_SOURCE_DEVICE_ID;
+            string method = FbtAFMSDischargeResult.COL_DISCHARGE_METHOD;
+            string sourceTime = FbtAFMSDischargeResult.COL_SOURCE_TIME;
+            string sql = $"SELECT S.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} AS SOURCE_TIME,";
+            sql += $" TRIM(D.DISCHARGE_METHOD) || ' ' || TRIM(D.DEVICE_TYPE) || ' ' || CAST(D.DEVICE_ID AS VARCHAR(12)) AS SERIES,";
+            sql += " R.CHART_VALUE, D.DEVICE_TYPE, D.DEVICE_ID, D.DISCHARGE_METHOD";
+            sql += $" FROM {FbtAFMSDischargeTimeslot.TABLE_NAME} S";
+            sql += $" CROSS JOIN (SELECT DISTINCT TRIM({type}) AS DEVICE_TYPE, {deviceId} AS DEVICE_ID, TRIM({method}) AS DISCHARGE_METHOD";
+            sql += $" FROM {FbtAFMSDischargeResult.TABLE_NAME}) D";
+            sql += $" LEFT JOIN (SELECT {sourceTime} AS SLOT_TIME, TRIM({type}) AS DEVICE_TYPE, {deviceId} AS DEVICE_ID,";
+            sql += $" TRIM({method}) AS DISCHARGE_METHOD, AVG({FbtAFMSDischargeResult.COL_DISCHARGE}) AS CHART_VALUE";
+            sql += $" FROM {FbtAFMSDischargeResult.TABLE_NAME} WHERE {sourceTime} >= '{rangeStart:yyyy-MM-dd HH:mm:ss}'";
+            sql += $" AND {sourceTime} <= '{rangeEnd:yyyy-MM-dd HH:mm:ss}'";
+            sql += $" GROUP BY {sourceTime}, {type}, {deviceId}, {method}) R";
+            sql += " ON R.SLOT_TIME = S.SLOT_TIME AND R.DEVICE_TYPE = D.DEVICE_TYPE AND R.DEVICE_ID = D.DEVICE_ID";
+            sql += " AND R.DISCHARGE_METHOD = D.DISCHARGE_METHOD";
+            sql += $" WHERE {GetSlotTimeCondition()} ORDER BY S.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} DESC";
+            return sql;
+        }
 
         private string GetVelocitySql()
         {
-            string sql = $"SELECT (M.{_FBTableBase.COL_MEASURE_DATE} || ' ' || M.{_FBTableBase.COL_MEASURE_TIME}) AS SOURCE_TIME,";
-            sql += $" 'MPDS ' || CAST(C.{FbtHYDROMETERMPDSCELL.COL_DEV_NO} AS VARCHAR(12)) AS SERIES,";
-            sql += $" C.{FbtHYDROMETERMPDSCELL.COL_VELOCITY} AS CHART_VALUE";
-            sql += $" FROM {FbtHYDROMETERMPDS.TABLE_NAME} M";
-            sql += $" JOIN {FbtHYDROMETERMPDSCELL.TABLE_NAME} C ON C.{FbtHYDROMETERMPDSCELL.COL_MPDS_ID}=M.{_FBTableBase.COL_ID}";
-            sql += $" WHERE C.{FbtHYDROMETERMPDSCELL.COL_VELOCITY} IS NOT NULL AND {GetMeasurementTimeCondition("M")}";
+            string sql = $"SELECT S.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} AS SOURCE_TIME,";
+            sql += " 'MPDS ' || CAST(D.DEV_NO AS VARCHAR(12)) AS SERIES, V.CHART_VALUE";
+            sql += $" FROM {FbtAFMSDischargeTimeslot.TABLE_NAME} S";
+            sql += $" CROSS JOIN (SELECT DISTINCT C.{FbtHYDROMETERMPDSCELL.COL_DEV_NO} AS DEV_NO FROM {FbtHYDROMETERMPDS.TABLE_NAME} M";
+            sql += $" JOIN {FbtHYDROMETERMPDSCELL.TABLE_NAME} C ON C.{FbtHYDROMETERMPDSCELL.COL_MPDS_ID} = M.{_FBTableBase.COL_ID}";
+            sql += $" WHERE {GetMeasurementTimeCondition("M")}) D";
+            sql += $" LEFT JOIN (SELECT M.{_FBTableBase.COL_MEASURE_DATE} AS M_DATE, M.{_FBTableBase.COL_MEASURE_TIME} AS M_TIME,";
+            sql += $" C.{FbtHYDROMETERMPDSCELL.COL_DEV_NO} AS DEV_NO, AVG(C.{FbtHYDROMETERMPDSCELL.COL_VELOCITY}) AS CHART_VALUE";
+            sql += $" FROM {FbtHYDROMETERMPDS.TABLE_NAME} M JOIN {FbtHYDROMETERMPDSCELL.TABLE_NAME} C";
+            sql += $" ON C.{FbtHYDROMETERMPDSCELL.COL_MPDS_ID} = M.{_FBTableBase.COL_ID}";
+            sql += $" WHERE {GetMeasurementTimeCondition("M")}";
+            sql += $" GROUP BY M.{_FBTableBase.COL_MEASURE_DATE}, M.{_FBTableBase.COL_MEASURE_TIME}, C.{FbtHYDROMETERMPDSCELL.COL_DEV_NO}) V";
+            sql += $" ON V.M_DATE = S.{_FBTableBase.COL_MEASURE_DATE} AND V.M_TIME = S.{_FBTableBase.COL_MEASURE_TIME} AND V.DEV_NO = D.DEV_NO";
+            sql += $" WHERE {GetSlotTimeCondition()}";
             sql += " UNION ALL ";
-            sql += $"SELECT (V.{_FBTableBase.COL_MEASURE_DATE} || ' ' || V.{_FBTableBase.COL_MEASURE_TIME}) AS SOURCE_TIME,";
-            sql += $" '영상 ' || CAST(C.{FbtHYDROMETERVIDEOCELL.COL_CELL_NO} AS VARCHAR(12)) AS SERIES,";
-            sql += $" C.{FbtHYDROMETERVIDEOCELL.COL_VELOCITY} AS CHART_VALUE";
-            sql += $" FROM {FbtHYDROMETERVIDEO.TABLE_NAME} V";
-            sql += $" JOIN {FbtHYDROMETERVIDEOCELL.TABLE_NAME} C ON C.{FbtHYDROMETERVIDEOCELL.COL_VIDEO_ID}=V.{_FBTableBase.COL_ID}";
-            sql += $" WHERE C.{FbtHYDROMETERVIDEOCELL.COL_VELOCITY} IS NOT NULL AND {GetMeasurementTimeCondition("V")}";
+            sql += $"SELECT S.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} AS SOURCE_TIME,";
+            sql += " '영상 ' || CAST(D.CELL_NO AS VARCHAR(12)) AS SERIES, V.CHART_VALUE";
+            sql += $" FROM {FbtAFMSDischargeTimeslot.TABLE_NAME} S";
+            sql += $" CROSS JOIN (SELECT DISTINCT C.{FbtHYDROMETERVIDEOCELL.COL_CELL_NO} AS CELL_NO FROM {FbtHYDROMETERVIDEO.TABLE_NAME} M";
+            sql += $" JOIN {FbtHYDROMETERVIDEOCELL.TABLE_NAME} C ON C.{FbtHYDROMETERVIDEOCELL.COL_VIDEO_ID} = M.{_FBTableBase.COL_ID}";
+            sql += $" WHERE {GetMeasurementTimeCondition("M")}) D";
+            sql += $" LEFT JOIN (SELECT M.{_FBTableBase.COL_MEASURE_DATE} AS M_DATE, M.{_FBTableBase.COL_MEASURE_TIME} AS M_TIME,";
+            sql += $" C.{FbtHYDROMETERVIDEOCELL.COL_CELL_NO} AS CELL_NO, AVG(C.{FbtHYDROMETERVIDEOCELL.COL_VELOCITY}) AS CHART_VALUE";
+            sql += $" FROM {FbtHYDROMETERVIDEO.TABLE_NAME} M JOIN {FbtHYDROMETERVIDEOCELL.TABLE_NAME} C";
+            sql += $" ON C.{FbtHYDROMETERVIDEOCELL.COL_VIDEO_ID} = M.{_FBTableBase.COL_ID}";
+            sql += $" WHERE {GetMeasurementTimeCondition("M")}";
+            sql += $" GROUP BY M.{_FBTableBase.COL_MEASURE_DATE}, M.{_FBTableBase.COL_MEASURE_TIME}, C.{FbtHYDROMETERVIDEOCELL.COL_CELL_NO}) V";
+            sql += $" ON V.M_DATE = S.{_FBTableBase.COL_MEASURE_DATE} AND V.M_TIME = S.{_FBTableBase.COL_MEASURE_TIME} AND V.CELL_NO = D.CELL_NO";
+            sql += $" WHERE {GetSlotTimeCondition()}";
             sql += " ORDER BY 1 DESC";
             return sql;
         }
 
         private string GetPowerSql()
         {
-            string sourceTime = $"({_FBTableBase.COL_MEASURE_DATE} || ' ' || {_FBTableBase.COL_MEASURE_TIME})";
-            string condition = GetMeasurementTimeCondition();
-            string sql = $"SELECT {sourceTime} AS SOURCE_TIME, '입력 전압' AS SERIES, {FbtVTHLOGGER.COL_VOLT} AS CHART_VALUE FROM {FbtVTHLOGGER.TABLE_NAME} WHERE {FbtVTHLOGGER.COL_VOLT} IS NOT NULL AND {condition}";
-            sql += $" UNION ALL SELECT {sourceTime} AS SOURCE_TIME, '충전 전압' AS SERIES, {FbtVTHLOGGER.COL_DCCHARGE} AS CHART_VALUE FROM {FbtVTHLOGGER.TABLE_NAME} WHERE {FbtVTHLOGGER.COL_DCCHARGE} IS NOT NULL AND {condition}";
-            sql += $" UNION ALL SELECT {sourceTime} AS SOURCE_TIME, '배터리 전압' AS SERIES, {FbtVTHLOGGER.COL_DCBATTERY} AS CHART_VALUE FROM {FbtVTHLOGGER.TABLE_NAME} WHERE {FbtVTHLOGGER.COL_DCBATTERY} IS NOT NULL AND {condition}";
+            string values = $"SELECT {_FBTableBase.COL_MEASURE_DATE} AS M_DATE, {_FBTableBase.COL_MEASURE_TIME} AS M_TIME,";
+            values += $" AVG({FbtVTHLOGGER.COL_VOLT}) AS INPUT_VALUE, AVG({FbtVTHLOGGER.COL_DCCHARGE}) AS CHARGE_VALUE,";
+            values += $" AVG({FbtVTHLOGGER.COL_DCBATTERY}) AS BATTERY_VALUE FROM {FbtVTHLOGGER.TABLE_NAME}";
+            values += $" WHERE {GetMeasurementTimeCondition()}";
+            values += $" GROUP BY {_FBTableBase.COL_MEASURE_DATE}, {_FBTableBase.COL_MEASURE_TIME}";
+            string join = $" FROM {FbtAFMSDischargeTimeslot.TABLE_NAME} S LEFT JOIN ({values}) V";
+            join += $" ON V.M_DATE = S.{_FBTableBase.COL_MEASURE_DATE} AND V.M_TIME = S.{_FBTableBase.COL_MEASURE_TIME}";
+            string condition = $" WHERE {GetSlotTimeCondition()}";
+            string slotTime = $"S.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME}";
+            string sql = $"SELECT {slotTime} AS SOURCE_TIME, '입력 전압' AS SERIES, V.INPUT_VALUE AS CHART_VALUE{join}{condition}";
+            sql += $" UNION ALL SELECT {slotTime} AS SOURCE_TIME, '충전 전압' AS SERIES, V.CHARGE_VALUE AS CHART_VALUE{join}{condition}";
+            sql += $" UNION ALL SELECT {slotTime} AS SOURCE_TIME, '배터리 전압' AS SERIES, V.BATTERY_VALUE AS CHART_VALUE{join}{condition}";
             sql += " ORDER BY 1 DESC";
             return sql;
         }
