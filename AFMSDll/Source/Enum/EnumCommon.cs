@@ -83,6 +83,12 @@ namespace AFMSDll
         RatingCurve = 4     // 수위-유량rhrtjsqjq
     }
 
+    public enum DischargeCalculationStatus
+    {
+        Calculated = 0,
+        BelowRatingCurveMinimum = 1
+    }
+
     public enum DiscVerSurfaceVelo
     { 
         Ver00 = 0,

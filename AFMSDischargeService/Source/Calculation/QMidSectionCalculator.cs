@@ -1,4 +1,5 @@
 using System.Data;
+using System.Text;
 using System.Text.Json;
 using AFMSDll;
 
@@ -25,6 +26,8 @@ namespace AFMSDischargeService
             double area = 0.0;
             CrossSection crossSection = Configuration.CrossSection;
             QTransectMeasurement measurement;
+            StringBuilder formula = new("Q=(");
+            bool isFirstTerm = true;
             error = string.Empty;
 
             if (!TryValidateCalculationInputs(out error)) return false;
@@ -37,13 +40,23 @@ namespace AFMSDischargeService
 
                 area += transect.SectionArea;
                 discharge += transect.SectionArea * measurement.Velocity * ConversionFactor;
+
+                if (!isFirstTerm) formula.Append('+');
+                formula.Append(FormatFormulaNumber(transect.SectionArea));
+                formula.Append('*');
+                formula.Append(FormatFormulaNumber(measurement.Velocity));
+                isFirstTerm = false;
             }
+
+            formula.Append(")*");
+            formula.Append(FormatFormulaNumber(ConversionFactor));
 
             if (!TryValidateCalculationResults(area, discharge, out error)) return false;
 
             Calculation.CrossSectionArea = area;
             Calculation.Velocity = area > 0.0 ? discharge / area : 0.0;
             Calculation.Value = discharge;
+            Calculation.Formula = formula.ToString();
 
             return true;
         }

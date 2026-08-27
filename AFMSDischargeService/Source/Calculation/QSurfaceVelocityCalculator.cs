@@ -37,6 +37,7 @@ namespace AFMSDischargeService
             double meanVelocity;
             double area;
             double discharge;
+            string formula;
             CrossSection crossSection = Configuration.CrossSection;
             SurfaceVelocityCoefficient coefficient;
             QTransectMeasurement measurement;
@@ -57,6 +58,9 @@ namespace AFMSDischargeService
             area = Transects.Sum(item => item.SectionArea);
             meanVelocity = coefficient.A * indexVelocity + coefficient.B;
             discharge = meanVelocity * area;
+            formula = $"Q={FormatFormulaNumber(area)}*" +
+                $"({FormatFormulaNumber(coefficient.A)}*{FormatFormulaNumber(indexVelocity)}" +
+                $"+({FormatFormulaNumber(coefficient.B)}))";
 
             if (!TryValidateCalculationResults(indexVelocity, meanVelocity, area, discharge, out error)) return false;
 
@@ -64,6 +68,8 @@ namespace AFMSDischargeService
             Calculation.Velocity = meanVelocity;
             Calculation.Value = discharge;
             Calculation.Uncertainty = 0.0;
+            Calculation.Formula = formula;
+
             return true;
         }
 

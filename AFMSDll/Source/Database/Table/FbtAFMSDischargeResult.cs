@@ -17,6 +17,9 @@ namespace AFMSDll
         public const string COL_VELOCITY = "VELOCITY";
         public const string COL_CROSS_SECTION_AREA = "CROSS_SECTION_AREA";
         public const string COL_DISCHARGE = "DISCHARGE";
+        public const string COL_CALCULATION_STATUS = "CALCULATION_STATUS";
+        public const string COL_STATUS_MESSAGE = "STATUS_MESSAGE";
+        public const string COL_CALCULATION_FORMULA = "CALCULATION_FORMULA";
         public const string COL_SOURCE_TIME = "SOURCE_TIME";
         public const string COL_CALCULATED_AT = "CALCULATED_AT";
 
@@ -42,6 +45,9 @@ namespace AFMSDll
             sql += "\n" + $"{COL_VELOCITY} DOUBLE PRECISION,";
             sql += "\n" + $"{COL_CROSS_SECTION_AREA} DOUBLE PRECISION,";
             sql += "\n" + $"{COL_DISCHARGE} DOUBLE PRECISION,";
+            sql += "\n" + $"{COL_CALCULATION_STATUS} VARCHAR(32) DEFAULT '{DischargeCalculationStatus.Calculated}' NOT NULL,";
+            sql += "\n" + $"{COL_STATUS_MESSAGE} VARCHAR(255),";
+            sql += "\n" + $"{COL_CALCULATION_FORMULA} VARCHAR(4096),";
             sql += "\n" + $"{COL_SOURCE_TIME} TIMESTAMP,";
             sql += "\n" + $"{COL_CALCULATED_AT} TIMESTAMP,";
             sql += "\n" + $"CONSTRAINT PK_AFMS_DIS_RESULT PRIMARY KEY({COL_ID}),";
@@ -67,6 +73,30 @@ namespace AFMSDll
                 result = AddColumn(db, COL_SOURCE_DEVICE_ID, "INTEGER");
                 if (!string.IsNullOrEmpty(result)) return result;
             }
+
+            if (!HasColumn(db, COL_CALCULATION_STATUS))
+            {
+                result = AddColumn(db, COL_CALCULATION_STATUS,
+                    $"VARCHAR(32) DEFAULT '{DischargeCalculationStatus.Calculated}'");
+                if (!string.IsNullOrEmpty(result)) return result;
+            }
+
+            if (!HasColumn(db, COL_STATUS_MESSAGE))
+            {
+                result = AddColumn(db, COL_STATUS_MESSAGE, "VARCHAR(255)");
+                if (!string.IsNullOrEmpty(result)) return result;
+            }
+
+            if (!HasColumn(db, COL_CALCULATION_FORMULA))
+            {
+                result = AddColumn(db, COL_CALCULATION_FORMULA, "VARCHAR(4096)");
+                if (!string.IsNullOrEmpty(result)) return result;
+            }
+
+            result = db.RunNonQuery($"UPDATE {TABLE_NAME}" +
+                $" SET {COL_CALCULATION_STATUS} = '{DischargeCalculationStatus.Calculated}'" +
+                $" WHERE {COL_CALCULATION_STATUS} IS NULL");
+            if (!string.IsNullOrEmpty(result)) return result;
 
             return string.Empty;
         }

@@ -7,7 +7,7 @@ namespace AFMSDischargeService
         ILogger<DischargeSlotService> logger,
         IHostApplicationLifetime applicationLifetime) : BackgroundService
     {
-        private static readonly DateTime FirstSlotTime = new(2026, 7, 14, 0, 0, 0, DateTimeKind.Local);
+        private static readonly DateTime FirstSlotTime = new(2026, 8, 20, 0, 0, 0, DateTimeKind.Local);
         private static readonly TimeSpan SlotInterval = TimeSpan.FromMinutes(10);
         private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(10);
 

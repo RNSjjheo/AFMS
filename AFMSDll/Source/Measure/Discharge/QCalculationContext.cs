@@ -21,6 +21,9 @@ namespace AFMSDll
         public double Velocity { get; set; }
         public double Value { get; set; }
         public double Uncertainty { get; set; }
+        public DischargeCalculationStatus Status { get; set; } = DischargeCalculationStatus.Calculated;
+        public string StatusMessage { get; set; } = string.Empty;
+        public string Formula { get; set; } = string.Empty;
 
         public void ClearSlot()
         {

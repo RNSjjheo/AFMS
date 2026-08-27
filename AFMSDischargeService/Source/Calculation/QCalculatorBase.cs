@@ -95,6 +95,10 @@ namespace AFMSDischargeService
         {
             ArgumentNullException.ThrowIfNull(db);
 
+            Calculation.Status = DischargeCalculationStatus.Calculated;
+            Calculation.StatusMessage = string.Empty;
+            Calculation.Formula = string.Empty;
+
             if (!Calculate(out string error))
             {
                 LogFailure("계산 실패", error);
@@ -149,6 +153,9 @@ namespace AFMSDischargeService
             query.Value(FbtAFMSDischargeResult.COL_VELOCITY, Calculation.Velocity);
             query.Value(FbtAFMSDischargeResult.COL_CROSS_SECTION_AREA, Calculation.CrossSectionArea);
             query.Value(FbtAFMSDischargeResult.COL_DISCHARGE, Calculation.Value);
+            query.Value(FbtAFMSDischargeResult.COL_CALCULATION_STATUS, Calculation.Status.ToString());
+            query.Value(FbtAFMSDischargeResult.COL_STATUS_MESSAGE, Calculation.StatusMessage);
+            query.Value(FbtAFMSDischargeResult.COL_CALCULATION_FORMULA, Calculation.Formula);
             query.Value(FbtAFMSDischargeResult.COL_SOURCE_TIME, sourceTime, typeof(DateTime));
             query.Value(FbtAFMSDischargeResult.COL_CALCULATED_AT, DateTime.Now, typeof(DateTime));
 
@@ -633,6 +640,11 @@ namespace AFMSDischargeService
                 return "유량 산정법이 설정되지 않았습니다.";
 
             return string.Empty;
+        }
+
+        protected static string FormatFormulaNumber(double value)
+        {
+            return value.ToString("G17", CultureInfo.InvariantCulture);
         }
 
         private void ClearStartSlot()
