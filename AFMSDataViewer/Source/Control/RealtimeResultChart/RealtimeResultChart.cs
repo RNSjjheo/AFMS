@@ -215,7 +215,7 @@ namespace AFMSDataViewer
                 {
                     List<ChartPoint> points = group.Reverse().Select(row => new ChartPoint(ParseSourceTime(row["SOURCE_TIME"]), Convert.ToDouble(row["CHART_VALUE"])))
                         .Where(point => double.IsFinite(point.Value)).ToList();
-                    if (points.Count > 0) availableSeries.Add(new ChartSeries(group.Key, SeriesColors[availableSeries.Count % SeriesColors.Length], points));
+                    if (points.Count > 0) availableSeries.Add(new ChartSeries(group.Key, GetSeriesColor(availableSeries.Count), points));
                 }
 
                 if (chartType == ChartMainType.Level && compareDischarge.Checked) AddDischargeComparison(db);
@@ -374,7 +374,17 @@ namespace AFMSDataViewer
 
         private string GetTitle() => chartType switch { ChartMainType.Velocity => "유속계", ChartMainType.Level => "수위계", ChartMainType.Discharge => "유량계", _ => "전원" };
         private string GetUnit() => chartType switch { ChartMainType.Velocity => "m/s", ChartMainType.Level => "m", ChartMainType.Discharge => "m³/s", _ => "V" };
-        private System.Drawing.Color GetColor() => chartType switch { ChartMainType.Velocity => SeriesColors[2], ChartMainType.Level => SeriesColors[1], ChartMainType.Discharge => SeriesColors[0], _ => SeriesColors[3] };
+        private System.Drawing.Color GetColor() => chartType switch
+        {
+            ChartMainType.Discharge => System.Drawing.Color.FromArgb(16, 185, 129),
+            ChartMainType.Level => System.Drawing.Color.FromArgb(29, 193, 211),
+            ChartMainType.Velocity => System.Drawing.Color.FromArgb(139, 92, 246),
+            _ => System.Drawing.Color.FromArgb(37, 99, 235)
+        };
+
+        private System.Drawing.Color GetSeriesColor(int seriesIndex) => seriesIndex == 0
+            ? GetColor()
+            : SeriesColors[(seriesIndex - 1) % SeriesColors.Length];
         private static ScottPlot.Color ToScottColor(System.Drawing.Color color) => new(color.R, color.G, color.B, color.A);
         private static WinFormsLabel CreateStatLabel(string caption, bool highlighted = false) => new()
         {
