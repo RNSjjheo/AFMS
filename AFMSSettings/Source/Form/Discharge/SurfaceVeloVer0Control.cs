@@ -1,5 +1,7 @@
 ﻿using AFMSDll;
 using System;
+using System.Globalization;
+using System.Runtime.InteropServices;
 
 namespace AFMSSettings
 {
@@ -468,6 +470,7 @@ namespace AFMSSettings
             uiNumberMaxVi = CreateAttributeNumberBox(QSurfaceVelocity.VER1_ATTR_NODE1);
             uiNumberA = CreateAttributeNumberBox(QSurfaceVelocity.VER1_ATTR_NODE2);
             uiNumberB = CreateAttributeNumberBox(QSurfaceVelocity.VER1_ATTR_NODE3);
+            uiNumberMaxVi.InnerTextBox.KeyDown += UiNumberMaxVi_KeyDown;
 
             uiBtnAdd = new AFMSButton();
             uiBtnAdd.Dock = DockStyle.Fill;
@@ -487,6 +490,87 @@ namespace AFMSSettings
 
             panel.Controls.Add(row);
             uiTpMainRow.Controls.Add(panel, 0, 4);
+        }
+
+        private void UiNumberMaxVi_KeyDown(object? sender, KeyEventArgs e)
+        {
+            if (!e.Control || e.KeyCode != Keys.V) return;
+
+            string clipboardText;
+            try
+            {
+                if (!Clipboard.ContainsText()) return;
+                clipboardText = Clipboard.GetText(TextDataFormat.UnicodeText);
+            }
+            catch (ExternalException)
+            {
+                MessageBox.Show("클립보드 데이터를 읽을 수 없습니다. 다시 시도해주세요.", "붙여넣기 오류", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                e.Handled = true;
+                e.SuppressKeyPress = true;
+                return;
+            }
+
+            bool multipleCells = clipboardText.IndexOfAny(['\t', '\r', '\n']) >= 0;
+            if (!multipleCells) return;
+
+            e.Handled = true;
+            e.SuppressKeyPress = true;
+
+            if (!TryParseExcelValues(clipboardText, out double[] values))
+            {
+                MessageBox.Show(
+                    "Excel에서 Max Vi, a, b 순서의 숫자 셀 3개를 복사해주세요.",
+                    "붙여넣기 형식 확인",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+                return;
+            }
+
+            uiNumberMaxVi.SetValue(values[0]);
+            uiNumberA.SetValue(values[1]);
+            uiNumberB.SetValue(values[2]);
+            uiNumberB.Focus();
+        }
+
+        private static bool TryParseExcelValues(string text, out double[] values)
+        {
+            const int valueCount = 3;
+            values = Array.Empty<double>();
+            string normalized = text.TrimEnd('\r', '\n');
+            string[] rows = normalized.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+            string[] cells;
+
+            if (rows.Length == 1)
+            {
+                cells = rows[0].Split('\t');
+            }
+            else if (rows.Length == valueCount)
+            {
+                cells = new string[valueCount];
+                for (int i = 0; i < rows.Length; i++)
+                {
+                    if (rows[i].Contains('\t')) return false;
+                    cells[i] = rows[i];
+                }
+            }
+            else
+            {
+                return false;
+            }
+
+            if (cells.Length != valueCount) return false;
+
+            values = new double[valueCount];
+            for (int i = 0; i < cells.Length; i++)
+            {
+                string cell = cells[i].Trim();
+                if (double.TryParse(cell, NumberStyles.Float, CultureInfo.InvariantCulture, out values[i])) continue;
+                if (double.TryParse(cell, NumberStyles.Float, CultureInfo.CurrentCulture, out values[i])) continue;
+                values = Array.Empty<double>();
+                return false;
+            }
+
+            return true;
         }
 
         private void UiBtnAdd_Click(object? sender, EventArgs e)
