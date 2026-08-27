@@ -65,9 +65,9 @@ namespace AFMSDataViewer
 
             uiBtnGroups = new AFMSButtonGroup();
             uiBtnGroups.Dock = DockStyle.Fill;
-            uiBtnGroups.AddButton("일");
-            uiBtnGroups.AddButton("주");
-            uiBtnGroups.AddButton("월");
+            uiBtnGroups.AddButton("12H");
+            uiBtnGroups.AddButton("24H");
+            uiBtnGroups.AddButton("1주일");
             uiBtnGroups.SelectedIndexChanged += (_, _) => ApplyNavigatorRange();
 
             uiBtnTemp = new AFMSButtonGroup();
@@ -122,12 +122,7 @@ namespace AFMSDataViewer
 
         private void MoveSelectedDate(int direction)
         {
-            selectedDateTime = uiBtnGroups.SelectedIndex switch
-            {
-                1 => selectedDateTime.AddDays(7 * direction),
-                2 => selectedDateTime.AddMonths(direction),
-                _ => selectedDateTime.AddDays(direction)
-            };
+            selectedDateTime = selectedDateTime.AddTicks(GetSelectedDuration().Ticks * direction);
             ApplyNavigatorRange();
         }
 
@@ -136,18 +131,20 @@ namespace AFMSDataViewer
             if (uiNavigator == null) return;
             uiNavigator.Text = selectedDateTime.ToString("yyyy-MM-dd HH:mm");
 
-            DateTime start = uiBtnGroups.SelectedIndex switch
-            {
-                1 => selectedDateTime.AddDays(-7),
-                2 => selectedDateTime.AddMonths(-1),
-                _ => selectedDateTime.AddHours(-24)
-            };
+            DateTime start = selectedDateTime.Subtract(GetSelectedDuration());
 
             uiChart1?.SetTimeRange(start, selectedDateTime);
             uiChart2?.SetTimeRange(start, selectedDateTime);
             uiChart3?.SetTimeRange(start, selectedDateTime);
             uiChart4?.SetTimeRange(start, selectedDateTime);
         }
+
+        private TimeSpan GetSelectedDuration() => uiBtnGroups.SelectedIndex switch
+        {
+            1 => TimeSpan.FromHours(24),
+            2 => TimeSpan.FromDays(7),
+            _ => TimeSpan.FromHours(12)
+        };
 
         private void UiBtnTemp_Click(object? sender, EventArgs e)
         {

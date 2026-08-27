@@ -212,9 +212,14 @@ namespace AFMSDataViewer
             formsPlot.Plot.Font.Set(ChartFontName);
             formsPlot.Plot.FigureBackground.Color = ScottPlot.Color.FromHex("#FFFFFF");
             formsPlot.Plot.DataBackground.Color = ScottPlot.Color.FromHex("#FFFFFF");
+            formsPlot.Plot.Layout.Fixed(new PixelPadding(30, 30, 34, 22));
             formsPlot.Plot.Grid.MajorLineColor = ScottPlot.Color.FromHex("#E1EAF2");
-            formsPlot.Plot.Axes.Left.Label.Text = GetUnit();
-            formsPlot.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.DateTimeAutomatic();
+            formsPlot.Plot.DataBorder.Color = ScottPlot.Color.FromHex("#B8C9D8");
+            formsPlot.Plot.DataBorder.Width = 1;
+            formsPlot.Plot.Axes.Left.Label.Text = string.Empty;
+            formsPlot.Plot.Axes.Left.TickLabelStyle.FontSize = 8F;
+            formsPlot.Plot.Axes.Bottom.TickLabelStyle.FontSize = 7F;
+            formsPlot.Plot.Axes.Bottom.TickLabelStyle.ForeColor = ScottPlot.Color.FromHex("#64748B");
             formsPlot.MouseMove += FormsPlot_MouseMove;
             formsPlot.MouseLeave += (_, _) => hoverTip.Hide(formsPlot);
         }
@@ -483,7 +488,8 @@ namespace AFMSDataViewer
                 }
             }
 
-            formsPlot.Plot.Axes.Bottom.TickGenerator = new ScottPlot.TickGenerators.DateTimeAutomatic();
+            AddUnitAnnotation();
+            ConfigureTimeTicks();
             formsPlot.Plot.Axes.AutoScale();
             formsPlot.Plot.Axes.SetLimitsX(rangeStart.ToOADate(), rangeEnd.ToOADate());
             ChartAxisRange axisRange = DataViewerChartSettings.GetAxisRange(chartType);
@@ -492,6 +498,46 @@ namespace AFMSDataViewer
             formsPlot.Plot.HideLegend();
             formsPlot.Refresh();
             UpdateStatistics(visible.Where(series => !series.SecondaryAxis).SelectMany(series => series.Points).Select(point => point.Value));
+        }
+
+        private void AddUnitAnnotation()
+        {
+            Annotation unit = formsPlot.Plot.Add.Annotation(GetUnit(), Alignment.UpperLeft);
+            unit.LabelStyle.FontName = ChartFontName;
+            unit.LabelStyle.FontSize = 8F;
+            unit.LabelStyle.ForeColor = ScottPlot.Color.FromHex("#64748B");
+            unit.LabelStyle.BackgroundColor = ScottPlot.Colors.Transparent;
+            unit.OffsetX = -18;
+            unit.OffsetY = -17;
+        }
+
+        private void ConfigureTimeTicks()
+        {
+            TimeSpan duration = rangeEnd - rangeStart;
+            ScottPlot.TickGenerators.NumericManual ticks = new();
+            const int tickCount = 4;
+            DateTime previous = rangeStart;
+
+            for (int index = 0; index < tickCount; index++)
+            {
+                double fraction = index / (double)(tickCount - 1);
+                DateTime time = rangeStart.AddTicks((long)(duration.Ticks * fraction));
+                string label;
+                if (duration <= TimeSpan.FromHours(24))
+                {
+                    bool dateChanged = index > 0 && time.Date != previous.Date;
+                    label = dateChanged ? $"{time:MM-dd}\n{time:HH:mm}" : $"{time:HH:mm}";
+                }
+                else
+                {
+                    label = $"{time:MM-dd}";
+                }
+
+                ticks.AddMajor(time.ToOADate(), label);
+                previous = time;
+            }
+
+            formsPlot.Plot.Axes.Bottom.TickGenerator = ticks;
         }
 
         private void AddPointMarkers(ChartSeries source, bool missing, System.Drawing.Color color)
