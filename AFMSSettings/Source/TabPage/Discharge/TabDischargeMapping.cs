@@ -9,13 +9,15 @@ namespace AFMSSettings
 {
     public class TabDischargeMapping : _TabDischargeBase
     {
-        private const string COL_DEVICE_TYPE = "DEVICE_TYPE";
-        private const string COL_DEVICE_ID = "DEVICE_ID";
-        private const string COL_TRANSECT_COUNT = "TRANSECT_COUNT";
-        private const string COL_ROW_NO = "ROW_NO";
-        private const string COL_DEVICE_KIND = "DEVICE_KIND";
-        private const string COL_DEVICE_NAME = "DEVICE_NAME";
         private const int SYSTEM_WATER_LEVEL_DEVICE_ID = 0;
+
+        private sealed class DeviceRowState
+        {
+            public required MeasurementDeviceType DeviceType { get; init; }
+            public required int DeviceId { get; init; }
+            public Dictionary<DischargeMethod, bool> Original { get; } = new();
+            public Dictionary<DischargeMethod, AFMSCheckBox> CheckBoxes { get; } = new();
+        }
 
         private readonly List<DischargeMethod> _methods = new();
         private readonly Dictionary<string, Dictionary<DischargeMethod, bool>> _originalValues = new();
@@ -26,8 +28,11 @@ namespace AFMSSettings
         private readonly Dictionary<int, int> _transectCounts = new();
         private readonly Dictionary<int, int> _latestTransectConfigIds = new();
         private readonly HashSet<int> _staleHydroIds = new();
+        private readonly List<DeviceRowState> _deviceRows = new();
         private bool _hasRatingCurveConfig;
         private AFMSGuidePanel uiGuide;
+        private Panel uiDeviceListHost;
+        private TableLayoutPanel uiDeviceTable;
 
         public TabDischargeMapping() : base(false)
         {
@@ -39,21 +44,18 @@ namespace AFMSSettings
                 if (method != DischargeMethod.None) _methods.Add(method);
 
             SetupLayout();
-            SetupGrid();
-            SetupMethodCheckBoxes();
+            SetupDeviceList();
 
-            uiTpMain.SetRowSpan(uiGridMain, 2);
+            uiTpMain.SetRowSpan(uiDeviceListHost, 2);
             uiTpMain.SetRowSpan(uiGuide, 2);
             uiTpMain.Controls.Remove(uiButtonInput);
         }
 
-        public bool HasChanges => uiGridMain.Rows.Cast<DataGridViewRow>()
-            .Any(row => !row.IsNewRow && IsRowChanged(row));
+        public bool HasChanges => _deviceRows.Any(IsRowChanged);
 
         public void LoadData()
         {
-            uiGridMain.Rows.Clear();
-            uiGridMain.ClearAFMSCheckBoxCellVisibility();
+            ResetDeviceRows();
             _originalValues.Clear();
 
             using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
@@ -86,20 +88,18 @@ namespace AFMSSettings
             AddDeviceRow(rowNo, MeasurementDeviceType.WaterLevelGauge, SYSTEM_WATER_LEVEL_DEVICE_ID,
                 0, "수위계", "시스템 수위계", configured);
 
-            uiGridMain.ClearSelection();
-            uiGridMain.RefreshAFMSCheckBoxes();
         }
 
         public string SaveChanges(out int savedCount)
         {
             savedCount = 0;
 
-            foreach (DataGridViewRow row in uiGridMain.Rows)
+            foreach (DeviceRowState row in _deviceRows)
             {
-                if (row.IsNewRow || !IsRowChanged(row)) continue;
+                if (!IsRowChanged(row)) continue;
 
-                MeasurementDeviceType deviceType = GetDeviceType(row);
-                int deviceId = Convert.ToInt32(row.Cells[COL_DEVICE_ID].Value);
+                MeasurementDeviceType deviceType = row.DeviceType;
+                int deviceId = row.DeviceId;
                 string deviceKey = GetDeviceKey(deviceType, deviceId);
                 Dictionary<DischargeMethod, bool> original = _originalValues[deviceKey];
                 bool rowSaved = false;
@@ -113,6 +113,7 @@ namespace AFMSSettings
                     if (!string.IsNullOrEmpty(error)) return error;
 
                     original[method] = enabled;
+                    row.Original[method] = enabled;
                     rowSaved = true;
                 }
 
@@ -131,28 +132,38 @@ namespace AFMSSettings
             string deviceName,
             Dictionary<string, bool> configured)
         {
-            int rowIndex = uiGridMain.Rows.Add();
-            DataGridViewRow row = uiGridMain.Rows[rowIndex];
-            row.Cells[COL_DEVICE_TYPE].Value = deviceType.ToString();
-            row.Cells[COL_DEVICE_ID].Value = deviceId;
-            row.Cells[COL_TRANSECT_COUNT].Value = transectCount;
-            row.Cells[COL_ROW_NO].Value = rowNo;
-            row.Cells[COL_DEVICE_KIND].Value = deviceKind;
-            row.Cells[COL_DEVICE_NAME].Value = deviceName;
-
+            DeviceRowState state = new() { DeviceType = deviceType, DeviceId = deviceId };
             Dictionary<DischargeMethod, bool> original = new();
+            FlowLayoutPanel panel = CreateMethodPanel();
             foreach (DischargeMethod method in _methods)
             {
                 bool available = IsMethodAvailable(deviceType, deviceId, transectCount, method);
                 bool enabled = available && configured.TryGetValue(GetMethodKey(deviceType, deviceId, method), out bool value) && value;
-                string columnName = GetGridMethodColumnName(method);
-
-                row.Cells[columnName].Value = enabled;
-                uiGridMain.SetAFMSCheckBoxVisible(rowIndex, columnName, available);
                 original[method] = enabled;
+                if (!available) continue;
+
+                AFMSCheckBox checkBox = new()
+                {
+                    Text = EnumPaser.GetKorString(method),
+                    Checked = enabled,
+                    AutoSize = true,
+                    Margin = new Padding(4, 7, 4, 7)
+                };
+                panel.Controls.Add(checkBox);
+                state.CheckBoxes[method] = checkBox;
             }
 
-            _originalValues[GetDeviceKey(deviceType, deviceId)] = original;
+            string key = GetDeviceKey(deviceType, deviceId);
+            _originalValues[key] = original;
+            foreach ((DischargeMethod method, bool enabled) in original) state.Original[method] = enabled;
+            _deviceRows.Add(state);
+
+            int tableRow = uiDeviceTable.RowCount++;
+            uiDeviceTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 54F));
+            uiDeviceTable.Controls.Add(CreateCellLabel(rowNo.ToString()), 0, tableRow);
+            uiDeviceTable.Controls.Add(CreateCellLabel(deviceKind), 1, tableRow);
+            uiDeviceTable.Controls.Add(CreateCellLabel(deviceName), 2, tableRow);
+            uiDeviceTable.Controls.Add(panel, 3, tableRow);
         }
 
         private Dictionary<string, bool> LoadLatestSelections(FBDatabase db)
@@ -193,8 +204,7 @@ namespace AFMSSettings
             _hasRatingCurveConfig = false;
 
             string methodSql = $"SELECT C.{FbtAFMSDischargeMethodConfig.COL_ID}, C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_TYPE}, C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_ID}, C.{FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD}";
-            methodSql += $" FROM {FbtAFMSDischargeMethodConfig.TABLE_NAME} C WHERE C.{FbtAFMSDischargeMethodConfig.COL_ENABLED} = 1";
-            methodSql += $" AND C.{FbtAFMSDischargeMethodConfig.COL_ID} = (SELECT MAX(C2.{FbtAFMSDischargeMethodConfig.COL_ID}) FROM {FbtAFMSDischargeMethodConfig.TABLE_NAME} C2";
+            methodSql += $" FROM {FbtAFMSDischargeMethodConfig.TABLE_NAME} C WHERE C.{FbtAFMSDischargeMethodConfig.COL_ID} = (SELECT MAX(C2.{FbtAFMSDischargeMethodConfig.COL_ID}) FROM {FbtAFMSDischargeMethodConfig.TABLE_NAME} C2";
             methodSql += $" WHERE C2.{FbtAFMSDischargeMethodConfig.COL_DEVICE_TYPE} = C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_TYPE}";
             methodSql += $" AND C2.{FbtAFMSDischargeMethodConfig.COL_DEVICE_ID} = C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_ID}";
             methodSql += $" AND C2.{FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD} = C.{FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD})";
@@ -297,22 +307,14 @@ namespace AFMSSettings
             };
         }
 
-        private bool IsRowChanged(DataGridViewRow row)
+        private bool IsRowChanged(DeviceRowState row)
         {
-            MeasurementDeviceType type = GetDeviceType(row);
-            int deviceId = Convert.ToInt32(row.Cells[COL_DEVICE_ID].Value);
-            if (!_originalValues.TryGetValue(GetDeviceKey(type, deviceId), out Dictionary<DischargeMethod, bool>? original)) return true;
-
-            return _methods.Any(method => original.GetValueOrDefault(method) != GetCurrentValue(row, method));
+            return _methods.Any(method => row.Original.GetValueOrDefault(method) != GetCurrentValue(row, method));
         }
 
-        private bool GetCurrentValue(DataGridViewRow row, DischargeMethod method)
+        private static bool GetCurrentValue(DeviceRowState row, DischargeMethod method)
         {
-            MeasurementDeviceType type = GetDeviceType(row);
-            int deviceId = Convert.ToInt32(row.Cells[COL_DEVICE_ID].Value);
-            int transectCount = Convert.ToInt32(row.Cells[COL_TRANSECT_COUNT].Value ?? 0);
-            return IsMethodAvailable(type, deviceId, transectCount, method) &&
-                   uiGridMain.GetAFMSChecked(row.Index, GetGridMethodColumnName(method));
+            return row.CheckBoxes.TryGetValue(method, out AFMSCheckBox? checkBox) && checkBox.Checked;
         }
 
         private void SetupLayout()
@@ -330,69 +332,84 @@ namespace AFMSSettings
             CtlSub = uiGuide;
         }
 
-        private void SetupGrid()
+        private void SetupDeviceList()
         {
-            uiGridMain.AutoGenerateColumns = false;
-            uiGridMain.ShowCellToolTips = false;
-            uiGridMain.Columns.Clear();
-            uiGridMain.Columns.Add(new DataGridViewTextBoxColumn { Name = COL_DEVICE_TYPE, Visible = false });
-            uiGridMain.Columns.Add(new DataGridViewTextBoxColumn { Name = COL_DEVICE_ID, Visible = false });
-            uiGridMain.Columns.Add(new DataGridViewTextBoxColumn { Name = COL_TRANSECT_COUNT, Visible = false });
-            uiGridMain.Columns.Add(new DataGridViewTextBoxColumn { Name = COL_ROW_NO, HeaderText = "번호", FillWeight = 9F, ReadOnly = true });
-            uiGridMain.Columns.Add(new DataGridViewTextBoxColumn { Name = COL_DEVICE_KIND, HeaderText = "장비 유형", FillWeight = 14F, ReadOnly = true });
-            uiGridMain.Columns.Add(new DataGridViewTextBoxColumn { Name = COL_DEVICE_NAME, HeaderText = "측정장비", FillWeight = 25F, ReadOnly = true });
-            foreach (DischargeMethod method in _methods) uiGridMain.Columns.Add(CreateMethodColumn(method));
-            uiGridMain.AFMSHeaderHeight = 42;
-            uiGridMain.AFMSRowHeight = 54;
-            uiGridMain.BorderRadius = 8;
+            uiDeviceTable = new TableLayoutPanel
+            {
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                ColumnCount = 4,
+                RowCount = 1,
+                Dock = DockStyle.Top,
+                Margin = Padding.Empty,
+                Padding = Padding.Empty,
+                CellBorderStyle = TableLayoutPanelCellBorderStyle.Single,
+                BackColor = Color.White
+            };
+            uiDeviceTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 9F));
+            uiDeviceTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 14F));
+            uiDeviceTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            uiDeviceTable.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 52F));
+            uiDeviceTable.RowStyles.Add(new RowStyle(SizeType.Absolute, 42F));
+            uiDeviceTable.Controls.Add(CreateHeaderLabel("번호"), 0, 0);
+            uiDeviceTable.Controls.Add(CreateHeaderLabel("장비 유형"), 1, 0);
+            uiDeviceTable.Controls.Add(CreateHeaderLabel("측정장비"), 2, 0);
+            uiDeviceTable.Controls.Add(CreateHeaderLabel("산정법", ContentAlignment.MiddleLeft), 3, 0);
+
+            uiDeviceListHost = new Panel { Dock = DockStyle.Fill, AutoScroll = true, BackColor = Color.White };
+            uiDeviceListHost.Controls.Add(uiDeviceTable);
+            CtlMain = uiDeviceListHost;
         }
 
-        private DataGridViewTextBoxColumn CreateMethodColumn(DischargeMethod method) => new()
+        private static FlowLayoutPanel CreateMethodPanel() => new()
         {
-            Name = GetGridMethodColumnName(method),
-            HeaderText = string.Empty,
-            FillWeight = 52F / Math.Max(1, _methods.Count),
-            ReadOnly = true,
-            Tag = method,
-            DefaultCellStyle = { Alignment = DataGridViewContentAlignment.MiddleCenter }
+            BackColor = Color.Transparent,
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,
+            Dock = DockStyle.Fill,
+            Margin = Padding.Empty,
+            Padding = new Padding(4, 0, 0, 0)
         };
 
-        private void SetupMethodCheckBoxes()
+        private static Label CreateHeaderLabel(string text, ContentAlignment alignment = ContentAlignment.MiddleCenter) => new()
         {
-            foreach (DischargeMethod method in _methods)
-                uiGridMain.SetAFMSCheckBoxColumn(GetGridMethodColumnName(method), EnumPaser.GetKorString(method));
-            uiGridMain.AFMSCheckBoxCellVisibleEvaluator = IsMethodCheckBoxVisible;
-        }
+            Text = text,
+            Dock = DockStyle.Fill,
+            TextAlign = alignment,
+            Font = new Font(DLLStyle.DEFAULT_FONT_SYLTE, 9F, FontStyle.Bold),
+            ForeColor = DllColorHelper.HexToColor("#244B37"),
+            BackColor = DllColorHelper.HexToColor("#F7F9F8"),
+            Margin = Padding.Empty
+        };
 
-        private bool IsMethodCheckBoxVisible(int rowIndex, int columnIndex)
+        private static Label CreateCellLabel(string text) => new()
         {
-            if (rowIndex < 0 || rowIndex >= uiGridMain.Rows.Count ||
-                uiGridMain.Columns[columnIndex].Tag is not DischargeMethod method) return false;
-            DataGridViewRow row = uiGridMain.Rows[rowIndex];
-            return IsMethodAvailable(GetDeviceType(row), Convert.ToInt32(row.Cells[COL_DEVICE_ID].Value),
-                Convert.ToInt32(row.Cells[COL_TRANSECT_COUNT].Value ?? 0), method);
-        }
+            Text = text,
+            Dock = DockStyle.Fill,
+            TextAlign = ContentAlignment.MiddleCenter,
+            BackColor = Color.White,
+            Margin = Padding.Empty
+        };
 
-        private static MeasurementDeviceType GetDeviceType(DataGridViewRow row) =>
-            Enum.TryParse(Convert.ToString(row.Cells[COL_DEVICE_TYPE].Value), out MeasurementDeviceType type)
-                ? type
-                : MeasurementDeviceType.None;
+        private void ResetDeviceRows()
+        {
+            _deviceRows.Clear();
+            while (uiDeviceTable.RowCount > 1)
+            {
+                int row = uiDeviceTable.RowCount - 1;
+                foreach (Control control in uiDeviceTable.Controls.Cast<Control>()
+                             .Where(control => uiDeviceTable.GetRow(control) == row).ToArray())
+                {
+                    uiDeviceTable.Controls.Remove(control);
+                    control.Dispose();
+                }
+                uiDeviceTable.RowStyles.RemoveAt(row);
+                uiDeviceTable.RowCount--;
+            }
+        }
 
         private static string GetDeviceKey(MeasurementDeviceType type, int id) => $"{type}:{id}";
         private static string GetMethodKey(MeasurementDeviceType type, int id, DischargeMethod method) => $"{type}:{id}:{method}";
-        private static string GetGridMethodColumnName(DischargeMethod method) => $"METHOD_{(int)method}";
-
-        protected override void OnVisibleChanged(EventArgs e)
-        {
-            base.OnVisibleChanged(e);
-            if (!Visible || uiGridMain == null || !IsHandleCreated) return;
-            BeginInvoke(new Action(() =>
-            {
-                if (IsDisposed || !Visible) return;
-                uiGridMain.PerformLayout();
-                uiGridMain.RefreshAFMSCheckBoxes();
-            }));
-        }
 
         public override void BindingComplete(object? sender, DataGridViewBindingCompleteEventArgs e) { }
         protected override void UiButtonInput_Click(object? sender, EventArgs e) { }
