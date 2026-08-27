@@ -125,6 +125,7 @@ namespace AFMSDataViewer.Source.Control
             uiResultChart?.Dispose();
             uiResultChart = new RealtimeResultChart(chartType, rangeStart, rangeEnd);
             uiResultChart.MaximizeRequested += UiResultChart_MaximizeRequested;
+            uiResultChart.CloseRequested += UiResultChart_CloseRequested;
             Controls.Clear();
             Controls.Add(uiResultChart);
             uiResultChart.LoadData();
@@ -143,6 +144,7 @@ namespace AFMSDataViewer.Source.Control
             if (uiResultChart != null)
             {
                 uiResultChart.MaximizeRequested -= UiResultChart_MaximizeRequested;
+                uiResultChart.CloseRequested -= UiResultChart_CloseRequested;
                 uiResultChart.Dispose();
                 uiResultChart = null;
             }
@@ -154,6 +156,11 @@ namespace AFMSDataViewer.Source.Control
         private void UiResultChart_MaximizeRequested(object? sender, EventArgs e)
         {
             MaximizeRequested?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void UiResultChart_CloseRequested(object? sender, EventArgs e)
+        {
+            ResetToChartSelection();
         }
     }
 }

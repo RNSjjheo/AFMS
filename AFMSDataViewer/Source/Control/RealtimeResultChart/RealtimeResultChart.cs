@@ -47,6 +47,7 @@ namespace AFMSDataViewer
         private readonly FormsPlot formsPlot = new();
         private readonly AFMSSectionPanel chartSection = new();
         private readonly Button maximizeToggle = new();
+        private readonly Button closeButton = new();
         private readonly WinFormsLabel title = new();
         private readonly WinFormsLabel minimum = CreateStatLabel("최소");
         private readonly WinFormsLabel average = CreateStatLabel("평균", true);
@@ -61,6 +62,7 @@ namespace AFMSDataViewer
         private bool isPopulatingSelectors;
 
         public event EventHandler? MaximizeRequested;
+        public event EventHandler? CloseRequested;
         public RealtimeResultChartControl TopLayout;
         private TableLayoutPanel uiTpMain;
 
@@ -87,6 +89,7 @@ namespace AFMSDataViewer
             chartSection.Font = new System.Drawing.Font(ChartFontName, 9F, System.Drawing.FontStyle.Bold);
 
             ConfigureMaximizeToggle();
+            ConfigureCloseButton();
 
             uiTpMain = new TableLayoutPanel();
             uiTpMain.Dock = DockStyle.Fill;
@@ -143,7 +146,9 @@ namespace AFMSDataViewer
             uiTpMain.Controls.Add(formsPlot, 0, 1);
             chartSection.ContentLayout.Controls.Add(uiTpMain);
             chartSection.Controls.Add(maximizeToggle);
+            chartSection.Controls.Add(closeButton);
             maximizeToggle.BringToFront();
+            closeButton.BringToFront();
             Controls.Add(chartSection);
         }
 
@@ -171,14 +176,44 @@ namespace AFMSDataViewer
                 MaximizeRequested?.Invoke(this, EventArgs.Empty);
             };
 
-            chartSection.Resize += (_, _) => PositionMaximizeToggle();
-            PositionMaximizeToggle();
+            chartSection.Resize += (_, _) => PositionHeaderButtons();
+            PositionHeaderButtons();
         }
 
-        private void PositionMaximizeToggle()
+        private void ConfigureCloseButton()
         {
+            closeButton.Size = new System.Drawing.Size(28, 28);
+            closeButton.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            closeButton.FlatStyle = FlatStyle.Flat;
+            closeButton.FlatAppearance.BorderSize = 0;
+            closeButton.FlatAppearance.MouseOverBackColor = System.Drawing.Color.FromArgb(254, 226, 226);
+            closeButton.FlatAppearance.MouseDownBackColor = System.Drawing.Color.FromArgb(254, 202, 202);
+            closeButton.BackColor = System.Drawing.Color.Transparent;
+            closeButton.ForeColor = System.Drawing.Color.FromArgb(55, 62, 72);
+            closeButton.Cursor = Cursors.Hand;
+            closeButton.TabStop = false;
+            closeButton.AccessibleName = "차트 닫기";
+            hoverTip.SetToolTip(closeButton, "닫기");
+            closeButton.Paint += CloseButton_Paint;
+            closeButton.Click += (_, _) =>
+            {
+                if (isMaximized)
+                {
+                    isMaximized = false;
+                    MaximizeRequested?.Invoke(this, EventArgs.Empty);
+                }
+                CloseRequested?.Invoke(this, EventArgs.Empty);
+            };
+            PositionHeaderButtons();
+        }
+
+        private void PositionHeaderButtons()
+        {
+            closeButton.Location = new System.Drawing.Point(
+                Math.Max(0, chartSection.ClientSize.Width - closeButton.Width - 6),
+                Math.Max(0, (chartSection.HeaderHeight - closeButton.Height) / 2));
             maximizeToggle.Location = new System.Drawing.Point(
-                Math.Max(0, chartSection.ClientSize.Width - maximizeToggle.Width - 6),
+                Math.Max(0, closeButton.Left - maximizeToggle.Width),
                 Math.Max(0, (chartSection.HeaderHeight - maximizeToggle.Height) / 2));
         }
 
@@ -196,6 +231,14 @@ namespace AFMSDataViewer
             {
                 e.Graphics.DrawRectangle(pen, 9, 9, 10, 10);
             }
+        }
+
+        private void CloseButton_Paint(object? sender, PaintEventArgs e)
+        {
+            e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+            using System.Drawing.Pen pen = new(closeButton.ForeColor, 1.4F);
+            e.Graphics.DrawLine(pen, 10, 10, 18, 18);
+            e.Graphics.DrawLine(pen, 18, 10, 10, 18);
         }
 
         public void SetTimeRange(DateTime start, DateTime end)
