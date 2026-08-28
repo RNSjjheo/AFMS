@@ -18,7 +18,7 @@ namespace AFMSDataViewer
             uiPnMain.BackColor = DllColorHelper.HexToColor("#F0F4F9");
             uiPnMain.Margin = new Padding(5);
 
-            uiTpMain.RowStyles[0].Height = 120;
+            uiTpMain.RowStyles[0].Height = 90;
             uiTpMain.RowStyles[1].Height = 120;
             uiTpMain.Margin = Padding.Empty;
 
