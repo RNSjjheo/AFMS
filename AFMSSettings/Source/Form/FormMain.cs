@@ -47,6 +47,9 @@ namespace AFMSSettings
             afmsTabControl1.TabPages.Add(new TabHydroMeter());
             afmsTabControl1.TabPages.Add(new TabCrossSection());
             afmsTabControl1.TabPages.Add(new TabDischarge());
+            afmsTabControl1.TabSizingMode = AFMSTabSizingMode.Equal;
+            afmsTabControl1.EqualTabWidth = 120;
+            afmsTabControl1.BorderRadius = 5;
         }
 
         private void Form1_Load(object sender, EventArgs e)

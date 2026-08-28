@@ -6,6 +6,13 @@ using System.Windows.Forms;
 
 namespace AFMSDll
 {
+    public enum AFMSTabSizingMode
+    {
+        Fill,
+        Equal,
+        Individual
+    }
+
     [ToolboxItem(true)]
     public class AFMSTabControl : _AFMSTabControlBase
     {
@@ -18,11 +25,11 @@ namespace AFMSDll
         private Color _headerBackColor = Color.FromArgb(240, 244, 249);
         private Color _contentBackColor = Color.White;
         private Color _selectedBackColor = Color.White;
-        private Color _selectedForeColor = Color.FromArgb(0, 157, 111);
-        private Color _normalBackColor = Color.White;
-        private Color _normalForeColor = Color.FromArgb(83, 100, 121);
-        private Color _hoverBackColor = Color.White;
-        private Color _selectedBorderColor = Color.FromArgb(0, 157, 111);
+        private Color _selectedForeColor = Color.FromArgb(0, 102, 255);
+        private Color _normalBackColor = Color.Transparent;
+        private Color _normalForeColor = Color.FromArgb(38, 44, 52);
+        private Color _hoverBackColor = Color.FromArgb(247, 250, 253);
+        private Color _selectedBorderColor = Color.FromArgb(0, 102, 255);
 
         private int _headerHeight = 34;
         private int _tabHeight = 25;
@@ -31,7 +38,13 @@ namespace AFMSDll
         private int _tabGap = 4;
         private int _tabHorizontalPadding = 10;
         private int _iconTextGap = 5;
+        private int _selectionIndicatorThickness = 3;
+        private int _selectionIndicatorHorizontalInset = 12;
+        private int _selectionIndicatorBottomOffset = 4;
+        private int _equalTabWidth = 120;
+        private AFMSTabSizingMode _tabSizingMode = AFMSTabSizingMode.Fill;
         private int _hoverIndex = -1;
+        private int _pressedIndex = -1;
 
         public AFMSTabControl()
         {
@@ -63,26 +76,49 @@ namespace AFMSDll
             if (m.Msg == WM_LBUTTONDOWN || m.Msg == WM_LBUTTONUP || m.Msg == WM_LBUTTONDBLCLK)
             {
                 Point point = GetMousePoint(m.LParam);
+                bool inHeader = point.Y >= 0 && point.Y < HeaderHeight;
 
-                if (point.Y >= 0 && point.Y < HeaderHeight)
+                if (m.Msg == WM_LBUTTONDOWN || m.Msg == WM_LBUTTONDBLCLK)
                 {
-                    if (m.Msg == WM_LBUTTONDOWN || m.Msg == WM_LBUTTONDBLCLK)
+                    if (!inHeader)
                     {
-                        int index = HitTestTab(point);
-
-                        if (index >= 0 && index < TabPages.Count && SelectedIndex != index)
-                        {
-                            SelectedIndex = index;
-                            Focus();
-                        }
+                        base.WndProc(ref m);
+                        return;
                     }
 
+                    int index = HitTestTab(point);
+                    _pressedIndex = index;
+                    Capture = index >= 0;
+                    SelectTabFromHeader(index);
+
+                    m.Result = IntPtr.Zero;
+                    return;
+                }
+
+                int pressedIndex = _pressedIndex;
+                int releasedIndex = inHeader ? HitTestTab(point) : -1;
+
+                if (releasedIndex >= 0 && (pressedIndex < 0 || pressedIndex == releasedIndex)) SelectTabFromHeader(releasedIndex);
+
+                _pressedIndex = -1;
+                Capture = false;
+
+                if (inHeader || pressedIndex >= 0)
+                {
                     m.Result = IntPtr.Zero;
                     return;
                 }
             }
 
             base.WndProc(ref m);
+        }
+
+        private void SelectTabFromHeader(int index)
+        {
+            if (index < 0 || index >= TabPages.Count || SelectedIndex == index) return;
+
+            SelectedTab = TabPages[index];
+            Invalidate(new Rectangle(0, 0, Width, Math.Min(HeaderHeight, Height)));
         }
 
         private static Point GetMousePoint(IntPtr lParam)
@@ -167,6 +203,20 @@ namespace AFMSDll
         }
 
         [Category("AFMS Appearance")]
+        [DesignerSerializationVisibility(DesignerSerializationVisibility.Visible)]
+        [Description("선택된 탭의 글자와 하단 표시선에 함께 적용할 색상입니다.")]
+        public Color AccentColor
+        {
+            get => _selectedForeColor;
+            set
+            {
+                _selectedForeColor = value;
+                _selectedBorderColor = value;
+                Invalidate();
+            }
+        }
+
+        [Category("AFMS Appearance")]
         [DefaultValue(36)]
         public int HeaderHeight
         {
@@ -239,6 +289,48 @@ namespace AFMSDll
             set { _iconTextGap = Math.Max(0, value); Invalidate(); }
         }
 
+        [Category("AFMS Appearance")]
+        [DefaultValue(3)]
+        public int SelectionIndicatorThickness
+        {
+            get => _selectionIndicatorThickness;
+            set { _selectionIndicatorThickness = Math.Max(1, value); Invalidate(); }
+        }
+
+        [Category("AFMS Appearance")]
+        [DefaultValue(12)]
+        public int SelectionIndicatorHorizontalInset
+        {
+            get => _selectionIndicatorHorizontalInset;
+            set { _selectionIndicatorHorizontalInset = Math.Max(0, value); Invalidate(); }
+        }
+
+        [Category("AFMS Appearance")]
+        [DefaultValue(4)]
+        public int SelectionIndicatorBottomOffset
+        {
+            get => _selectionIndicatorBottomOffset;
+            set { _selectionIndicatorBottomOffset = Math.Max(1, value); Invalidate(); }
+        }
+
+        [Category("AFMS Appearance")]
+        [DefaultValue(AFMSTabSizingMode.Fill)]
+        [Description("탭 폭 배치 방식입니다. Fill은 전체 폭을 채우고, Equal은 동일 폭, Individual은 내용에 맞는 개별 폭을 사용합니다.")]
+        public AFMSTabSizingMode TabSizingMode
+        {
+            get => _tabSizingMode;
+            set { _tabSizingMode = value; PerformLayout(); Invalidate(); }
+        }
+
+        [Category("AFMS Appearance")]
+        [DefaultValue(120)]
+        [Description("TabSizingMode가 Equal일 때 사용할 탭 폭입니다.")]
+        public int EqualTabWidth
+        {
+            get => _equalTabWidth;
+            set { _equalTabWidth = Math.Max(1, value); PerformLayout(); Invalidate(); }
+        }
+
         #endregion
 
         protected override void OnPaintBackground(PaintEventArgs e)
@@ -256,6 +348,8 @@ namespace AFMSDll
 
             e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
             e.Graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
+
+            DrawHeaderBottomLine(e.Graphics);
 
             for (int i = 0; i < TabPages.Count; i++) DrawTab(e.Graphics, i);
         }
@@ -290,30 +384,69 @@ namespace AFMSDll
             bool hover = !selected && _hoverIndex == index;
             TabPage page = TabPages[index];
 
-            Color backColor = selected ? SelectedBackColor : hover ? HoverBackColor : NormalBackColor;
             Color foreColor = selected ? SelectedForeColor : NormalForeColor;
-            Color borderColor = selected ? SelectedBorderColor : BorderColor;
 
-            using GraphicsPath fillPath = AFMSRoundedDrawing.CreatePath(rect, BorderRadius);
-            RectangleF borderRectangle = new RectangleF(rect.Left + 0.5F, rect.Top + 0.5F,
-                Math.Max(0F, rect.Width - 1F), Math.Max(0F, rect.Height - 1F));
-            using GraphicsPath borderPath = AFMSRoundedDrawing.CreatePath(borderRectangle, BorderRadius);
-            using SolidBrush backBrush = new SolidBrush(backColor);
-            using Pen borderPen = new Pen(borderColor, BorderThickness) { Alignment = PenAlignment.Center, LineJoin = LineJoin.Round };
-
-            g.FillPath(backBrush, fillPath);
-
-            SmoothingMode oldSmoothingMode = g.SmoothingMode;
-            PixelOffsetMode oldPixelOffsetMode = g.PixelOffsetMode;
-
-            g.SmoothingMode = SmoothingMode.AntiAlias;
-            g.PixelOffsetMode = PixelOffsetMode.Half;
-            g.DrawPath(borderPen, borderPath);
-
-            g.SmoothingMode = oldSmoothingMode;
-            g.PixelOffsetMode = oldPixelOffsetMode;
+            if (selected)
+            {
+                DrawSelectedTabBackground(g, rect);
+            }
+            else
+            {
+                Color backColor = hover ? HoverBackColor : NormalBackColor;
+                DrawFlatTabBackground(g, rect, backColor);
+            }
 
             DrawTabContent(g, page, rect, foreColor);
+
+            if (selected) DrawSelectionIndicator(g, rect);
+        }
+
+        private void DrawHeaderBottomLine(Graphics g)
+        {
+            if (Width <= 0 || HeaderHeight <= 0 || HeaderHeight > Height) return;
+
+            using Pen pen = new Pen(BorderColor, Math.Max(1F, BorderThickness));
+            g.DrawLine(pen, 0, HeaderHeight - 1, Width, HeaderHeight - 1);
+        }
+
+        private void DrawSelectedTabBackground(Graphics g, Rectangle tabRect)
+        {
+            Rectangle rect = new Rectangle(tabRect.Left, tabRect.Top, tabRect.Width, Math.Max(1, HeaderHeight - tabRect.Top));
+
+            using GraphicsPath fillPath = CreateTopRoundedPath(rect, BorderRadius);
+            using GraphicsPath borderPath = CreateTopRoundedBorderPath(rect, BorderRadius);
+            using SolidBrush backBrush = new SolidBrush(SelectedBackColor);
+            using Pen borderPen = new Pen(BorderColor, Math.Max(1F, BorderThickness))
+            {
+                Alignment = PenAlignment.Center,
+                LineJoin = LineJoin.Round
+            };
+
+            g.FillPath(backBrush, fillPath);
+            g.DrawPath(borderPen, borderPath);
+
+            // The selected tab visually joins the content surface below it.
+            g.FillRectangle(backBrush, rect.Left + 1, HeaderHeight - 1, Math.Max(1, rect.Width - 2), 1);
+        }
+
+        private void DrawFlatTabBackground(Graphics g, Rectangle rect, Color color)
+        {
+            if (color.A == 0) return;
+
+            using GraphicsPath path = CreateTopRoundedPath(rect, Math.Min(BorderRadius, 6));
+            using SolidBrush brush = new SolidBrush(color);
+            g.FillPath(brush, path);
+        }
+
+        private void DrawSelectionIndicator(Graphics g, Rectangle rect)
+        {
+            int maxInset = Math.Max(0, (rect.Width - 1) / 2);
+            int inset = Math.Min(SelectionIndicatorHorizontalInset, maxInset);
+            int width = Math.Max(1, rect.Width - (inset * 2));
+            int y = Math.Max(rect.Top, HeaderHeight - SelectionIndicatorBottomOffset - SelectionIndicatorThickness);
+
+            using SolidBrush brush = new SolidBrush(SelectedBorderColor);
+            g.FillRectangle(brush, rect.Left + inset, y, width, SelectionIndicatorThickness);
         }
 
         private void DrawTabContent(Graphics g, TabPage page, Rectangle rect, Color foreColor)
@@ -341,6 +474,24 @@ namespace AFMSDll
 
         private Rectangle GetCustomTabRectangle(int index)
         {
+            if (TabSizingMode == AFMSTabSizingMode.Fill && TabPages.Count > 0)
+            {
+                int gapWidth = TabGap * Math.Max(0, TabPages.Count - 1);
+                int availableWidth = Math.Max(1, Width - (TabLeftMargin * 2) - gapWidth);
+                int baseWidth = availableWidth / TabPages.Count;
+                int remainder = availableWidth % TabPages.Count;
+                int stretchedX = TabLeftMargin + (index * baseWidth) + Math.Min(index, remainder) + (index * TabGap);
+                int width = baseWidth + (index < remainder ? 1 : 0);
+
+                return new Rectangle(stretchedX, TabTopMargin, width, TabHeight);
+            }
+
+            if (TabSizingMode == AFMSTabSizingMode.Equal)
+            {
+                int equalX = TabLeftMargin + (index * (EqualTabWidth + TabGap));
+                return new Rectangle(equalX, TabTopMargin, EqualTabWidth, TabHeight);
+            }
+
             int x = TabLeftMargin;
 
             for (int i = 0; i < index; i++) x += GetTabWidth(TabPages[i]) + TabGap;
@@ -359,6 +510,74 @@ namespace AFMSDll
             return Math.Max(TabHeight, textSize.Width + imageWidth + gap + (TabHorizontalPadding * 2));
         }
 
+        private static GraphicsPath CreateTopRoundedPath(Rectangle rect, int radius)
+        {
+            GraphicsPath path = new GraphicsPath();
+
+            if (radius <= 0)
+            {
+                path.AddRectangle(rect);
+                path.CloseFigure();
+                return path;
+            }
+
+            int r = Math.Min(radius, Math.Min(rect.Width / 2, rect.Height / 2));
+            if (r <= 0)
+            {
+                path.AddRectangle(rect);
+                path.CloseFigure();
+                return path;
+            }
+
+            int diameter = r * 2;
+
+            path.AddArc(rect.Left, rect.Top, diameter, diameter, 180F, 90F);
+            path.AddArc(rect.Right - diameter, rect.Top, diameter, diameter, 270F, 90F);
+            path.AddLine(rect.Right, rect.Top + r, rect.Right, rect.Bottom);
+            path.AddLine(rect.Right, rect.Bottom, rect.Left, rect.Bottom);
+            path.AddLine(rect.Left, rect.Bottom, rect.Left, rect.Top + r);
+            path.CloseFigure();
+            return path;
+        }
+
+        private static GraphicsPath CreateTopRoundedBorderPath(Rectangle rect, int radius)
+        {
+            GraphicsPath path = new GraphicsPath();
+            float left = rect.Left + 0.5F;
+            float top = rect.Top + 0.5F;
+            float right = rect.Right - 0.5F;
+            float bottom = rect.Bottom - 0.5F;
+
+            if (radius <= 0)
+            {
+                path.StartFigure();
+                path.AddLine(left, bottom, left, top);
+                path.AddLine(left, top, right, top);
+                path.AddLine(right, top, right, bottom);
+                return path;
+            }
+
+            float r = Math.Min(radius, Math.Min(rect.Width / 2F, rect.Height / 2F));
+            if (r <= 0F)
+            {
+                path.StartFigure();
+                path.AddLine(left, bottom, left, top);
+                path.AddLine(left, top, right, top);
+                path.AddLine(right, top, right, bottom);
+                return path;
+            }
+
+            float diameter = r * 2F;
+
+            path.StartFigure();
+            path.AddLine(left, bottom, left, top + r);
+            path.AddArc(left, top, diameter, diameter, 180F, 90F);
+            path.AddLine(left + r, top, right - r, top);
+            path.AddArc(right - diameter, top, diameter, diameter, 270F, 90F);
+            path.AddLine(right, top + r, right, bottom);
+            return path;
+        }
+
         private int HitTestTab(Point point)
         {
             if (point.Y < 0 || point.Y >= HeaderHeight) return -1;
@@ -366,7 +585,7 @@ namespace AFMSDll
             for (int i = 0; i < TabPages.Count; i++)
             {
                 Rectangle rect = GetCustomTabRectangle(i);
-                if (rect.Contains(point)) return i;
+                if (point.X >= rect.Left && point.X < rect.Right) return i;
             }
 
             return -1;
