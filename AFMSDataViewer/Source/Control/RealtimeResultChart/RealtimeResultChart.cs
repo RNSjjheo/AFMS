@@ -97,7 +97,7 @@ namespace AFMSDataViewer
             uiTpMain.ColumnStyles.Clear();
             uiTpMain.RowCount = 3;
             uiTpMain.ColumnCount = 1;
-            uiTpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 45F));
+            uiTpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, RealtimeResultChartControl.ControlAreaHeight));
             uiTpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 0F));
             uiTpMain.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             uiTpMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
@@ -272,7 +272,8 @@ namespace AFMSDataViewer
             formsPlot.Plot.Axes.Bottom.TickLabelStyle.FontSize = 7F;
             formsPlot.Plot.Axes.Bottom.TickLabelStyle.ForeColor = ScottPlot.Color.FromHex("#64748B");
             formsPlot.MouseMove += FormsPlot_MouseMove;
-            formsPlot.MouseDoubleClick += FormsPlot_MouseDoubleClick;
+            // ScottPlot forwards its SKControl.DoubleClick, but not MouseDoubleClick.
+            formsPlot.DoubleClick += FormsPlot_DoubleClick;
             formsPlot.MouseLeave += (_, _) => hoverTip.Hide(formsPlot);
         }
 
@@ -650,14 +651,17 @@ namespace AFMSDataViewer
             return availableSeries.Where(series => selected == "전체" || series.Name == selected || series.SecondaryAxis).ToList();
         }
 
-        private void FormsPlot_MouseDoubleClick(object? sender, MouseEventArgs e)
+        private void FormsPlot_DoubleClick(object? sender, EventArgs e)
         {
-            if (e.Button != MouseButtons.Left ||
+            MouseButtons button = e is MouseEventArgs mouseEvent ? mouseEvent.Button : Control.MouseButtons;
+            if (button != MouseButtons.Left ||
                 chartType is not (ChartMainType.Velocity or ChartMainType.Discharge)) return;
 
             // Compare screen distances so a double-click on empty chart space does not open a dialog.
             double nearestDistanceSquared = Math.Pow(8 * formsPlot.DisplayScale, 2);
-            Pixel mouse = new(e.X * formsPlot.DisplayScale, e.Y * formsPlot.DisplayScale);
+            // WinForms client coordinates already use device pixels, as does the SKControl surface.
+            System.Drawing.Point location = formsPlot.PointToClient(Control.MousePosition);
+            Pixel mouse = new(location.X, location.Y);
             if (!formsPlot.Plot.LastRender.DataRect.Contains(mouse)) return;
 
             RealtimeChartSeries? nearestSeries = null;
