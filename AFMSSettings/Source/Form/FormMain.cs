@@ -26,7 +26,7 @@ namespace AFMSSettings
 
             string programPath = Environment.ProcessPath ?? throw new InvalidOperationException("현재 프로그램 경로를 확인할 수 없습니다.");
 
-            FBProvider.Instance.ConnStrBuilder = FBProvider.SetFBConnStrBuilder();
+            FBProvider.Instance.Initialize(FBProvider.SetFBConnStrBuilder());
             List<string> dbtablelog = FBProvider.Instance.CheckTables();
 
             Log.Info($"===========================================================");

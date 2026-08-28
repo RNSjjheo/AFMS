@@ -125,7 +125,7 @@ namespace AFMSDataViewer
             sql += "\n" + $"WHERE {FbtSETUP.COL_PK1} = 20";
             sql += "\n" + $"AND {FbtSETUP.COL_PK2} = 2";
 
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             db.RunQuery(sql);
 
             foreach (DataRow row in db.Results.Rows)
@@ -144,7 +144,7 @@ namespace AFMSDataViewer
             sql += "\n" + $"WHERE {FbtSETUP.COL_PK1} = 10";
             sql += "\n" + $"AND {FbtSETUP.COL_PK2} = 4";
 
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             db.RunQuery(sql);
 
             foreach (DataRow row in db.Results.Rows)
@@ -160,7 +160,7 @@ namespace AFMSDataViewer
                 $"{FbtAFMSHydroMeter.COL_DEVICE_NAME}, {FbtAFMSHydroMeter.COL_COMM_CONFIG} " +
                 $"FROM {FbtAFMSHydroMeter.TABLE_NAME} ORDER BY {FbtAFMSHydroMeter.COL_ID}";
 
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             DataTable table = db.Execute(sql, out string error);
             if (!string.IsNullOrEmpty(error))
             {

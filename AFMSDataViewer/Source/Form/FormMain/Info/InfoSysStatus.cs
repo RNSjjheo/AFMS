@@ -84,7 +84,7 @@ namespace AFMSDataViewer
             sql += $" FROM {FbtVTHLOGGER.TABLE_NAME}";
             sql += $" ORDER BY {_FBTableBase.COL_MEASURE_DATE} DESC, {_FBTableBase.COL_MEASURE_TIME} DESC";
 
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             DataTable table = db.Execute(sql, out string error);
 
             if (!string.IsNullOrEmpty(error))

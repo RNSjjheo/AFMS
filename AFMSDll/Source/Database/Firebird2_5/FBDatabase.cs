@@ -8,16 +8,27 @@ namespace AFMSDll
 {
     public class FBDatabase : IDisposable
     {
-        private readonly FbConnectionStringBuilder ConnStrBuilder;
-        private static readonly object obj = new object();
+        private readonly string connectionString;
+        private readonly object syncRoot = new object();
         private bool disposed;
 
         public string ErrorMsg;
         public DataTable Results { get; private set; }
 
         public FBDatabase(FbConnectionStringBuilder connectionStringBuilder)
+            : this(connectionStringBuilder?.ConnectionString
+                ?? throw new ArgumentNullException(nameof(connectionStringBuilder)))
         {
-            ConnStrBuilder = connectionStringBuilder;
+        }
+
+        public FBDatabase(string connectionString)
+        {
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                throw new ArgumentException("DB 연결 문자열이 비어 있습니다.", nameof(connectionString));
+            }
+
+            this.connectionString = connectionString;
             Results = new DataTable();
         }
 
@@ -51,11 +62,11 @@ namespace AFMSDll
             DataTable table = new DataTable();
             error = string.Empty;
 
-            lock (obj)
+            lock (syncRoot)
             {
                 ThrowIfDisposed();
 
-                using FbConnection connection = new FbConnection(ConnStrBuilder.ConnectionString);
+                using FbConnection connection = new FbConnection(connectionString);
 
                 try
                 {
@@ -155,7 +166,7 @@ namespace AFMSDll
 
         public void Dispose()
         {
-            lock (obj)
+            lock (syncRoot)
             {
                 if (disposed) return;
 

@@ -25,7 +25,7 @@ namespace AFMSExtraLogger
 
             RegisterGlobalExceptionHandlers();
 
-            FBProvider.Instance.ConnStrBuilder = FBProvider.SetFBConnStrBuilder();
+            FBProvider.Instance.Initialize(FBProvider.SetFBConnStrBuilder());
             List<string> dbtablelog = FBProvider.Instance.CheckTables();
 
             Configuration.Instance.Setup();

@@ -92,7 +92,7 @@ namespace AFMSExtraLogger
             sql += ",\n" + $"{data.CellLength}";
             sql += "\n" + $")";
 
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             db.RunNonQuery(sql);
 
             return true;
@@ -134,7 +134,7 @@ namespace AFMSExtraLogger
             sql += ",\n" + $"0";
             sql += "\n" + $")";
 
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             db.RunNonQuery(sql);
 
             return true;
@@ -160,7 +160,7 @@ namespace AFMSExtraLogger
             sql += ",\n" + $"{data.Uncertainty}";
             sql += "\n" + $")";
 
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             db.RunNonQuery(sql);
 
             return true;
@@ -206,7 +206,7 @@ namespace AFMSExtraLogger
             sql += ",\n" + $"{data.VelocityExpandedUncertainty.ToString("0.00")}";
             sql += "\n" + $")";
 
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             db.RunNonQuery(sql);
 
             return true;
@@ -219,7 +219,7 @@ namespace AFMSExtraLogger
             sql += "\n" + $"WHERE {FbtHYDROMETERMPDS.COL_MEASURE_DATE} = '{data.Info.MeasureTime.ToString("yyyyMMdd")}'";
             sql += "\n" + $"AND {FbtHYDROMETERMPDS.COL_MEASURE_TIME} = '{data.Info.MeasureTime.ToString("HHmmss")}'";
 
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             db.RunQuery(sql);
 
             foreach (DataRow row in db.Results.Rows)

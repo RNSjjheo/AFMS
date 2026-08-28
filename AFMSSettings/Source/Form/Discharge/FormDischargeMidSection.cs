@@ -101,7 +101,7 @@ namespace AFMSSettings.Source.Form.Discharge
             query.Add(FbtAFMSHydroMeter.COL_TRANSECT_CNT);
             query.Where(FbtAFMSHydroMeter.COL_ID, "=", HydroId);
 
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             DataTable table = db.Execute(query, out string error);
 
             if (!string.IsNullOrEmpty(error) || table.Rows.Count == 0) return;

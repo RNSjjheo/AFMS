@@ -17,7 +17,7 @@ namespace AFMSDll
             sql += "\n" + $"AND {FbtSETUP.COL_PK2} IN (2, 3, 5)";
             sql += "\n" + $"ORDER BY {FbtSETUP.COL_PK2}";
 
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             db.RunQuery(sql);
 
             foreach (DataRow row in db.Results.Rows)
@@ -53,7 +53,7 @@ namespace AFMSDll
             sql += "\n" + $"AND {FbtSETUP.COL_PK2} IN (2, 3, 5)";
             sql += "\n" + $"ORDER BY {FbtSETUP.COL_PK2}";
 
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             db.RunQuery(sql);
 
             foreach (DataRow row in db.Results.Rows)
@@ -116,7 +116,7 @@ namespace AFMSDll
             sql += "\n" + $"FROM {FbtAFMSHydroMeter.TABLE_NAME}";
             sql += "\n" + $"WHERE {FbtAFMSHydroMeter.COL_DATA_TABLE} = '{dataTable}'";
 
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             db.RunQuery(sql);
 
             if (db.Results.Rows.Count > 0) return;
@@ -186,7 +186,7 @@ namespace AFMSDll
             sql += "\n" + $"WHERE {FbtAFMSHydroMeter.COL_DATA_TABLE} = '{dataTable}'";
             sql += "\n" + $"AND {FbtAFMSHydroMeter.COL_AFMS_ONLY} = 0";
 
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             db.RunNonQuery(sql);
         }
     }

@@ -30,7 +30,7 @@ namespace AFMSDataViewer
             RnsLog.Start();
             RnsLog.AppenderInfo();
             RnsLog.ShowVersion();
-            FBProvider.Instance.ConnStrBuilder = FBProvider.SetFBConnStrBuilder();
+            FBProvider.Instance.Initialize(FBProvider.SetFBConnStrBuilder());
             List<string> dbtablelog = FBProvider.Instance.CheckTables();
 
             InitializeComponent();

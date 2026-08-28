@@ -95,7 +95,7 @@ namespace AFMSDataViewer
             sql += "\n" + $"WHERE {FbtSETUP.COL_PK1} = 1";
             sql += "\n" + $"AND {FbtSETUP.COL_PK2} = 1";
 
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             db.RunQuery(sql);
 
             foreach (DataRow row in db.Results.Rows)

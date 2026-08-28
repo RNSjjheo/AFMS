@@ -39,7 +39,7 @@ namespace AFMSExtraLogger.Source.Singleton
             string sql = $"SELECT {FbtSETUP.COL_VALUE01} FROM {FbtSETUP.TABLE_NAME}";
             sql += $" WHERE {FbtSETUP.COL_PK1}='1' AND {FbtSETUP.COL_PK2}='1'";
 
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             db.RunQuery(sql);
 
             foreach (DataRow row in db.Results.Rows)

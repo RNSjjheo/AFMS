@@ -18,7 +18,7 @@ namespace AFMSDischargeService
             Log.Info(installResult.Status);
             Log.Info(installResult.Message);
 
-            FBProvider.Instance.ConnStrBuilder = FBProvider.SetFBConnStrBuilder();
+            FBProvider.Instance.Initialize(FBProvider.SetFBConnStrBuilder());
 
             var builder = Host.CreateApplicationBuilder(
                 new HostApplicationBuilderSettings

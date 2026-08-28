@@ -41,7 +41,7 @@ namespace AFMSDischargeService
                     }
 
                     bool calculationCompleted = false;
-                    using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
+                    using FBDatabase db = FBProvider.Instance.CreateDatabase();
 
                     foreach (QCalculatorBase calculator in calculators)
                     {
@@ -207,7 +207,7 @@ namespace AFMSDischargeService
             sql += $" AND C.{FbtAFMSDischargeMethodConfig.COL_ENABLED} = 1";
             sql += $" ORDER BY C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_TYPE}, C.{FbtAFMSDischargeMethodConfig.COL_DEVICE_ID}";
 
-            using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             DataTable table = db.Execute(sql, out string error);
             if (!string.IsNullOrEmpty(error))
                 throw new InvalidOperationException($"유량 설정 조회 실패: {error}");
@@ -236,7 +236,7 @@ namespace AFMSDischargeService
         private void InitializeCalculators(CancellationToken stoppingToken)
         {
             List<QCalculatorBase> initializedCalculators = new();
-            using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             int startupCrossSectionId = LoadStartupCrossSectionId(db);
             Dictionary<int, int> startupTransectIds = LoadStartupTransectIds(db);
 

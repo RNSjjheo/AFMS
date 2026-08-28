@@ -21,14 +21,19 @@ namespace AFMSDischargeService
 
             stoppingToken.ThrowIfCancellationRequested();
 
-            List<string> tableErrors = FBProvider.Instance.CheckDischargeTables();
+            List<string> tableLogs = FBProvider.Instance.CheckTables();
             stoppingToken.ThrowIfCancellationRequested();
 
-            if (tableErrors.Count > 0)
+            foreach (string tableLog in tableLogs)
             {
-                foreach (string error in tableErrors)
-                    logger.LogError("유량 테이블 확인 오류: {Error}", error);
+                logger.LogInformation("DB 테이블 확인: {TableLog}", tableLog);
+            }
 
+            bool timeslotTableExists = FBProvider.Instance.ExistTable(FbtAFMSDischargeTimeslot.TABLE_NAME);
+            bool resultTableExists = FBProvider.Instance.ExistTable(FbtAFMSDischargeResult.TABLE_NAME);
+
+            if (!timeslotTableExists || !resultTableExists)
+            {
                 throw new InvalidOperationException("유량 테이블을 준비하지 못해 서비스를 시작할 수 없습니다.");
             }
 
@@ -124,7 +129,7 @@ namespace AFMSDischargeService
             query.Add(FbtAFMSDischargeTimeslot.COL_SLOT_TIME);
             query.OrderByDesc(FbtAFMSDischargeTimeslot.COL_SLOT_TIME);
 
-            using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             DataTable table = db.Execute(query, out string error);
             if (!string.IsNullOrEmpty(error)) throw new InvalidOperationException(error);
             if (table.Rows.Count == 0 || table.Rows[0][FbtAFMSDischargeTimeslot.COL_SLOT_TIME] == DBNull.Value) return null;
@@ -141,7 +146,7 @@ namespace AFMSDischargeService
             query.Value(FbtAFMSDischargeTimeslot.COL_MEASURE_TIME, slotTime.ToString("HHmmss"));
             query.Value(FbtAFMSDischargeTimeslot.COL_SLOT_TIME, slotTime, typeof(DateTime));
 
-            using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             db.Execute(query, out string error);
             return error;
         }

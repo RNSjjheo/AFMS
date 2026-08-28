@@ -101,7 +101,7 @@ namespace AFMSSettings
             hydroQuery.Add(FbtAFMSHydroMeter.COL_DEVICE_NAME);
             hydroQuery.Where(FbtAFMSHydroMeter.COL_ID, "=", HydroId);
 
-            using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             DataTable hydroTable = db.Execute(hydroQuery, out string error);
             if (!string.IsNullOrEmpty(error))
             {

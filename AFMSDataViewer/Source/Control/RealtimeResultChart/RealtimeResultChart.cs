@@ -279,7 +279,7 @@ namespace AFMSDataViewer
         {
             try
             {
-                using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
+                using FBDatabase db = FBProvider.Instance.CreateDatabase();
                 if (chartType == ChartMainType.Velocity) PopulateVelocityDeviceSelector(db);
                 DataTable table = db.Execute(GetSql(), out string error);
                 if (!string.IsNullOrEmpty(error)) { ShowMessage(error); return; }

@@ -289,7 +289,7 @@ namespace AFMSSettings
             query.Value(FbtAFMSHydroMeter.COL_TRANSECT_CNT, transectCount);
             query.Value(FbtAFMSHydroMeter.COL_AFMS_ONLY, 1);
 
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             db.Execute(query, out string error);
             return error;
         }
@@ -322,7 +322,7 @@ namespace AFMSSettings
                 $"WHERE B2.{FbtAFMSHydroTransect.COL_HYDRO_ID} = A.{FbtAFMSHydroMeter.COL_ID})");
             query.OrderBy(FbtAFMSHydroMeter.COL_AFMS_ONLY);
 
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             db.RunQuery(query.Sql);
             db.Results.AddRowNo(COL_ROW_NO);
             uiGridMain.DataSource = db.Results;

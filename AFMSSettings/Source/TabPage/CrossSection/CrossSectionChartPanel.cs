@@ -115,7 +115,7 @@ namespace AFMSSettings
                 $"WHERE B2.{FbtAFMSHydroTransect.COL_HYDRO_ID} = A.{FbtAFMSHydroMeter.COL_ID})");
             query.OrderBy(FbtAFMSHydroMeter.COL_ID);
 
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             DataTable table = db.Execute(query, out string error);
 
             if (string.IsNullOrEmpty(error))

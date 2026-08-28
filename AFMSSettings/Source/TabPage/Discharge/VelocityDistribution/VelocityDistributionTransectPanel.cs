@@ -41,7 +41,7 @@ namespace AFMSSettings
             query.Where(FbtAFMSHydroTransect.COL_HYDRO_ID, "=", hydroId);
             query.OrderByDesc(FbtAFMSHydroTransect.COL_ID);
 
-            using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             DataTable table = db.Execute(query, out string error);
             if (!string.IsNullOrEmpty(error)) return error;
             if (table.Rows.Count == 0) return string.Empty;

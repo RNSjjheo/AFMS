@@ -88,7 +88,7 @@ namespace AFMSDataReplicator
             sql += $"\n" + $"FROM {FbtAFMSReplicatorSetting.TABLE_NAME}";
             sql += $"\n" + $"ORDER BY {FbtAFMSReplicatorSetting.COL_ID} DESC";
 
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             DataTable settings = db.Execute(sql, out string error);
 
             if (!string.IsNullOrEmpty(error))
@@ -147,7 +147,7 @@ namespace AFMSDataReplicator
             {
                 FbConnectionStringBuilder remoteConnection = SetFBConnStrBuilder(setting.TargetIp);
                 _dbRemote = new FBDatabase(remoteConnection);
-                _dbLocal = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+                _dbLocal = FBProvider.Instance.CreateDatabase();
             }
 
             EnsureReplicationTables(setting);
@@ -225,7 +225,7 @@ namespace AFMSDataReplicator
             sql += $"\n" + $"FROM {table.TableName}";
             sql += $"\n" + $"ORDER BY {MAX_DATETIME} DESC";
 
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             db.RunQuery(sql);
 
             foreach (DataRow row in db.Results.Rows)

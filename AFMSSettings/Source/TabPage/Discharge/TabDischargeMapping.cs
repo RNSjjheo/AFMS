@@ -61,7 +61,7 @@ namespace AFMSSettings
             ResetDeviceRows();
             _originalValues.Clear();
 
-            using FBDatabase db = new(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             LoadMethodAvailability(db);
             Dictionary<string, bool> configured = LoadLatestSelections(db);
 

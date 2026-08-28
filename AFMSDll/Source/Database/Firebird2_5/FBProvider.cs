@@ -1,19 +1,17 @@
 ﻿using FirebirdSql.Data.FirebirdClient;
-using FirebirdSql.Data.Services;
 using RnsLibrary;
 using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Text;
 
 namespace AFMSDll
 {
-    public class FBProvider
+    public sealed class FBProvider
     {
         private static readonly FBProvider instance = new FBProvider();
 
-        private List<_FBTableBase> Tables = new List<_FBTableBase>();
-        public FbConnectionStringBuilder ConnStrBuilder;
+        private readonly object syncRoot = new object();
+        private string defaultConnectionString = string.Empty;
         private FBProvider()
         {
             // 외부에서 new AppConfig() 하지 못하게 막음
@@ -27,11 +25,109 @@ namespace AFMSDll
             }
         }
 
+        // 기존 외부 호출과의 호환을 위한 복사본 기반 프로퍼티입니다.
+        // 신규 코드는 Initialize()와 CreateDatabase()를 사용합니다.
+        public FbConnectionStringBuilder ConnStrBuilder
+        {
+            get
+            {
+                lock (syncRoot)
+                {
+                    if (string.IsNullOrWhiteSpace(defaultConnectionString))
+                    {
+                        return new FbConnectionStringBuilder();
+                    }
+
+                    return new FbConnectionStringBuilder(defaultConnectionString);
+                }
+            }
+            set
+            {
+                Initialize(value);
+            }
+        }
+
+        public bool IsInitialized
+        {
+            get
+            {
+                lock (syncRoot)
+                {
+                    return !string.IsNullOrWhiteSpace(defaultConnectionString);
+                }
+            }
+        }
+
+        public void Initialize(FbConnectionStringBuilder connectionStringBuilder)
+        {
+            if (connectionStringBuilder == null)
+            {
+                throw new ArgumentNullException(nameof(connectionStringBuilder));
+            }
+
+            Initialize(connectionStringBuilder.ConnectionString);
+        }
+
+        public void Initialize(DatabaseProfile profile)
+        {
+            if (profile == null)
+            {
+                throw new ArgumentNullException(nameof(profile));
+            }
+
+            Initialize(profile.ConnectionString);
+        }
+
+        public void Initialize(string connectionString)
+        {
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                throw new ArgumentException("DB 연결 문자열이 비어 있습니다.", nameof(connectionString));
+            }
+
+            lock (syncRoot)
+            {
+                defaultConnectionString = connectionString;
+            }
+        }
+
+        public FBDatabase CreateDatabase()
+        {
+            string connectionString;
+
+            lock (syncRoot)
+            {
+                connectionString = defaultConnectionString;
+            }
+
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                throw new InvalidOperationException("FBProvider가 초기화되지 않았습니다.");
+            }
+
+            return new FBDatabase(connectionString);
+        }
+
+        public FBDatabase CreateDatabase(DatabaseProfile profile)
+        {
+            if (profile == null)
+            {
+                throw new ArgumentNullException(nameof(profile));
+            }
+
+            return new FBDatabase(profile.ConnectionString);
+        }
+
+        public FBDatabase CreateDatabase(string connectionString)
+        {
+            return new FBDatabase(connectionString);
+        }
+
 
         public int GetNextID(string tablename)
         {
             string sql = $"SELECT COALESCE(MAX({_FBTableBase.COL_ID}), 0) + 1 AS {_FBTableBase.COL_ID} FROM {tablename}";
-            using FBDatabase db = new FBDatabase(ConnStrBuilder);
+            using FBDatabase db = CreateDatabase();
             db.RunQuery(sql);
 
             foreach (DataRow row in db.Results.Rows)
@@ -55,25 +151,10 @@ namespace AFMSDll
         {
             List<string> result = new List<string>();
 
-            Tables.Add(new FbtHYDROMETERVIDEO());
-            Tables.Add(new FbtHYDROMETERVIDEOCELL());
-            Tables.Add(new FbtHYDROMETERMPDS());
-            Tables.Add(new FbtHYDROMETERMPDSCELL());
-            Tables.Add(new FbtWATERLEVEL());
-            Tables.Add(new FbtVTHLOGGER());
-            Tables.Add(new FbtSETUP());
-            Tables.Add(new FbtAFMSCrossSection());
-            Tables.Add(new FbtAFMSHydroMeter());
-            Tables.Add(new FbtAFMSDischargeMethodConfig());
-            Tables.Add(new FbtAFMSDischargeTimeslot());
-            Tables.Add(new FbtAFMSDischargeResult());
-            Tables.Add(new FbtAFMSReplicatorSetting());
-            Tables.Add(new FbtAFMSHydroTransect());
+            List<_FBTableBase> tables = CreateTableDefinitions();
+            using FBDatabase db = CreateDatabase();
 
-
-            using FBDatabase db = new FBDatabase(ConnStrBuilder);
-
-            foreach (var table in Tables)
+            foreach (_FBTableBase table in tables)
             {
                 string tablename = table.GetTableName();
 
@@ -118,43 +199,13 @@ namespace AFMSDll
                 }
             }
 
-            foreach (var table in Tables)
+            foreach (_FBTableBase table in tables)
             {
                 string log = table.CheckNewColumn(db);
                 if(log != "") result.Add(log);
             }
 
             Sync();
-
-            return result;
-        }
-
-        public List<string> CheckDischargeTables()
-        {
-            List<string> result = new List<string>();
-            _FBTableBase[] dischargeTables =
-            {
-                new FbtAFMSDischargeTimeslot(),
-                new FbtAFMSDischargeResult()
-            };
-
-            using FBDatabase db = new FBDatabase(ConnStrBuilder);
-            foreach (_FBTableBase table in dischargeTables)
-            {
-                string tableName = table.GetTableName();
-                if (!ExistTable(tableName))
-                {
-                    db.Execute(table.GetCreateTableSql(), out string error);
-                    if (!string.IsNullOrEmpty(error))
-                    {
-                        result.Add(error);
-                        continue;
-                    }
-                }
-
-                string columnError = table.CheckNewColumn(db);
-                if (!string.IsNullOrEmpty(columnError)) result.Add(columnError);
-            }
 
             return result;
         }
@@ -170,7 +221,7 @@ namespace AFMSDll
             string sql = $"SELECT COUNT(*) FROM {FbtSETUP.TABLE_NAME}";
             sql += $" WHERE {FbtSETUP.COL_PK1} = 100";
 
-            using FBDatabase db = new FBDatabase(ConnStrBuilder);
+            using FBDatabase db = CreateDatabase();
             db.RunQuery(sql);
 
             foreach (DataRow row in db.Results.Rows)
@@ -212,14 +263,14 @@ namespace AFMSDll
             result.Add(example.SqlUpdate);
         }
 
-        private bool ExistTable(string tableName)
+        public bool ExistTable(string tableName)
         {
             string sql = @"SELECT COUNT(*) FROM RDB$RELATIONS";
             sql += $" WHERE TRIM(RDB$RELATION_NAME) = '{tableName}'";
             sql += @" AND COALESCE(RDB$SYSTEM_FLAG, 0) = 0";
             sql += @" AND RDB$VIEW_BLR IS NULL;";
 
-            using FBDatabase db = new FBDatabase(ConnStrBuilder);
+            using FBDatabase db = CreateDatabase();
             db.RunQuery(sql);
 
             foreach (DataRow row in db.Results.Rows)
@@ -229,6 +280,27 @@ namespace AFMSDll
             }
 
             return false;
+        }
+
+        private static List<_FBTableBase> CreateTableDefinitions()
+        {
+            return new List<_FBTableBase>
+            {
+                new FbtHYDROMETERVIDEO(),
+                new FbtHYDROMETERVIDEOCELL(),
+                new FbtHYDROMETERMPDS(),
+                new FbtHYDROMETERMPDSCELL(),
+                new FbtWATERLEVEL(),
+                new FbtVTHLOGGER(),
+                new FbtSETUP(),
+                new FbtAFMSCrossSection(),
+                new FbtAFMSHydroMeter(),
+                new FbtAFMSDischargeMethodConfig(),
+                new FbtAFMSDischargeTimeslot(),
+                new FbtAFMSDischargeResult(),
+                new FbtAFMSReplicatorSetting(),
+                new FbtAFMSHydroTransect()
+            };
         }
 
         public static FbConnectionStringBuilder SetFBConnStrBuilder()

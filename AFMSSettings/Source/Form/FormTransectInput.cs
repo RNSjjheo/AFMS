@@ -379,7 +379,7 @@ namespace AFMSSettings
             query.Value(FbtAFMSHydroTransect.COL_TRANSECT_COUNT, _transectCount);
             query.Value(FbtAFMSHydroTransect.COL_DISTANCE_DATAS, json);
 
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             db.Execute(query, out string error);
             return error;
         }

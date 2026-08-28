@@ -68,7 +68,7 @@ namespace AFMSSettings
             query.AsAlias(FbtAFMSCrossSection.COL_POINT_DATA, COL_DATA);
             query.OrderBy(FbtAFMSCrossSection.COL_ID);
 
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             DataTable table = db.Execute(query, out string error);
             if (!string.IsNullOrEmpty(error)) return;
 
@@ -294,7 +294,7 @@ namespace AFMSSettings
             query.Value(FbtAFMSCrossSection.COL_ZERO_POINT_ELEVATION, _zeroLevel.DoubleValue);
             query.Value(FbtAFMSCrossSection.COL_POINT_DATA, CrossSectionPointBuilder.GetJson(_selectedData));
 
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
             db.Execute(query, out string error);
             if (!string.IsNullOrEmpty(error))
             {
