@@ -2,3 +2,12 @@
 **/bin/
 **/*.csproj.user
 .vs/
+
+# Codex local build, rendering, and inspection artifacts
+.codex-*/
+
+# Local Codex-generated realtime chart and legend-check artifacts
+/AFMSDataViewer/Source/Control/RealtimeResultChart/RealtimeChartData.cs
+/AFMSDataViewer/Source/Control/RealtimeResultChart/RealtimeChartLegend.cs
+/AFMSDataViewer/Source/Control/RealtimeResultChart/RealtimeChartLegendController.cs
+/tests/

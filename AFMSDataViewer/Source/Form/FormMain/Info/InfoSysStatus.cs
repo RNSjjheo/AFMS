@@ -1,127 +1,141 @@
-﻿using AFMSDll;
+using AFMSDll;
+using log4net;
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
-using System.Text;
+using System.Globalization;
 using System.Windows.Forms;
 
 namespace AFMSDataViewer
 {
     public partial class InfoSysStatus : UserControl
     {
-        public Label uiLbDCInput;
-        public Label uiLbDCOutput;
-        public Label uiLbTemp;
+        private const int RefreshIntervalMilliseconds = 10_000;
 
-        public RoundedTwoLabel uiTlInput;
-        public RoundedTwoLabel uiTlOutput;
-        public RoundedTwoLabel uiTlTemp;
-        public RoundedTwoLabel uiTIProgLogger;
-        public RoundedTwoLabel uiTIProgSender;
+        private static readonly ILog Log = LogManager.GetLogger("SYS");
 
-        private const int PADDING_RL = 6;
-        private const int PADDING_TB = 6;
+        private readonly System.Windows.Forms.Timer _refreshTimer;
+        private readonly RoundedTwoLabel _inputCard;
+        private readonly RoundedTwoLabel _outputCard;
+        private readonly RoundedTwoLabel _temperatureCard;
+
         public InfoSysStatus()
         {
             InitializeComponent();
-            Padding gategorypadding = new Padding(3);
 
-            uiTlInput = new RoundedTwoLabel(true);
-            uiTlInput.Dock = DockStyle.Fill;
-            uiTlInput.BorderColor = DllColorHelper.HexToColor("#FECED4");
-            uiTlInput.BackColor = DllColorHelper.HexToColor("#FFF1F2");
-            uiTlInput.ValueForeColor = DllColorHelper.HexToColor("#DF2785");
-            uiTlInput.Key = "입력";
-            uiTlInput.Value = "23.7V";
+            uiPnMain.HeaderText = "전원 정보";
 
-            uiTlOutput = new RoundedTwoLabel(true);
-            uiTlOutput.Dock = DockStyle.Fill;
-            uiTlOutput.BorderColor = DllColorHelper.HexToColor("#C1DCFD");
-            uiTlOutput.BackColor = DllColorHelper.HexToColor("#EFF6FF");
-            uiTlOutput.ValueForeColor = DllColorHelper.HexToColor("#1045E8");
-            uiTlOutput.Key = "출력";
-            uiTlOutput.Value = "22.6V";
-            
-            uiTlTemp = new RoundedTwoLabel(true);
-            uiTlTemp.Dock = DockStyle.Fill;
-            uiTlTemp.BorderColor = DllColorHelper.HexToColor("#FEEA96");
-            uiTlTemp.BackColor = DllColorHelper.HexToColor("#FFFBEB");
-            uiTlTemp.ValueForeColor = DllColorHelper.HexToColor("#DE7A43");
-            uiTlTemp.Key = "온도";
-            uiTlTemp.Value = "32.7℃";
+            TableLayoutPanel content = uiPnMain.ContentLayout;
+            content.ColumnStyles.Clear();
+            content.RowStyles.Clear();
+            content.ColumnCount = 3;
+            content.RowCount = 1;
+            content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F / 3F));
+            content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F / 3F));
+            content.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F / 3F));
+            content.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            content.Padding = new Padding(4);
+            content.Margin = Padding.Empty;
 
-            uiTIProgLogger = new RoundedTwoLabel(false);
-            uiTIProgLogger.Dock = DockStyle.Fill;
-            uiTIProgLogger.BorderColor = DllColorHelper.HexToColor("#E2E8F0");
-            uiTIProgLogger.BackColor = DllColorHelper.HexToColor("#FFFFFF");
-            uiTIProgLogger.ValueForeColor = DllColorHelper.HexToColor("#ED7C95");
-            uiTIProgLogger.Key = "DataLogger";
-            uiTIProgLogger.Value = "00:00";
+            _inputCard = CreateCard("입력", "#FECED4", "#FFF1F2", "#DF2785");
+            _outputCard = CreateCard("출력", "#C1DCFD", "#EFF6FF", "#1045E8");
+            _temperatureCard = CreateCard("온도", "#FEEA96", "#FFFBEB", "#DE7A43");
 
-            uiTIProgSender = new RoundedTwoLabel(false);
-            uiTIProgSender.Dock = DockStyle.Fill;
-            uiTIProgSender.BorderColor = DllColorHelper.HexToColor("#E2E8F0");
-            uiTIProgSender.BackColor = DllColorHelper.HexToColor("#FFFFFF");
-            uiTIProgSender.ValueForeColor = DllColorHelper.HexToColor("#ED7C95");
-            uiTIProgSender.Key = "DataSender";
-            uiTIProgSender.Value = "00:00";
+            content.Controls.Add(_inputCard, 0, 0);
+            content.Controls.Add(_outputCard, 1, 0);
+            content.Controls.Add(_temperatureCard, 2, 0);
 
-            CommonTwoLabelSize(uiTlInput);
-            CommonTwoLabelSize(uiTlOutput);
-            CommonTwoLabelSize(uiTlTemp);
-            CommonTwoLabelSize(uiTIProgLogger);
-            CommonTwoLabelSize(uiTIProgSender);
+            _refreshTimer = new System.Windows.Forms.Timer { Interval = RefreshIntervalMilliseconds };
+            _refreshTimer.Tick += (_, _) => ReadDatabase();
+        }
 
-            tableLayoutPanel1.BorderStyle = BorderStyle.None;
-            tableLayoutPanel1.Margin = gategorypadding;
-            tableLayoutPanel1.Padding = Padding.Empty;
+        protected override void OnLoad(EventArgs e)
+        {
+            base.OnLoad(e);
 
-            tableLayoutPanel2.Controls.Add(uiTlInput, 0, 0);
-            tableLayoutPanel2.Controls.Add(uiTlOutput, 1, 0);
-            tableLayoutPanel2.Controls.Add(uiTlTemp, 2, 0);
-            tableLayoutPanel2.Margin = Padding.Empty;
+            if (DesignMode || LicenseManager.UsageMode == LicenseUsageMode.Designtime) return;
 
-            tableLayoutPanel3.Controls.Add(uiTIProgLogger, 0, 0);
-            tableLayoutPanel3.Controls.Add(uiTIProgSender, 1, 0);
-            tableLayoutPanel3.Margin = Padding.Empty;
+            ReadDatabase();
+            _refreshTimer.Start();
+        }
 
-            Thread diagprocess = new Thread(RunDiagProcess)
+        private static RoundedTwoLabel CreateCard(string key, string borderColor, string backColor, string valueColor)
+        {
+            RoundedTwoLabel card = new RoundedTwoLabel(true)
             {
-                IsBackground = true,
-                Name = "AFMSDataViewer.SystemStatus"
+                Dock = DockStyle.Fill,
+                BorderColor = DllColorHelper.HexToColor(borderColor),
+                BackColor = DllColorHelper.HexToColor(backColor),
+                ValueForeColor = DllColorHelper.HexToColor(valueColor),
+                Key = key,
+                Value = "-",
+                Margin = new Padding(3, 2, 3, 2),
+                ValueFont = new Font("Segoe UI", 9F, FontStyle.Bold, GraphicsUnit.Point),
+                KeyFont = new Font("Segoe UI", 8F, FontStyle.Regular, GraphicsUnit.Point)
             };
-            diagprocess.Start();
+
+            return card;
         }
 
-        private void CommonTwoLabelSize(RoundedTwoLabel tl)
+        public void ReadDatabase()
         {
-            tl.ValueFont = new Font(uiTlTemp.ValueFont.FontFamily, 9F, FontStyle.Bold);
-            tl.KeyFont = new Font(uiTlTemp.ValueFont.FontFamily, 8F, FontStyle.Regular);
-        }
+            string sql = $"SELECT FIRST 1 {FbtVTHLOGGER.COL_DCCHARGE}, {FbtVTHLOGGER.COL_DCBATTERY}, {FbtVTHLOGGER.COL_TEMPERATURE}";
+            sql += $" FROM {FbtVTHLOGGER.TABLE_NAME}";
+            sql += $" ORDER BY {_FBTableBase.COL_MEASURE_DATE} DESC, {_FBTableBase.COL_MEASURE_TIME} DESC";
 
-        private void QueryVTHData()
-        {
-            string sql = $"SELECT ";
-        }
+            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
+            DataTable table = db.Execute(sql, out string error);
 
-        private void RunDiagProcess()
-        {
-            DateTime pretime = DateTime.Now.AddMinutes(10);
-            TimeSpan diff = DateTime.Now - pretime;
-
-            while (ApplicationDiag.IsRunning)
+            if (!string.IsNullOrEmpty(error))
             {
-                Thread.Sleep(50);
-            
-                if(diff.TotalSeconds>10)
+                Log.Error($"VTHLogger 최신 전원 정보 조회 실패: {error}");
+                return;
+            }
+
+            if (table.Rows.Count == 0)
+            {
+                ApplyValues("-", "-", "-");
+                return;
+            }
+
+            DataRow row = table.Rows[0];
+            ApplyValues(
+                FormatMeasurement(row[FbtVTHLOGGER.COL_DCCHARGE], "V"),
+                FormatMeasurement(row[FbtVTHLOGGER.COL_DCBATTERY], "V"),
+                FormatMeasurement(row[FbtVTHLOGGER.COL_TEMPERATURE], "℃"));
+        }
+
+        private void ApplyValues(string input, string output, string temperature)
+        {
+            _inputCard.Value = input;
+            _outputCard.Value = output;
+            _temperatureCard.Value = temperature;
+        }
+
+        private static string FormatMeasurement(object value, string unit)
+        {
+            if (value == null || value == DBNull.Value) return "-";
+
+            if (value is IConvertible)
+            {
+                try
                 {
-                    QueryVTHData();
+                    double number = Convert.ToDouble(value, CultureInfo.InvariantCulture);
+                    return $"{number:0.0#}{unit}";
+                }
+                catch (FormatException)
+                {
+                }
+                catch (InvalidCastException)
+                {
+                }
+                catch (OverflowException)
+                {
                 }
             }
+
+            return $"{value}{unit}";
         }
-
-
     }
 }

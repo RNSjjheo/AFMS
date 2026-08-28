@@ -58,6 +58,7 @@ namespace AFMSDataViewer
 
         public void ReadDatabase()
         {
+            uiSysInfo.ReadDatabase();
             uiInfoSite.ReadDatabase();
             uiInfoDev.ReadDatabase();
         }
