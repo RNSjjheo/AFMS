@@ -22,7 +22,8 @@ namespace AFMSDataViewer
         public string BuildDeviceList()
         {
             string sql = $"SELECT {_FBTableBase.COL_ID} AS DEVICE_ID, TRIM({FbtAFMSHydroMeter.COL_DATA_TABLE}) AS SOURCE_TYPE,";
-            sql += $" {FbtAFMSHydroMeter.COL_DEVICE_NO} AS DEVICE_NO, {FbtAFMSHydroMeter.COL_TRANSECT_CNT} AS TRANSECT_COUNT";
+            sql += $" TRIM({FbtAFMSHydroMeter.COL_DEVICE_NAME}) AS METER_TYPE, {FbtAFMSHydroMeter.COL_DEVICE_NO} AS DEVICE_NO,";
+            sql += $" {FbtAFMSHydroMeter.COL_TRANSECT_CNT} AS TRANSECT_COUNT";
             sql += $" FROM {FbtAFMSHydroMeter.TABLE_NAME}";
             sql += $" WHERE TRIM({FbtAFMSHydroMeter.COL_DATA_TABLE}) IN ('{MpdsSource}', '{VideoSource}')";
             sql += $" ORDER BY {FbtAFMSHydroMeter.COL_DEVICE_NO}, {_FBTableBase.COL_ID}";

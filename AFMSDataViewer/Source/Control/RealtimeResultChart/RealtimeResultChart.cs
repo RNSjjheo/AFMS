@@ -15,7 +15,8 @@ namespace AFMSDataViewer
 
         private sealed record ChartPoint(DateTime Time, double Value, bool IsMissing = false);
         private sealed record ChartSeries(string Name, System.Drawing.Color Color, List<ChartPoint> Points,
-            bool SecondaryAxis = false, string? DeviceType = null, int? DeviceId = null, string? DischargeMethod = null);
+            bool SecondaryAxis = false, string? DeviceType = null, int? DeviceId = null,
+            string? DischargeMethod = null, string? MeterType = null);
         private sealed record DischargeDeviceOption(string DeviceType, int DeviceId, string DisplayText)
         {
             public override string ToString() => DisplayText;
@@ -293,8 +294,13 @@ namespace AFMSDataViewer
                         string? deviceType = table.Columns.Contains("DEVICE_TYPE") ? first["DEVICE_TYPE"].ToText().Trim() : null;
                         int? deviceId = table.Columns.Contains("DEVICE_ID") ? Convert.ToInt32(first["DEVICE_ID"]) : null;
                         string? method = table.Columns.Contains("DISCHARGE_METHOD") ? first["DISCHARGE_METHOD"].ToText().Trim() : null;
-                        availableSeries.Add(new ChartSeries(group.Key, GetSeriesColor(availableSeries.Count), points,
-                            DeviceType: deviceType, DeviceId: deviceId, DischargeMethod: method));
+                        string? meterType = table.Columns.Contains("METER_TYPE") ? first["METER_TYPE"].ToText().Trim() : null;
+                        string seriesName = chartType == ChartMainType.Discharge &&
+                            deviceType == nameof(MeasurementDeviceType.VelocityMeter) && deviceId.HasValue
+                                ? $"{GetDischargeMethodDisplay(method ?? string.Empty)} {GetVelocityMeterDisplay(meterType, deviceId.Value)}"
+                                : group.Key;
+                        availableSeries.Add(new ChartSeries(seriesName, GetSeriesColor(availableSeries.Count), points,
+                            DeviceType: deviceType, DeviceId: deviceId, DischargeMethod: method, MeterType: meterType));
                     }
                 }
 
@@ -344,7 +350,7 @@ namespace AFMSDataViewer
                 foreach (DischargeDeviceOption device in availableSeries
                     .Where(series => series.DeviceType != null && series.DeviceId.HasValue)
                     .GroupBy(series => (series.DeviceType!, series.DeviceId!.Value))
-                    .Select(group => CreateDeviceOption(group.Key.Item1, group.Key.Item2))
+                    .Select(group => CreateDeviceOption(group.Key.Item1, group.Key.Item2, group.First().MeterType))
                     .OrderBy(option => option.DeviceType == nameof(MeasurementDeviceType.VelocityMeter) ? 0 : 1)
                     .ThenBy(option => option.DeviceId))
                 {
@@ -380,7 +386,9 @@ namespace AFMSDataViewer
                     int deviceId = Convert.ToInt32(row["DEVICE_ID"]);
                     int deviceNo = row["DEVICE_NO"] == DBNull.Value ? deviceId : Convert.ToInt32(row["DEVICE_NO"]);
                     int transectCount = row["TRANSECT_COUNT"] == DBNull.Value ? 1 : Math.Max(1, Convert.ToInt32(row["TRANSECT_COUNT"]));
-                    TopLayout.uiComboMain.Items.Add(new VelocityDeviceOption(deviceId, sourceType, deviceNo, transectCount, $"{deviceNo}번 유속계"));
+                    string meterType = row["METER_TYPE"].ToText().Trim();
+                    TopLayout.uiComboMain.Items.Add(new VelocityDeviceOption(
+                        deviceId, sourceType, deviceNo, transectCount, GetVelocityMeterDisplay(meterType, deviceNo)));
                 }
 
                 VelocityDeviceOption? selected = TopLayout.uiComboMain.Items.Cast<object>()
@@ -482,15 +490,23 @@ namespace AFMSDataViewer
             TopLayout.SetSubComboVisible(isVelocityMeter);
         }
 
-        private static DischargeDeviceOption CreateDeviceOption(string deviceType, int deviceId)
+        private static DischargeDeviceOption CreateDeviceOption(string deviceType, int deviceId, string? meterType = null)
         {
             string display = deviceType switch
             {
-                nameof(MeasurementDeviceType.VelocityMeter) => $"{deviceId}번 유속계",
+                nameof(MeasurementDeviceType.VelocityMeter) => GetVelocityMeterDisplay(meterType, deviceId),
                 nameof(MeasurementDeviceType.WaterLevelGauge) => deviceId > 0 ? $"{deviceId}번 수위계" : "수위계",
                 _ => $"{deviceType} {deviceId}"
             };
             return new DischargeDeviceOption(deviceType, deviceId, display);
+        }
+
+        private static string GetVelocityMeterDisplay(string? meterType, int deviceNo)
+        {
+            HydroMeterType parsed = Enum.TryParse(meterType, true, out HydroMeterType value)
+                ? value
+                : HydroMeterType.None;
+            return $"{EnumPaser.GetKorString(parsed)}";
         }
 
         private static string GetDischargeMethodDisplay(string method) =>

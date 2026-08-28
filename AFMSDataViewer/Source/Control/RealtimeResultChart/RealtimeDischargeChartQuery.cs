@@ -17,7 +17,7 @@ namespace AFMSDataViewer
             string configMethod = FbtAFMSDischargeMethodConfig.COL_DISCHARGE_METHOD;
             string sql = $"SELECT {SlotTimeValue()} AS SOURCE_TIME,";
             sql += $" TRIM(D.DISCHARGE_METHOD) || ' ' || TRIM(D.DEVICE_TYPE) || ' ' || CAST(D.DEVICE_ID AS VARCHAR(12)) AS SERIES,";
-            sql += " R.CHART_VALUE, D.DEVICE_TYPE, D.DEVICE_ID, D.DISCHARGE_METHOD";
+            sql += $" R.CHART_VALUE, D.DEVICE_TYPE, D.DEVICE_ID, D.DISCHARGE_METHOD, TRIM(H.{FbtAFMSHydroMeter.COL_DEVICE_NAME}) AS METER_TYPE";
             sql += $" FROM {FbtAFMSDischargeTimeslot.TABLE_NAME} S";
             sql += $" CROSS JOIN (SELECT TRIM(C.{configType}) AS DEVICE_TYPE,";
             sql += $" C.{configDeviceId} AS DEVICE_ID, TRIM(C.{configMethod}) AS DISCHARGE_METHOD";
@@ -28,6 +28,8 @@ namespace AFMSDataViewer
             sql += $" AND C2.{configDeviceId} = C.{configDeviceId}";
             sql += $" AND C2.{configMethod} = C.{configMethod})";
             sql += $" AND C.{FbtAFMSDischargeMethodConfig.COL_ENABLED} = 1) D";
+            sql += $" LEFT JOIN {FbtAFMSHydroMeter.TABLE_NAME} H ON D.DEVICE_TYPE = '{nameof(MeasurementDeviceType.VelocityMeter)}'";
+            sql += $" AND H.{FbtAFMSHydroMeter.COL_ID} = D.DEVICE_ID";
             sql += $" LEFT JOIN (SELECT {sourceTime} AS SLOT_TIME, TRIM({type}) AS DEVICE_TYPE, {deviceId} AS DEVICE_ID,";
             sql += $" TRIM({method}) AS DISCHARGE_METHOD, AVG({FbtAFMSDischargeResult.COL_DISCHARGE}) AS CHART_VALUE";
             sql += $" FROM {FbtAFMSDischargeResult.TABLE_NAME} WHERE {sourceTime} >= '{RangeStart:yyyy-MM-dd HH:mm:ss}'";
