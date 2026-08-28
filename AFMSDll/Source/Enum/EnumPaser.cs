@@ -29,5 +29,25 @@ namespace AFMSDll
                     return "";
             }
         }
+
+        public static string GetKorString(HydroMeterType meter)
+        {
+            switch (meter)
+            {
+                case HydroMeterType.RnDVideoCollector:
+                    return "영상유속계";
+                case HydroMeterType.RnDMpdsCollector:
+                    return "전자파표면유속계";
+                case HydroMeterType.RQ30D:
+                    return "RQ30D";
+                case HydroMeterType.ChannelMaster:
+                    return "ChannelMaster";
+                case HydroMeterType.SonTek:
+                    return "Argonaut";
+                default:
+                    return "알수없음";
+
+            }
+        }
     }
 }

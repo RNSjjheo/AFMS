@@ -1,4 +1,5 @@
 ﻿using AFMSDll;
+using log4net;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -11,6 +12,7 @@ namespace AFMSDataViewer
 {
     public partial class InfoDevDetail : UserControl
     {
+        private static readonly ILog Log = LogManager.GetLogger("SYS");
         private const int HEIGTH_MID_HEADER = 28;
         private const int HEIGTH_DATA_NODE = 30;
         private const int HEIGTH_EMPEY_LINE = 2;
@@ -49,10 +51,18 @@ namespace AFMSDataViewer
 
             CreateMidHeader(0, MidPowers, "전원감시");
             CreateMidHeader(1, MidLevels, "수위계");
+            CreateMidHeader(2, MidVelos, "유속계");
         }
 
         private void CreateMidHeader(int midIndex, List<DeviceInfoDetail> panels, string mid)
         {
+            Control? previous = uiTpMain.GetControlFromPosition(0, midIndex);
+            if (previous != null)
+            {
+                uiTpMain.Controls.Remove(previous);
+                previous.Dispose();
+            }
+
             uiTpMain.RowStyles[midIndex].Height = HEIGTH_MID_HEADER;
             uiTpMain.RowStyles[midIndex].Height += (HEIGTH_DATA_NODE * panels.Count);
             uiTpMain.RowStyles[midIndex].Height += (midIndex != 2) ? HEIGTH_EMPEY_LINE : 0;
@@ -144,85 +154,43 @@ namespace AFMSDataViewer
             }
         }
 
-        private void UpdateVelo1()
+        private void UpdateVelocities()
         {
-            string sql = "SELECT";
-            sql += "\n" + $"{FbtSETUP.COL_PK2}, ";
-            sql += "\n" + $"{FbtSETUP.COL_VALUE01}, ";
-            sql += "\n" + $"{FbtSETUP.COL_VALUE02}, ";
-            sql += "\n" + $"{FbtSETUP.COL_VALUE05} ";
-            sql += "\n" + $"FROM {FbtSETUP.TABLE_NAME}";
-            sql += "\n" + $"WHERE {FbtSETUP.COL_PK1} = 10";
+            string sql = $"SELECT {FbtAFMSHydroMeter.COL_ID}, " +
+                $"{FbtAFMSHydroMeter.COL_DEVICE_NAME}, {FbtAFMSHydroMeter.COL_COMM_CONFIG} " +
+                $"FROM {FbtAFMSHydroMeter.TABLE_NAME} ORDER BY {FbtAFMSHydroMeter.COL_ID}";
 
             using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
-            db.RunQuery(sql);
-
-            foreach (DataRow row in db.Results.Rows)
+            DataTable table = db.Execute(sql, out string error);
+            if (!string.IsNullOrEmpty(error))
             {
-                string pk2 = row[FbtSETUP.COL_PK2].ToString();
+                Log.Error($"유속계 장비 정보 조회 실패: {error}");
+                return;
+            }
 
-                if (pk2 == "1") continue;
-                if (pk2 == "4") continue;
+            MidVelos.Clear();
+            foreach (DataRow row in table.Rows)
+            {
+                string deviceName = Convert.ToString(row[FbtAFMSHydroMeter.COL_DEVICE_NAME])?.Trim() ?? string.Empty;
+                Enum.TryParse(deviceName, true, out HydroMeterType meterType);
 
                 DeviceInfoDetail dev = new DeviceInfoDetail();
-                dev.uiKey.Text = row[FbtSETUP.COL_VALUE01].ToString();
-
-                if (dev.uiKey.Text == "NONE") continue;
-                
-                if (dev.uiKey.Text == "RQ30D")
-                {
-                    string nodes = row[FbtSETUP.COL_VALUE05].ToString();
-                    int count = nodes.Split(nodes, ',').Length;
-
-                    dev.uiDesc.Text = $" 1 + {count}"; 
-                }
-
-                dev.uiValue.Text = row[FbtSETUP.COL_VALUE02].ToString();
-
+                dev.uiKey.Text = EnumPaser.GetKorString(meterType);
+                dev.uiValue.Text = Convert.ToString(row[FbtAFMSHydroMeter.COL_COMM_CONFIG])?.Trim() ?? string.Empty;
+                dev.ColumnStyles[0].Width = 75F;
+                dev.ColumnStyles[1].Width = 0F;
+                dev.uiDesc.Visible = false;
                 MidVelos.Add(dev);
             }
-        }
 
-        private void UpdateVelo2()
-        {
-            string sql = "SELECT";
-            sql += "\n" + $"{FbtSETUP.COL_PK2}, ";
-            sql += "\n" + $"{FbtSETUP.COL_VALUE01}, ";
-            sql += "\n" + $"{FbtSETUP.COL_VALUE02}, ";
-            sql += "\n" + $"{FbtSETUP.COL_VALUE05} ";
-            sql += "\n" + $"FROM {FbtSETUP.TABLE_NAME}";
-            sql += "\n" + $"WHERE {FbtSETUP.COL_PK1} = 50";
-
-            using FBDatabase db = new FBDatabase(FBProvider.Instance.ConnStrBuilder);
-            db.RunQuery(sql);
-
-            foreach (DataRow row in db.Results.Rows)
-            {
-                string pk2 = row[FbtSETUP.COL_PK2].ToString();
-
-                DeviceInfoDetail dev = new DeviceInfoDetail();
-                dev.uiKey.Text = row[FbtSETUP.COL_VALUE01].ToString();
-
-                if (pk2 == "1" || pk2 == "2")
-                {
-                    if (pk2 == "2")
-                    {
-                        dev.uiDesc.Text = row[FbtSETUP.COL_VALUE05].ToString();
-                    }
-                    dev.uiValue.Text = row[FbtSETUP.COL_VALUE02].ToString();
-
-                    MidVelos.Add(dev);
-                }
-            }
+            CreateMidHeader(2, MidVelos, "유속계");
         }
 
         public void ReadDatabase()
         {
             UpdatePowers();
             UpdateLevels();
-            UpdateVelo1();
-            UpdateVelo2();
-            CreateMidHeader(2, MidVelos, "유속계");
+            UpdateVelocities();
         }
     }
 }
