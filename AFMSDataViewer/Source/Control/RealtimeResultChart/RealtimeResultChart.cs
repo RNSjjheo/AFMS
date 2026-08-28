@@ -257,11 +257,11 @@ namespace AFMSDataViewer
         private void ConfigurePlot()
         {
             formsPlot.Dock = DockStyle.Fill;
-            formsPlot.Margin = new Padding(3, 0, 3, 0);
+            formsPlot.Margin = Padding.Empty;
             formsPlot.Plot.Font.Set(ChartFontName);
             formsPlot.Plot.FigureBackground.Color = ScottPlot.Color.FromHex("#FFFFFF");
             formsPlot.Plot.DataBackground.Color = ScottPlot.Color.FromHex("#FFFFFF");
-            formsPlot.Plot.Layout.Fixed(new PixelPadding(30, 30, 26, 16));
+            formsPlot.Plot.Layout.Fixed(new PixelPadding(15, 15, 26, 16));
             formsPlot.Plot.Grid.MajorLineColor = ScottPlot.Color.FromHex("#E1EAF2");
             formsPlot.Plot.Grid.XAxisStyle.MinorLineStyle.Color = ScottPlot.Color.FromHex("#E1EAF2");
             formsPlot.Plot.Grid.XAxisStyle.MinorLineStyle.Width = 1;
