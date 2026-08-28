@@ -272,6 +272,7 @@ namespace AFMSDataViewer
             formsPlot.Plot.Axes.Bottom.TickLabelStyle.FontSize = 7F;
             formsPlot.Plot.Axes.Bottom.TickLabelStyle.ForeColor = ScottPlot.Color.FromHex("#64748B");
             formsPlot.MouseMove += FormsPlot_MouseMove;
+            formsPlot.MouseDoubleClick += FormsPlot_MouseDoubleClick;
             formsPlot.MouseLeave += (_, _) => hoverTip.Hide(formsPlot);
         }
 
@@ -647,6 +648,43 @@ namespace AFMSDataViewer
                     (method == null || series.DischargeMethod == method.Method)).ToList();
             }
             return availableSeries.Where(series => selected == "전체" || series.Name == selected || series.SecondaryAxis).ToList();
+        }
+
+        private void FormsPlot_MouseDoubleClick(object? sender, MouseEventArgs e)
+        {
+            if (e.Button != MouseButtons.Left ||
+                chartType is not (ChartMainType.Velocity or ChartMainType.Discharge)) return;
+
+            // Compare screen distances so a double-click on empty chart space does not open a dialog.
+            double nearestDistanceSquared = Math.Pow(8 * formsPlot.DisplayScale, 2);
+            Pixel mouse = new(e.X * formsPlot.DisplayScale, e.Y * formsPlot.DisplayScale);
+            if (!formsPlot.Plot.LastRender.DataRect.Contains(mouse)) return;
+
+            RealtimeChartSeries? nearestSeries = null;
+            RealtimeChartPoint? nearestPoint = null;
+            string selected = seriesSelector.SelectedItem?.ToString() ?? "전체";
+            foreach (RealtimeChartSeries series in GetVisibleSeries(selected))
+            {
+                foreach (RealtimeChartPoint point in series.Points)
+                {
+                    if (!double.IsFinite(point.Value)) continue;
+                    Pixel pixel = formsPlot.Plot.GetPixel(new Coordinates(point.Time.ToOADate(), point.Value),
+                        formsPlot.Plot.Axes.Bottom,
+                        series.SecondaryAxis ? formsPlot.Plot.Axes.Right : formsPlot.Plot.Axes.Left);
+                    double distanceSquared = Math.Pow(pixel.X - mouse.X, 2) + Math.Pow(pixel.Y - mouse.Y, 2);
+                    if (distanceSquared > nearestDistanceSquared) continue;
+                    nearestDistanceSquared = distanceSquared;
+                    nearestSeries = series;
+                    nearestPoint = point;
+                }
+            }
+
+            if (nearestSeries == null || nearestPoint == null) return;
+            hoverTip.Hide(formsPlot);
+            int? transectNo = chartType == ChartMainType.Velocity
+                ? (TopLayout.uiComboSub.SelectedItem as VelocityTransectOption)?.TransectNo : null;
+            using DlgDataAnalysis dialog = new(chartType, nearestSeries, nearestPoint, transectNo);
+            dialog.ShowDialog(FindForm());
         }
 
         private void FormsPlot_MouseMove(object? sender, MouseEventArgs e)
