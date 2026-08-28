@@ -13,10 +13,6 @@ namespace AFMSDataViewer
     {
         private const string ChartFontName = "맑은 고딕";
 
-        private sealed record ChartPoint(DateTime Time, double Value, bool IsMissing = false);
-        private sealed record ChartSeries(string Name, System.Drawing.Color Color, List<ChartPoint> Points,
-            bool SecondaryAxis = false, string? DeviceType = null, int? DeviceId = null,
-            string? DischargeMethod = null, string? MeterType = null);
         private sealed record DischargeDeviceOption(string DeviceType, int DeviceId, string DisplayText)
         {
             public override string ToString() => DisplayText;
@@ -56,7 +52,8 @@ namespace AFMSDataViewer
         private readonly ComboBox seriesSelector = new();
         private readonly CheckBox compareDischarge = new();
         private readonly ToolTip hoverTip = new() { InitialDelay = 0, ReshowDelay = 0, AutoPopDelay = 5000 };
-        private readonly List<ChartSeries> availableSeries = new();
+        private readonly List<RealtimeChartSeries> availableSeries = new();
+        private readonly RealtimeChartLegendController legendController;
         private DateTime rangeStart;
         private DateTime rangeEnd;
         private bool isMaximized;
@@ -98,9 +95,10 @@ namespace AFMSDataViewer
             uiTpMain.BackColor = System.Drawing.Color.Transparent;
             uiTpMain.RowStyles.Clear();
             uiTpMain.ColumnStyles.Clear();
-            uiTpMain.RowCount = 2;
+            uiTpMain.RowCount = 3;
             uiTpMain.ColumnCount = 1;
             uiTpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 45F));
+            uiTpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 0F));
             uiTpMain.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             uiTpMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
@@ -143,8 +141,14 @@ namespace AFMSDataViewer
             }
 
             ConfigurePlot();
+            legendController = new RealtimeChartLegendController(chartType, uiTpMain, 1);
+            legendController.VisibilityChanged += (_, _) =>
+            {
+                hoverTip.Hide(formsPlot);
+                DrawSelectedSeries();
+            };
             uiTpMain.Controls.Add(TopLayout, 0, 0);
-            uiTpMain.Controls.Add(formsPlot, 0, 1);
+            uiTpMain.Controls.Add(formsPlot, 0, 2);
             chartSection.ContentLayout.Controls.Add(uiTpMain);
             chartSection.Controls.Add(maximizeToggle);
             chartSection.Controls.Add(closeButton);
@@ -253,11 +257,14 @@ namespace AFMSDataViewer
         private void ConfigurePlot()
         {
             formsPlot.Dock = DockStyle.Fill;
+            formsPlot.Margin = new Padding(3, 0, 3, 0);
             formsPlot.Plot.Font.Set(ChartFontName);
             formsPlot.Plot.FigureBackground.Color = ScottPlot.Color.FromHex("#FFFFFF");
             formsPlot.Plot.DataBackground.Color = ScottPlot.Color.FromHex("#FFFFFF");
-            formsPlot.Plot.Layout.Fixed(new PixelPadding(30, 30, 34, 22));
+            formsPlot.Plot.Layout.Fixed(new PixelPadding(30, 30, 26, 16));
             formsPlot.Plot.Grid.MajorLineColor = ScottPlot.Color.FromHex("#E1EAF2");
+            formsPlot.Plot.Grid.XAxisStyle.MinorLineStyle.Color = ScottPlot.Color.FromHex("#E1EAF2");
+            formsPlot.Plot.Grid.XAxisStyle.MinorLineStyle.Width = 1;
             formsPlot.Plot.DataBorder.Color = ScottPlot.Color.FromHex("#B8C9D8");
             formsPlot.Plot.DataBorder.Width = 1;
             formsPlot.Plot.Axes.Left.Label.Text = string.Empty;
@@ -282,11 +289,11 @@ namespace AFMSDataViewer
                     .Where(row => row["SERIES"] != DBNull.Value && !string.IsNullOrWhiteSpace(row["SERIES"].ToText()))
                     .GroupBy(row => row["SERIES"].ToText()))
                 {
-                    List<ChartPoint> points = group.Reverse().Select(row =>
+                    List<RealtimeChartPoint> points = group.Reverse().Select(row =>
                     {
                         bool isMissing = row["CHART_VALUE"] == DBNull.Value;
                         double value = isMissing ? 0D : Convert.ToDouble(row["CHART_VALUE"]);
-                        return new ChartPoint(ParseSourceTime(row["SOURCE_TIME"]), value, isMissing);
+                        return new RealtimeChartPoint(ParseSourceTime(row["SOURCE_TIME"]), value, isMissing);
                     }).Where(point => double.IsFinite(point.Value)).ToList();
                     if (points.Count > 0)
                     {
@@ -299,7 +306,7 @@ namespace AFMSDataViewer
                             deviceType == nameof(MeasurementDeviceType.VelocityMeter) && deviceId.HasValue
                                 ? $"{GetDischargeMethodDisplay(method ?? string.Empty)} {GetVelocityMeterDisplay(meterType, deviceId.Value)}"
                                 : group.Key;
-                        availableSeries.Add(new ChartSeries(seriesName, GetSeriesColor(availableSeries.Count), points,
+                        availableSeries.Add(new RealtimeChartSeries(seriesName, GetSeriesColor(availableSeries.Count), points,
                             DeviceType: deviceType, DeviceId: deviceId, DischargeMethod: method, MeterType: meterType));
                     }
                 }
@@ -317,23 +324,23 @@ namespace AFMSDataViewer
         {
             DataTable table = db.Execute(GetDischargeSql(), out string error);
             if (!string.IsNullOrEmpty(error)) return;
-            List<ChartPoint> points = table.Rows.Cast<DataRow>()
+            List<RealtimeChartPoint> points = table.Rows.Cast<DataRow>()
                 .GroupBy(row => ParseSourceTime(row["SOURCE_TIME"]))
                 .OrderBy(group => group.Key)
                 .Select(group =>
                 {
                     double[] values = group.Where(row => row["CHART_VALUE"] != DBNull.Value)
                         .Select(row => Convert.ToDouble(row["CHART_VALUE"])).Where(double.IsFinite).ToArray();
-                    return new ChartPoint(group.Key, values.Length == 0 ? 0D : values.Average(), values.Length == 0);
+                    return new RealtimeChartPoint(group.Key, values.Length == 0 ? 0D : values.Average(), values.Length == 0);
                 }).ToList();
-            if (points.Count > 0) availableSeries.Add(new ChartSeries("유량 비교", SeriesColors[0], points, true));
+            if (points.Count > 0) availableSeries.Add(new RealtimeChartSeries("유량 비교", SeriesColors[0], points, true));
         }
 
         private void PopulateSelector()
         {
             string? selected = seriesSelector.SelectedItem?.ToString();
             seriesSelector.BeginUpdate(); seriesSelector.Items.Clear(); seriesSelector.Items.Add("전체");
-            foreach (ChartSeries series in availableSeries.Where(series => !series.SecondaryAxis)) seriesSelector.Items.Add(series.Name);
+            foreach (RealtimeChartSeries series in availableSeries.Where(series => !series.SecondaryAxis)) seriesSelector.Items.Add(series.Name);
             seriesSelector.SelectedItem = selected != null && seriesSelector.Items.Contains(selected) ? selected : "전체";
             seriesSelector.EndUpdate();
         }
@@ -518,14 +525,15 @@ namespace AFMSDataViewer
         private void DrawSelectedSeries()
         {
             string selected = seriesSelector.SelectedItem?.ToString() ?? "전체";
+            legendController.Update(GetSelectedSeries(selected), SelectedVelocityDeviceId);
             formsPlot.Plot.Clear();
             formsPlot.Plot.Axes.Right.IsVisible = false;
-            List<ChartSeries> visible = GetVisibleSeries(selected);
+            List<RealtimeChartSeries> visible = GetVisibleSeries(selected);
             bool fillUnderLine = chartType != ChartMainType.Discharge ||
                 !TopLayout.uiComboSub.Visible ||
                 TopLayout.uiComboSub.SelectedItem is DischargeMethodOption;
 
-            foreach (ChartSeries source in visible)
+            foreach (RealtimeChartSeries source in visible)
             {
                 double[] xs = source.Points.Select(point => point.Time.ToOADate()).ToArray();
                 double[] ys = source.Points.Select(point => point.Value).ToArray();
@@ -567,7 +575,7 @@ namespace AFMSDataViewer
             unit.LabelStyle.ForeColor = ScottPlot.Color.FromHex("#64748B");
             unit.LabelStyle.BackgroundColor = ScottPlot.Colors.Transparent;
             unit.OffsetX = -18;
-            unit.OffsetY = -17;
+            unit.OffsetY = -14;
         }
 
         private void ConfigureTimeTicks()
@@ -575,6 +583,7 @@ namespace AFMSDataViewer
             TimeSpan duration = rangeEnd - rangeStart;
             ScottPlot.TickGenerators.NumericManual ticks = new();
             const int tickCount = 4;
+            const int subdivisions = 4;
             DateTime previous = rangeStart;
 
             for (int index = 0; index < tickCount; index++)
@@ -596,12 +605,21 @@ namespace AFMSDataViewer
                 previous = time;
             }
 
+            // More vertical grid lines without adding more date/time labels.
+            int intervalCount = (tickCount - 1) * subdivisions;
+            for (int index = 1; index < intervalCount; index++)
+            {
+                if (index % subdivisions == 0) continue;
+                DateTime time = rangeStart.AddTicks((long)(duration.Ticks * (index / (double)intervalCount)));
+                ticks.AddMinor(time.ToOADate());
+            }
+
             formsPlot.Plot.Axes.Bottom.TickGenerator = ticks;
         }
 
-        private void AddPointMarkers(ChartSeries source, bool missing, System.Drawing.Color color)
+        private void AddPointMarkers(RealtimeChartSeries source, bool missing, System.Drawing.Color color)
         {
-            ChartPoint[] points = source.Points.Where(point => point.IsMissing == missing).ToArray();
+            RealtimeChartPoint[] points = source.Points.Where(point => point.IsMissing == missing).ToArray();
             if (points.Length == 0) return;
 
             Scatter markers = formsPlot.Plot.Add.Scatter(
@@ -613,7 +631,12 @@ namespace AFMSDataViewer
             if (source.SecondaryAxis) markers.Axes.YAxis = formsPlot.Plot.Axes.Right;
         }
 
-        private List<ChartSeries> GetVisibleSeries(string selected = "전체")
+        private int? SelectedVelocityDeviceId => (TopLayout.uiComboMain.SelectedItem as VelocityDeviceOption)?.DeviceId;
+
+        private List<RealtimeChartSeries> GetVisibleSeries(string selected = "전체") =>
+            GetSelectedSeries(selected).Where(series => legendController.IsVisible(series, SelectedVelocityDeviceId)).ToList();
+
+        private List<RealtimeChartSeries> GetSelectedSeries(string selected = "전체")
         {
             if (chartType == ChartMainType.Discharge)
             {
@@ -631,13 +654,13 @@ namespace AFMSDataViewer
             if (availableSeries.Count == 0 || formsPlot.Width <= 0) return;
             Coordinates coordinates = formsPlot.Plot.GetCoordinates(new Pixel(e.X, e.Y));
             DateTime cursorTime = DateTime.FromOADate(coordinates.X);
-            ChartSeries? nearestSeries = null;
-            ChartPoint? nearestPoint = null;
+            RealtimeChartSeries? nearestSeries = null;
+            RealtimeChartPoint? nearestPoint = null;
             double nearestSeconds = double.MaxValue;
             string selected = seriesSelector.SelectedItem?.ToString() ?? "전체";
-            foreach (ChartSeries series in GetVisibleSeries(selected))
+            foreach (RealtimeChartSeries series in GetVisibleSeries(selected))
             {
-                ChartPoint? point = series.Points.MinBy(point => Math.Abs((point.Time - cursorTime).TotalSeconds));
+                RealtimeChartPoint? point = series.Points.MinBy(point => Math.Abs((point.Time - cursorTime).TotalSeconds));
                 if (point == null) continue;
                 double seconds = Math.Abs((point.Time - cursorTime).TotalSeconds);
                 if (seconds >= nearestSeconds) continue;
@@ -662,7 +685,19 @@ namespace AFMSDataViewer
         private void ShowMessage(string message)
         {
             availableSeries.Clear(); formsPlot.Plot.Clear(); formsPlot.Refresh();
+            legendController.Clear();
+            hoverTip.Hide(formsPlot);
             chartSection.HeaderText = $"{GetTitle()} - 조회 오류: {message}"; UpdateStatistics(Array.Empty<double>());
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                legendController.Dispose();
+                hoverTip.Dispose();
+            }
+            base.Dispose(disposing);
         }
 
         private static DateTime ParseSourceTime(object value)

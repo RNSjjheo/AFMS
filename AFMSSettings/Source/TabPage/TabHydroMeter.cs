@@ -113,9 +113,22 @@ namespace AFMSSettings
             CtlSub = uiTpRigth;
 
             uiGridMain.CellClick += UiGridMain_CellClick;
+            uiGridMain.CellFormatting += UiGridMain_CellFormatting;
             uiGridMain.SelectionChanged += UiGridList_SelectionChanged;
             uiTpMain.Controls.Add(uiBtnAdd, 0, 1);
             uiTpMain.SetRowSpan(uiTpRigth, 2);
+        }
+
+        private void UiGridMain_CellFormatting(object? sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+            if (uiGridMain.Columns[e.ColumnIndex].Name != COL_DEV_TYPE) return;
+
+            string meterName = Convert.ToString(e.Value)?.Trim() ?? "";
+            if (!Enum.TryParse(meterName, true, out HydroMeterType meterType)) return;
+
+            e.Value = EnumPaser.GetKorString(meterType);
+            e.FormattingApplied = true;
         }
 
         protected override void BindingComplete(object? sender, DataGridViewBindingCompleteEventArgs e)
