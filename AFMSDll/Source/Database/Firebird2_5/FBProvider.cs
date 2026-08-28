@@ -284,23 +284,24 @@ namespace AFMSDll
 
         private static List<_FBTableBase> CreateTableDefinitions()
         {
-            return new List<_FBTableBase>
-            {
-                new FbtHYDROMETERVIDEO(),
-                new FbtHYDROMETERVIDEOCELL(),
-                new FbtHYDROMETERMPDS(),
-                new FbtHYDROMETERMPDSCELL(),
-                new FbtWATERLEVEL(),
-                new FbtVTHLOGGER(),
-                new FbtSETUP(),
-                new FbtAFMSCrossSection(),
-                new FbtAFMSHydroMeter(),
-                new FbtAFMSDischargeMethodConfig(),
-                new FbtAFMSDischargeTimeslot(),
-                new FbtAFMSDischargeResult(),
-                new FbtAFMSReplicatorSetting(),
-                new FbtAFMSHydroTransect()
-            };
+            List<_FBTableBase> tables = new List<_FBTableBase>();
+
+            tables.Add(new FbtHYDROMETERVIDEO());
+            tables.Add(new FbtHYDROMETERVIDEOCELL());
+            tables.Add(new FbtHYDROMETERMPDS());
+            tables.Add(new FbtHYDROMETERMPDSCELL());
+            tables.Add(new FbtWATERLEVEL());
+            tables.Add(new FbtVTHLOGGER());
+            tables.Add(new FbtSETUP());
+            tables.Add(new FbtAFMSCrossSection());
+            tables.Add(new FbtAFMSHydroMeter());
+            tables.Add(new FbtAFMSDischargeMethodConfig());
+            tables.Add(new FbtAFMSDischargeTimeslot());
+            tables.Add(new FbtAFMSDischargeResult());
+            tables.Add(new FbtAFMSReplicatorSetting());
+            tables.Add(new FbtAFMSHydroTransect());
+
+            return tables;
         }
 
         public static FbConnectionStringBuilder SetFBConnStrBuilder()
