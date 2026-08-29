@@ -22,17 +22,22 @@ namespace AFMSDataViewer
         {
             PowerChartValueType type = (TopLayout.uiComboMain.SelectedItem as ValueOption)?.Type ?? PowerChartValueType.Input;
             List<RealtimeChartPoint> points = MeasurementDataHub!.GetSlots(RangeStart, RangeEnd)
-                .Select(slot => slot.MeasurementDevices.VoltageMeter)
-                .Where(measurement => measurement != null)
-                .Select(measurement => new
+                .Select(slot =>
                 {
-                    measurement!.Time,
-                    Value = type == PowerChartValueType.Input
-                        ? measurement.InputVoltage
-                        : measurement.OutputVoltage
+                    VoltageMeasurement? measurement = slot.MeasurementDevices.Power.Measurement;
+                    double? value = type == PowerChartValueType.Input
+                        ? measurement?.InputVoltage
+                        : measurement?.OutputVoltage;
+                    bool isValid = measurement != null &&
+                        (type == PowerChartValueType.Input
+                            ? measurement.IsInputValid
+                            : measurement.IsOutputValid) &&
+                        value.HasValue && double.IsFinite(value.Value);
+                    return new RealtimeChartPoint(
+                        measurement?.Time ?? slot.SlotTime,
+                        isValid ? value!.Value : 0D,
+                        !isValid);
                 })
-                .Where(item => item.Value.HasValue && double.IsFinite(item.Value.Value))
-                .Select(item => new RealtimeChartPoint(item.Time, item.Value!.Value))
                 .OrderBy(point => point.Time)
                 .ToList();
 

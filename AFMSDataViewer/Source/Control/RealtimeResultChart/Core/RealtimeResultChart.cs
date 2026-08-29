@@ -22,11 +22,15 @@ namespace AFMSDataViewer
         private readonly AFMSSectionPanel chartSection = new();
         private readonly Button maximizeToggle = new();
         private readonly Button closeButton = new();
-        private readonly ToolTip hoverTip = new() { InitialDelay = 0, ReshowDelay = 0, AutoPopDelay = 5000 };
+        private readonly System.Windows.Forms.Timer trackingLabelTimer = new() { Interval = 10000 };
         private readonly List<RealtimeChartSeries> availableSeries = new();
+        private readonly List<Text> trackingLabels = new();
         private readonly RealtimeChartLegendController legendController;
         private readonly TableLayoutPanel mainLayout = new();
         private readonly MeasurementDataHub? measurementDataHub;
+        private VerticalLine? trackingLine;
+        private DateTime? trackingTime;
+        private DateTime trackingLabelsExpireAt;
         private int refreshPending;
         private bool isMaximized;
         private double? minimumY;
@@ -58,6 +62,7 @@ namespace AFMSDataViewer
 
             ConfigureHeaderButtons();
             ConfigurePlot();
+            trackingLabelTimer.Tick += TrackingLabelTimer_Tick;
 
             mainLayout.Dock = DockStyle.Fill;
             mainLayout.Margin = Padding.Empty;
@@ -177,6 +182,22 @@ namespace AFMSDataViewer
             DrawSeries();
         }
 
+        public void SetTrackingTime(DateTime time)
+        {
+            trackingTime = time;
+            if (trackingLine == null)
+            {
+                DrawSeries();
+            }
+            else
+            {
+                trackingLine.X = time.ToOADate();
+                formsPlot.Refresh();
+            }
+
+            ShowTrackingTooltip(time);
+        }
+
         protected Color GetSeriesColor(int seriesIndex) => seriesIndex == 0
             ? GetThemeColor()
             : SeriesColors[(seriesIndex - 1) % SeriesColors.Length];
@@ -194,6 +215,8 @@ namespace AFMSDataViewer
         private void DrawSeries()
         {
             formsPlot.Plot.Clear();
+            trackingLine = null;
+            trackingLabels.Clear();
             formsPlot.Plot.Axes.Right.IsVisible = false;
             List<RealtimeChartSeries> visible = availableSeries
                 .Where(series => legendController.IsVisible(series, null)).ToList();
@@ -221,6 +244,14 @@ namespace AFMSDataViewer
                 }
             }
 
+            if (trackingTime.HasValue)
+            {
+                trackingLine = formsPlot.Plot.Add.VerticalLine(trackingTime.Value.ToOADate());
+                trackingLine.Color = ToScottColor(Color.FromArgb(220, 38, 38));
+                trackingLine.LineWidth = 1F;
+                trackingLine.EnableAutoscale = false;
+            }
+
             AddUnitAnnotation();
             ConfigureTimeTicks();
             formsPlot.Plot.Axes.AutoScale();
@@ -229,6 +260,14 @@ namespace AFMSDataViewer
                 formsPlot.Plot.Axes.SetLimitsY(minimumY.Value, maximumY.Value);
             formsPlot.Plot.HideLegend();
             formsPlot.Refresh();
+
+            // 최초 렌더링으로 축과 데이터 영역이 확정된 뒤 마커 라벨의 방향을 계산합니다.
+            if (trackingTime.HasValue && trackingLabelsExpireAt > DateTime.Now)
+            {
+                AddTrackingLabels(trackingTime.Value);
+                formsPlot.Refresh();
+            }
+
             UpdateStatistics(visible.Where(series => !series.SecondaryAxis)
                 .SelectMany(series => series.Points).Select(point => point.Value));
         }
@@ -245,8 +284,6 @@ namespace AFMSDataViewer
             formsPlot.Plot.DataBorder.Color = ScottPlot.Color.FromHex("#B8C9D8");
             formsPlot.Plot.Axes.Left.TickLabelStyle.FontSize = 8F;
             formsPlot.Plot.Axes.Bottom.TickLabelStyle.FontSize = 7F;
-            formsPlot.MouseMove += FormsPlot_MouseMove;
-            formsPlot.MouseLeave += (_, _) => hoverTip.Hide(formsPlot);
         }
 
         private void ConfigureHeaderButtons()
@@ -339,34 +376,90 @@ namespace AFMSDataViewer
             formsPlot.Plot.Axes.Bottom.TickGenerator = ticks;
         }
 
-        private void FormsPlot_MouseMove(object? sender, MouseEventArgs e)
+        private void ShowTrackingTooltip(DateTime time)
         {
-            RealtimeChartPointEventArgs? nearest = FindNearestPoint(e.Location);
-            if (nearest == null) return;
-            string missing = nearest.Point.IsMissing ? " (데이터 없음)" : string.Empty;
-            hoverTip.Show($"{nearest.Series.Name}\n{nearest.Point.Value:0.00} {(nearest.Series.SecondaryAxis ? "m³/s" : UnitText)}{missing}\n{nearest.Point.Time:yyyy-MM-dd HH:mm}",
-                formsPlot, e.X + 14, e.Y + 14, 1000);
+            if (trackingLine == null) return;
+
+            trackingLabelsExpireAt = DateTime.Now.AddSeconds(10);
+            AddTrackingLabels(time);
+            formsPlot.Refresh();
+
+            trackingLabelTimer.Stop();
+            trackingLabelTimer.Start();
         }
 
-        private RealtimeChartPointEventArgs? FindNearestPoint(Point location)
+        private void AddTrackingLabels(DateTime time)
         {
-            if (availableSeries.Count == 0 || formsPlot.Plot.LastRender.DataRect.Width <= 0) return null;
-            Pixel mouse = new(location.X, location.Y);
-            double nearestDistance = Math.Pow(10 * formsPlot.DisplayScale, 2);
-            RealtimeChartSeries? nearestSeries = null;
-            RealtimeChartPoint? nearestPoint = null;
-            foreach (RealtimeChartSeries series in availableSeries.Where(series => legendController.IsVisible(series, null)))
-            foreach (RealtimeChartPoint point in series.Points)
+            RemoveTrackingLabels();
+
+            DateTime slotTime = MeasurementDataHub.AlignToSlot(time);
+            foreach (RealtimeChartSeries series in availableSeries
+                .Where(series => legendController.IsVisible(series, null)))
             {
-                Pixel pixel = formsPlot.Plot.GetPixel(new Coordinates(point.Time.ToOADate(), point.Value),
-                    formsPlot.Plot.Axes.Bottom, series.SecondaryAxis ? formsPlot.Plot.Axes.Right : formsPlot.Plot.Axes.Left);
-                double distance = Math.Pow(pixel.X - mouse.X, 2) + Math.Pow(pixel.Y - mouse.Y, 2);
-                if (distance >= nearestDistance) continue;
-                nearestDistance = distance;
-                nearestSeries = series;
-                nearestPoint = point;
+                RealtimeChartPoint? point = series.Points
+                    .Where(point => MeasurementDataHub.AlignToSlot(point.Time) == slotTime)
+                    .MinBy(point => Math.Abs((point.Time - time).Ticks));
+                if (point == null || point.IsMissing)
+                    continue;
+
+                string unit = series.SecondaryAxis ? "m³/s" : UnitText;
+                string text = $"{series.Name}: {point.Value:0.00} {unit}".TrimEnd();
+                Text label = formsPlot.Plot.Add.Text(text, point.Time.ToOADate(), point.Value);
+                IYAxis yAxis = series.SecondaryAxis
+                    ? formsPlot.Plot.Axes.Right
+                    : formsPlot.Plot.Axes.Left;
+                label.Axes.YAxis = yAxis;
+
+                PixelRect dataRect = formsPlot.Plot.LastRender.DataRect;
+                bool placeLeft = false;
+                bool placeBelow = false;
+                if (dataRect.HasArea)
+                {
+                    Pixel markerPixel = formsPlot.Plot.GetPixel(
+                        new Coordinates(point.Time.ToOADate(), point.Value),
+                        formsPlot.Plot.Axes.Bottom,
+                        yAxis);
+                    float maximumWidth = Math.Max(80F, dataRect.Width / 2F);
+                    float estimatedWidth = Math.Clamp(text.Length * 7F + 12F, 80F, maximumWidth);
+                    placeLeft = markerPixel.X + estimatedWidth > dataRect.TopRight.X;
+                    placeBelow = markerPixel.Y - 32F < dataRect.TopLeft.Y;
+                }
+
+                label.OffsetX = placeLeft ? -8F : 8F;
+                label.OffsetY = placeBelow ? 8F : -8F;
+                label.Alignment = (placeLeft, placeBelow) switch
+                {
+                    (true, true) => Alignment.UpperRight,
+                    (true, false) => Alignment.LowerRight,
+                    (false, true) => Alignment.UpperLeft,
+                    _ => Alignment.LowerLeft
+                };
+                label.LabelFontName = ChartFontName;
+                label.LabelFontSize = 8F;
+                label.LabelFontColor = ScottPlot.Color.FromHex("#991B1B");
+                label.LabelBackgroundColor = ScottPlot.Color.FromHex("#FFF7ED");
+                label.LabelBorderColor = ScottPlot.Color.FromHex("#FCA5A5");
+                label.LabelBorderWidth = 1F;
+                label.LabelPadding = 3F;
+                trackingLabels.Add(label);
             }
-            return nearestSeries == null || nearestPoint == null ? null : new(nearestSeries, nearestPoint);
+        }
+
+        private void TrackingLabelTimer_Tick(object? sender, EventArgs e)
+        {
+            trackingLabelTimer.Stop();
+            trackingLabelsExpireAt = DateTime.MinValue;
+            if (formsPlot.IsDisposed) return;
+
+            RemoveTrackingLabels();
+            formsPlot.Refresh();
+        }
+
+        private void RemoveTrackingLabels()
+        {
+            foreach (Text label in trackingLabels)
+                formsPlot.Plot.Remove(label);
+            trackingLabels.Clear();
         }
 
         private void UpdateStatistics(IEnumerable<double> values)
@@ -412,7 +505,8 @@ namespace AFMSDataViewer
                 if (measurementDataHub != null)
                     measurementDataHub.Changed -= MeasurementDataHub_Changed;
                 legendController.Dispose();
-                hoverTip.Dispose();
+                trackingLabelTimer.Stop();
+                trackingLabelTimer.Dispose();
             }
             base.Dispose(disposing);
         }

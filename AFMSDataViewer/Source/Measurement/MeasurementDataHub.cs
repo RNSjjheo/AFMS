@@ -9,11 +9,7 @@ namespace AFMSDataViewer
 
     public sealed record VelocityMeasurement(DateTime Time, string SourceType, string DeviceKey, int TransectNo, double Value) : IRealtimeMeasurement;
 
-    public sealed record LevelMeasurement(DateTime Time, string DeviceKey, double Value) : IRealtimeMeasurement;
-
     public sealed record DischargeMeasurement(DateTime Time, string DeviceType, int DeviceId, string Method, double Value) : IRealtimeMeasurement;
-
-    public sealed record VoltageMeasurement(DateTime Time, string DeviceKey, double? InputVoltage, double? OutputVoltage) : IRealtimeMeasurement;
 
     public sealed class MeasurementDataChangedEventArgs(DateTime rangeStart, DateTime rangeEnd, long version) : EventArgs
     {
@@ -140,7 +136,7 @@ namespace AFMSDataViewer
                 foreach (LevelMeasurement item in batch.Levels)
                 {
                     MeasurementSlot slot = EnsureSlotCore(item.Time);
-                    slot.MeasurementDevices.WaterLevelGauge = item;
+                    slot.MeasurementDevices.WaterLevelGauge.Measurement = item;
                     changed = true;
                 }
 
@@ -157,7 +153,7 @@ namespace AFMSDataViewer
                 foreach (VoltageMeasurement item in batch.Voltages)
                 {
                     MeasurementSlot slot = EnsureSlotCore(item.Time);
-                    slot.MeasurementDevices.VoltageMeter = item;
+                    slot.MeasurementDevices.Power.Measurement = item;
                     changed = true;
                 }
 
@@ -212,8 +208,10 @@ namespace AFMSDataViewer
             IReadOnlyDictionary<DateTime, VoltageMeasurement> voltagesBySlot)
         {
             MeasurementSlot slot = CreateSlot(slotTime);
-            if (levelsBySlot.TryGetValue(slotTime, out LevelMeasurement? level)) slot.MeasurementDevices.WaterLevelGauge = level;
-            if (voltagesBySlot.TryGetValue(slotTime, out VoltageMeasurement? voltage)) slot.MeasurementDevices.VoltageMeter = voltage;
+            if (levelsBySlot.TryGetValue(slotTime, out LevelMeasurement? level))
+                slot.MeasurementDevices.WaterLevelGauge.Measurement = level;
+            if (voltagesBySlot.TryGetValue(slotTime, out VoltageMeasurement? voltage))
+                slot.MeasurementDevices.Power.Measurement = voltage;
             return slot;
         }
 

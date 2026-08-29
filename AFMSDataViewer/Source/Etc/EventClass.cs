@@ -16,4 +16,9 @@ namespace AFMSDataViewer
 
         public string Text { get; }
     }
+
+    public sealed class TrackingTimeChangedEventArgs(DateTime time) : EventArgs
+    {
+        public DateTime Time { get; } = time;
+    }
 }

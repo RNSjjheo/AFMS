@@ -124,6 +124,7 @@ namespace AFMSDataViewer
             uiChart2 = CreateChartPanel();
             uiChart3 = CreateChartPanel();
             uiChart4 = CreateChartPanel();
+            uiTracking.SelectedTimeChanged += UiTracking_SelectedTimeChanged;
             ApplyNavigatorRange();
 
             uiTpTop.Controls.Add(uiBtnGroups, 0, 0);
@@ -168,6 +169,14 @@ namespace AFMSDataViewer
             2 => TimeSpan.FromDays(7),
             _ => TimeSpan.FromHours(12)
         };
+
+        private void UiTracking_SelectedTimeChanged(object? sender, TrackingTimeChangedEventArgs e)
+        {
+            uiChart1.SetTrackingTime(e.Time);
+            uiChart2.SetTrackingTime(e.Time);
+            uiChart3.SetTrackingTime(e.Time);
+            uiChart4.SetTrackingTime(e.Time);
+        }
 
         private void MeasurementDataHub_Changed(object? sender, MeasurementDataChangedEventArgs e)
         {
@@ -221,7 +230,10 @@ namespace AFMSDataViewer
         protected override void Dispose(bool disposing)
         {
             if (disposing)
+            {
+                uiTracking.SelectedTimeChanged -= UiTracking_SelectedTimeChanged;
                 measurementDataHub.Changed -= MeasurementDataHub_Changed;
+            }
 
             base.Dispose(disposing);
         }

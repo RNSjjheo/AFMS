@@ -57,13 +57,20 @@ namespace AFMSDataViewer
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            await RefreshCoreAsync(true, stoppingToken).ConfigureAwait(false);
-
-            while (!stoppingToken.IsCancellationRequested)
+            try
             {
-                TimeSpan delay = GetDelayUntilNextRefresh(DateTime.Now);
-                await Task.Delay(delay, stoppingToken).ConfigureAwait(false);
-                await RefreshCoreAsync(false, stoppingToken).ConfigureAwait(false);
+                await RefreshCoreAsync(true, stoppingToken).ConfigureAwait(false);
+
+                while (!stoppingToken.IsCancellationRequested)
+                {
+                    TimeSpan delay = GetDelayUntilNextRefresh(DateTime.Now);
+                    await Task.Delay(delay, stoppingToken).ConfigureAwait(false);
+                    await RefreshCoreAsync(false, stoppingToken).ConfigureAwait(false);
+                }
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                // Host 종료로 인한 정상적인 백그라운드 작업 취소입니다.
             }
         }
 

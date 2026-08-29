@@ -21,6 +21,7 @@ namespace AFMSDataViewer
         private AFMSButton uiBtnChartVTHL;
         private RealtimeResultChart? uiResultChart;
         private readonly MeasurementDataHub measurementDataHub;
+        private DateTime? trackingTime;
         private DateTime rangeStart;
         private DateTime rangeEnd;
         public ChartSelectPanel(MeasurementDataHub measurementDataHub)
@@ -136,6 +137,8 @@ namespace AFMSDataViewer
             ChartAxisRange axisRange = DataViewerChartSettings.GetAxisRange(chartType);
             if (axisRange.TryGetFixedRange(out double minimumY, out double maximumY))
                 uiResultChart.SetYAxisRange(minimumY, maximumY);
+            if (trackingTime.HasValue)
+                uiResultChart.SetTrackingTime(trackingTime.Value);
             uiResultChart.MaximizeRequested += UiResultChart_MaximizeRequested;
             uiResultChart.CloseRequested += UiResultChart_CloseRequested;
             Controls.Clear();
@@ -148,6 +151,12 @@ namespace AFMSDataViewer
             rangeStart = start;
             rangeEnd = end;
             uiResultChart?.SetTimeRange(start, end);
+        }
+
+        public void SetTrackingTime(DateTime time)
+        {
+            trackingTime = time;
+            uiResultChart?.SetTrackingTime(time);
         }
 
         /// <summary>표시 중인 실시간 차트를 제거하고 차트 선택 화면으로 돌아갑니다.</summary>

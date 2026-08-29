@@ -14,9 +14,15 @@ namespace AFMSDataViewer
         {
             MeasurementDataHub dataHub = MeasurementDataHub!;
             List<RealtimeChartPoint> points = dataHub.GetSlots(RangeStart, RangeEnd)
-                .Select(slot => slot.MeasurementDevices.WaterLevelGauge)
-                .Where(measurement => measurement != null && double.IsFinite(measurement.Value))
-                .Select(measurement => new RealtimeChartPoint(measurement!.Time, measurement.Value))
+                .Select(slot =>
+                {
+                    LevelMeasurement? measurement = slot.MeasurementDevices.WaterLevelGauge.Measurement;
+                    bool isValid = measurement is { IsValid: true } && double.IsFinite(measurement.Value);
+                    return new RealtimeChartPoint(
+                        measurement?.Time ?? slot.SlotTime,
+                        isValid ? measurement!.Value : 0D,
+                        !isValid);
+                })
                 .OrderBy(point => point.Time)
                 .ToList();
 

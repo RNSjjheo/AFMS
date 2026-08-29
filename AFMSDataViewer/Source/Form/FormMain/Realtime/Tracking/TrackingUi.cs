@@ -14,7 +14,15 @@ namespace AFMSDataViewer
         private Panel _pnBar2;
         private Label _lbTimeStart;
         private Label _lbTimeFinish;
+        private DateTime _rangeStart;
+        private bool _settingRange;
         public AFMSTrackBar CtlItem;
+
+        public event EventHandler<TrackingTimeChangedEventArgs>? SelectedTimeChanged;
+
+        public DateTime SelectedTime =>
+            _rangeStart + TimeSpan.FromTicks(MeasurementDataHub.SlotInterval.Ticks * CtlItem.Value);
+
         public TrackingUi()
         {
             Dock = DockStyle.Fill;
@@ -44,6 +52,11 @@ namespace AFMSDataViewer
 
             CtlItem = new AFMSTrackBar();
             CtlItem.Dock = DockStyle.Fill;
+            CtlItem.ValueChanged += (_, _) =>
+            {
+                if (!_settingRange)
+                    RaiseSelectedTimeChanged();
+            };
 
             _tpMain.Controls.Add(_lbTimeStart, 0, 0);
             _tpMain.Controls.Add(_pnBar1, 1, 0);
@@ -80,6 +93,7 @@ namespace AFMSDataViewer
 
             _lbTimeStart.Text = start.ToString("yyyy-MM-dd HH:mm");
             _lbTimeFinish.Text = end.ToString("yyyy-MM-dd HH:mm");
+            _rangeStart = start;
 
             int maximum = (int)Math.Min(int.MaxValue,
                 Math.Max(0, (end - start).Ticks / MeasurementDataHub.SlotInterval.Ticks));
@@ -89,12 +103,25 @@ namespace AFMSDataViewer
                 0L,
                 maximum);
 
-            CtlItem.Minimum = 0;
-            CtlItem.Maximum = maximum;
-            CtlItem.SmallChange = 1;
-            CtlItem.LargeChange = Math.Max(1, maximum / 12);
-            CtlItem.Value = value;
+            _settingRange = true;
+            try
+            {
+                CtlItem.Minimum = 0;
+                CtlItem.Maximum = maximum;
+                CtlItem.SmallChange = 1;
+                CtlItem.LargeChange = Math.Max(1, maximum / 12);
+                CtlItem.Value = value;
+            }
+            finally
+            {
+                _settingRange = false;
+            }
+
+            RaiseSelectedTimeChanged();
 
         }
+
+        private void RaiseSelectedTimeChanged() =>
+            SelectedTimeChanged?.Invoke(this, new TrackingTimeChangedEventArgs(SelectedTime));
     }
 }
