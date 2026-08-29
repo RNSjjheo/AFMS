@@ -5,30 +5,13 @@ namespace AFMSDataViewer
         DateTime Time { get; }
     }
 
-    public sealed record VelocityMeasurement(
-        DateTime Time,
-        string SourceType,
-        string DeviceKey,
-        int TransectNo,
-        double Value) : IRealtimeMeasurement;
+    public sealed record VelocityMeasurement(DateTime Time, string SourceType, string DeviceKey, int TransectNo, double Value) : IRealtimeMeasurement;
 
-    public sealed record LevelMeasurement(
-        DateTime Time,
-        string DeviceKey,
-        double Value) : IRealtimeMeasurement;
+    public sealed record LevelMeasurement(DateTime Time, string DeviceKey, double Value) : IRealtimeMeasurement;
 
-    public sealed record DischargeMeasurement(
-        DateTime Time,
-        string DeviceType,
-        int DeviceId,
-        string Method,
-        double Value) : IRealtimeMeasurement;
+    public sealed record DischargeMeasurement(DateTime Time, string DeviceType, int DeviceId, string Method, double Value) : IRealtimeMeasurement;
 
-    public sealed record VoltageMeasurement(
-        DateTime Time,
-        string DeviceKey,
-        double? InputVoltage,
-        double? OutputVoltage) : IRealtimeMeasurement;
+    public sealed record VoltageMeasurement(DateTime Time, string DeviceKey, double? InputVoltage, double? OutputVoltage) : IRealtimeMeasurement;
 
     public sealed class MeasurementSlot
     {
@@ -54,10 +37,7 @@ namespace AFMSDataViewer
         }
     }
 
-    public sealed class MeasurementDataChangedEventArgs(
-        DateTime rangeStart,
-        DateTime rangeEnd,
-        long version) : EventArgs
+    public sealed class MeasurementDataChangedEventArgs(DateTime rangeStart, DateTime rangeEnd, long version) : EventArgs
     {
         public DateTime RangeStart { get; } = rangeStart;
         public DateTime RangeEnd { get; } = rangeEnd;

@@ -19,10 +19,7 @@ namespace AFMSDataViewer
     {
         string Name { get; }
 
-        Task<MeasurementBatch> LoadAsync(
-            DateTime from,
-            DateTime to,
-            CancellationToken cancellationToken);
+        Task<MeasurementBatch> LoadAsync(DateTime from, DateTime to, CancellationToken cancellationToken);
     }
 
     /// <summary>
@@ -40,10 +37,7 @@ namespace AFMSDataViewer
         private readonly Dictionary<IMeasurementDataSource, DateTime> _lastSuccessfulLoads = new();
         private bool _requiresFullReload = true;
 
-        public MeasurementRefreshService(
-            MeasurementDataHub dataHub,
-            IEnumerable<IMeasurementDataSource> dataSources,
-            ILogger<MeasurementRefreshService> logger)
+        public MeasurementRefreshService(MeasurementDataHub dataHub, IEnumerable<IMeasurementDataSource> dataSources, ILogger<MeasurementRefreshService> logger)
         {
             _dataHub = dataHub;
             _dataSources = dataSources.ToArray();
@@ -59,8 +53,7 @@ namespace AFMSDataViewer
             return ReloadCoreAsync(retention, cancellationToken);
         }
 
-        public Task RefreshNowAsync(CancellationToken cancellationToken = default) =>
-            RefreshCoreAsync(false, cancellationToken);
+        public Task RefreshNowAsync(CancellationToken cancellationToken = default) => RefreshCoreAsync(false, cancellationToken);
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
