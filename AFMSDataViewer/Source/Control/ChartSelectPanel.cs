@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Text;
 
 
-namespace AFMSDataViewer.Source.Control
+namespace AFMSDataViewer
 {
     public class ChartSelectPanel:AFMSPanel
     {
@@ -75,10 +75,10 @@ namespace AFMSDataViewer.Source.Control
             uiMmBar.LayoutStyle = ToolStripLayoutStyle.HorizontalStackWithOverflow;
             uiMmBar.Renderer = new BorderlessToolStripRenderer();
 
-            uiBtnChartVelo = AddCenteredButton("유속", AFMSIcon.FlowVelocitySelect(24,24), ChartMainType.Velocity);
-            uiBtnChartLevel = AddCenteredButton("수위", AFMSIcon.WaterLevelSelect(24, 24), ChartMainType.Level);
-            uiBtnChartDisc = AddCenteredButton("유량", AFMSIcon.FlowRateSelect(24, 24), ChartMainType.Discharge);
-            uiBtnChartVTHL = AddCenteredButton("전원", AFMSIcon.VthSelect(24, 24), ChartMainType.VTH);
+            uiBtnChartVelo = AddCenteredButton("유속", AFMSIcon.Get(AFMSIcons.FlowVelocitySelect, 24), ChartMainType.Velocity);
+            uiBtnChartLevel = AddCenteredButton("수위", AFMSIcon.Get(AFMSIcons.WaterLevelSelect, 24), ChartMainType.Level);
+            uiBtnChartDisc = AddCenteredButton("유량", AFMSIcon.Get(AFMSIcons.FlowRateSelect, 24), ChartMainType.Discharge);
+            uiBtnChartVTHL = AddCenteredButton("전원", AFMSIcon.Get(AFMSIcons.VthSelect, 24), ChartMainType.VTH);
 
             uiTpBtnArr.Controls.Add(uiBtnChartVelo, 1, 0);
             uiTpBtnArr.Controls.Add(uiBtnChartLevel, 2, 0);

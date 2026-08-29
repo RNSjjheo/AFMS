@@ -1,5 +1,4 @@
-﻿using AFMSDataViewer.Source.Control;
-using AFMSDll;
+﻿using AFMSDll;
 using System.Drawing;
 using System.Windows.Forms;
 
@@ -7,6 +6,7 @@ namespace AFMSDataViewer
 {
     public class ViewRealtime : TableLayoutPanel
     {
+        private const int LAYOUT_ICON_SIZE = 16;
         public AFMSPanel uiPnHeader;
         public MaximizableTableLayoutPanel uiTpField;
         public AFMSButtonGroup uiBtnGroups;
@@ -19,13 +19,13 @@ namespace AFMSDataViewer
         private ChartSelectPanel uiChart3;
         private ChartSelectPanel uiChart4;
         private DateTime selectedDateTime;
-
+        public Tracking uiTracking;
         public ViewRealtime()
         {
             Dock = DockStyle.Fill;
             RowStyles.Clear();
             ColumnStyles.Clear();
-            RowCount = 2;
+            RowCount = 3;
             ColumnCount = 1;
             Margin = Padding.Empty;
             Padding = Padding.Empty;
@@ -33,6 +33,7 @@ namespace AFMSDataViewer
             ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             RowStyles.Add(new RowStyle(SizeType.Absolute, 36F));
             RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            RowStyles.Add(new RowStyle(SizeType.Absolute, 46F));
 
             uiPnHeader = new AFMSPanel();
             uiPnHeader.Dock = DockStyle.Fill;
@@ -48,6 +49,14 @@ namespace AFMSDataViewer
             uiTpField.BackColor = Color.White;
             uiTpField.Margin = new Padding(0, 10, 0, 0);
             uiTpField.Padding = Padding.Empty;
+
+            uiTracking = new Tracking();
+            uiTracking.BackColor = Color.White;
+            uiTracking.Margin = new Padding(0, 10, 0, 0);
+            uiTracking.Padding = new Padding(3);
+            uiTracking.BorderRadius = 5;
+            uiTracking.BorderColor = DllColorHelper.GetCommonBorder();
+            uiTracking.BorderThickness = 1;
 
             uiTpTop = new TableLayoutPanel();
             uiTpTop.Dock = DockStyle.Fill;
@@ -75,22 +84,22 @@ namespace AFMSDataViewer
             uiBtnTemp.SelectedBackColor = DllColorHelper.HexToColor("#ECFDF5");
             uiBtnTemp.Click += UiBtnTemp_Click;
 
-            const int layoutIconSize = 16;
+
             AFMSButtonGroupItem x1 = uiBtnTemp.AddButton(
-                AFMSIcon.Layout22Off(layoutIconSize, layoutIconSize),
-                AFMSIcon.Layout22On(layoutIconSize, layoutIconSize),
+                AFMSIcon.Get(AFMSIcons.Layout22Off, LAYOUT_ICON_SIZE),
+                AFMSIcon.Get(AFMSIcons.Layout22On, LAYOUT_ICON_SIZE),
                 MaximizableTableLayoutType.Layout2_2);
             AFMSButtonGroupItem x2 = uiBtnTemp.AddButton(
-                AFMSIcon.Layout21Off(layoutIconSize, layoutIconSize),
-                AFMSIcon.Layout21On(layoutIconSize, layoutIconSize),
+                AFMSIcon.Get(AFMSIcons.Layout21Off, LAYOUT_ICON_SIZE),
+                AFMSIcon.Get(AFMSIcons.Layout21On, LAYOUT_ICON_SIZE),
                 MaximizableTableLayoutType.Layout2_1);
             AFMSButtonGroupItem x3 = uiBtnTemp.AddButton(
-                AFMSIcon.Layout12Off(layoutIconSize, layoutIconSize),
-                AFMSIcon.Layout12On(layoutIconSize, layoutIconSize),
+                AFMSIcon.Get(AFMSIcons.Layout12Off, LAYOUT_ICON_SIZE),
+                AFMSIcon.Get(AFMSIcons.Layout12On, LAYOUT_ICON_SIZE),
                 MaximizableTableLayoutType.Layout1_2);
             AFMSButtonGroupItem x4 = uiBtnTemp.AddButton(
-                AFMSIcon.Layout11Off(layoutIconSize, layoutIconSize),
-                AFMSIcon.Layout11On(layoutIconSize, layoutIconSize),
+                AFMSIcon.Get(AFMSIcons.Layout11Off, LAYOUT_ICON_SIZE),
+                AFMSIcon.Get(AFMSIcons.Layout11On, LAYOUT_ICON_SIZE),
                 MaximizableTableLayoutType.Layout1_1);
 
             uiNavigator = new AFMSNavigatorBox();
@@ -99,8 +108,7 @@ namespace AFMSDataViewer
             uiNavigator.LeftButtonClick += (_, _) => MoveSelectedDate(-1);
             uiNavigator.RightButtonClick += (_, _) => MoveSelectedDate(1);
             DateTime now = DateTime.Now;
-            selectedDateTime = new DateTime(
-                now.Year, now.Month, now.Day, now.Hour, now.Minute / 10 * 10, 0, now.Kind);
+            selectedDateTime = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute / 10 * 10, 0, now.Kind);
 
             uiChart1 = CreateChartPanel();
             uiChart2 = CreateChartPanel();
@@ -114,8 +122,10 @@ namespace AFMSDataViewer
 
             uiPnHeader.Controls.Add(uiTpTop);
 
+
             Controls.Add(uiPnHeader, 0, 0);
             Controls.Add(uiTpField, 0, 1);
+            Controls.Add(uiTracking, 0, 2);
 
             uiBtnTemp.PerformClick(x2);
         }

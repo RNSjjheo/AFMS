@@ -144,10 +144,10 @@ namespace AFMSDataViewer
 
         private static Image GetChartIcon(ChartMainType chartType) => chartType switch
         {
-            ChartMainType.Velocity => AFMSIcon.FlowVelocity(126, 126),
-            ChartMainType.Level => AFMSIcon.WaterLevel(126, 126),
-            ChartMainType.Discharge => AFMSIcon.FlowRate(126, 126),
-            _ => AFMSIcon.Vth(126, 126)
+            ChartMainType.Velocity => AFMSIcon.Get(AFMSIcons.FlowVelocity, 126),
+            ChartMainType.Level => AFMSIcon.Get(AFMSIcons.WaterLevel, 126),
+            ChartMainType.Discharge => AFMSIcon.Get(AFMSIcons.FlowRate, 126),
+            _ => AFMSIcon.Get(AFMSIcons.Vth, 126)
         };
 
         private static string GetMainPlaceholder(ChartMainType chartType) => chartType switch

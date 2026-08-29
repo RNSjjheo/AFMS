@@ -48,7 +48,7 @@ namespace AFMSDataViewer
             uiTpMain.Padding = Padding.Empty;
             uiTpMain.ColumnStyles[0].Width = MAIN_LAYOUT_COL1;
 
-            afmsTabBar1.RightButtonImage = AFMSIcon.Setting(24, 24);
+            afmsTabBar1.RightButtonImage = AFMSIcon.Get(AFMSIcons.Setting, 24);
             afmsTabBar1.RightButtonClick += AfmsTabBar1_RightButtonClick;
 
             _ViewRealtime = new ViewRealtime();
@@ -69,11 +69,11 @@ namespace AFMSDataViewer
 
             const int imagesize = 20;
 
-            _TabRealtime = afmsTabBar1.AddTab(TAB_HEADEL_REALTIME, AFMSIcon.MeasureOff(imagesize, imagesize), AFMSIcon.MeasureOn(imagesize, imagesize));
+            _TabRealtime = afmsTabBar1.AddTab(TAB_HEADEL_REALTIME, AFMSIcon.Get(AFMSIcons.MeasureOff, imagesize), AFMSIcon.Get(AFMSIcons.MeasureOn, imagesize));
             _TabRealtime.Width = 115;
             _TabRealtime.Tag = _ViewRealtime;
 
-            _TabHistory = afmsTabBar1.AddTab(TAB_HEADEL_HISTORY, AFMSIcon.SearchOff(imagesize, imagesize), AFMSIcon.SearchOn(imagesize, imagesize));  
+            _TabHistory = afmsTabBar1.AddTab(TAB_HEADEL_HISTORY, AFMSIcon.Get(AFMSIcons.SearchOff, imagesize), AFMSIcon.Get(AFMSIcons.SearchOn, imagesize));
             _TabHistory.Width = 115;
             //_TabHistory.Tag = _ViewRealtime;
 
