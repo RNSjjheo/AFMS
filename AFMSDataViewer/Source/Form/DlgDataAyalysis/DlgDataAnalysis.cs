@@ -16,10 +16,14 @@ namespace AFMSDataViewer
         private readonly AFMSTabControl analysisTabs = new()
         {
             Dock = DockStyle.Fill,
-            Font = new Font("맑은 고딕", 9F),
-            HeaderHeight = 40,
-            TabSizingMode = AFMSTabSizingMode.Fill,
-            AccentColor = Color.FromArgb(139, 92, 246),
+            DrawMode = TabDrawMode.OwnerDrawFixed,
+            Font = new Font("Segoe UI", 9F),
+            ItemSize = new Size(120, 40),
+            Padding = new Point(12, 5),
+            TabHeight = 40,
+            TabSizingMode = AFMSTabSizingMode.Equal,
+            EqualTabWidth = 120,
+            BorderRadius = 5,
             SizeMode = TabSizeMode.Fixed
         };
         private readonly MeasurementDataHub? measurementDataHub;
@@ -62,6 +66,7 @@ namespace AFMSDataViewer
             {
                 SectionContext section = LoadSectionContext();
                 analysisTabs.TabPages.Add(CreateVelocityPage());
+                analysisTabs.TabPages.Add(CreateTimeDistributionPage(section));
                 analysisTabs.TabPages.Add(CreateCrossSectionPage(section));
                 analysisTabs.TabPages.Add(CreateMainFlowPage(section));
                 return;
@@ -125,6 +130,21 @@ namespace AFMSDataViewer
             }
 
             page.Controls.Add(grid);
+            return page;
+        }
+
+        private TabPage CreateTimeDistributionPage(SectionContext context)
+        {
+            TabPage page = CreatePage("시간분포");
+            VelocityTimeDistributionChart chart = new()
+            {
+                Dock = DockStyle.Fill,
+                MinimumVelocity = -0.2D,
+                MaximumVelocity = 0.2D
+            };
+            if (measurementDataHub != null)
+                chart.SetData(measurementDataHub, velocityMeasurement!, context.Transects);
+            page.Controls.Add(chart);
             return page;
         }
 
@@ -221,14 +241,18 @@ namespace AFMSDataViewer
             MeasurementSlot? slot = measurementDataHub?.GetSlots(SelectedPoint.Time, SelectedPoint.Time).FirstOrDefault();
             CrossSectionPointCollection points = slot?.CrossSectionDefinition.CreatePointCollection()
                 ?? new CrossSectionPointCollection();
-            double? waterLevel = velocityMeasurement!.Transects
+            double? gaugeWaterLevel = slot?.MeasurementDevices.WaterLevelGauge.IsValid == true
+                ? slot.MeasurementDevices.WaterLevelGauge.Level
+                : null;
+            double? meterWaterLevel = velocityMeasurement!.Transects
                 .Select(item => item.AdditionalValues != null &&
                                 item.AdditionalValues.TryGetValue("수위(m)", out double? value)
                     ? value
                     : null)
                 .FirstOrDefault(value => value.HasValue);
-            if (!waterLevel.HasValue && slot?.MeasurementDevices.WaterLevelGauge.IsValid == true)
-                waterLevel = slot.MeasurementDevices.WaterLevelGauge.Level;
+            double? waterLevel = velocityMeasurement is VideoVelocityMeasurement
+                ? gaugeWaterLevel
+                : meterWaterLevel ?? gaugeWaterLevel;
             string message = string.Empty;
 
             if (points.Count == 0)
