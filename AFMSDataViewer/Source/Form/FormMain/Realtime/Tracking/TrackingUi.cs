@@ -2,6 +2,7 @@ using AFMSDll;
 using System;
 using System.Collections.Generic;
 using System.Text;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace AFMSDataViewer
 {
@@ -13,7 +14,7 @@ namespace AFMSDataViewer
         private Panel _pnBar2;
         private Label _lbTimeStart;
         private Label _lbTimeFinish;
-        public TrackBar CtlItem;
+        public AFMSTrackBar CtlItem;
         public TrackingUi()
         {
             Dock = DockStyle.Fill;
@@ -41,7 +42,7 @@ namespace AFMSDataViewer
             _lbTimeStart = CreateLabel();
             _lbTimeFinish = CreateLabel();
 
-            CtlItem = new TrackBar();
+            CtlItem = new AFMSTrackBar();
             CtlItem.Dock = DockStyle.Fill;
 
             _tpMain.Controls.Add(_lbTimeStart, 0, 0);
@@ -70,6 +71,11 @@ namespace AFMSDataViewer
             item.TextAlign = ContentAlignment.MiddleCenter;
 
             return item;
+        }
+
+        public void SetRange(DateTime start, DateTime end, DateTime? selected = null)
+        {
+
         }
     }
 }

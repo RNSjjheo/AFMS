@@ -143,6 +143,9 @@ namespace AFMSDataViewer
 
             DateTime start = selectedDateTime.Subtract(GetSelectedDuration());
 
+            DateTime trackingTime = start.AddTicks(GetSelectedDuration().Ticks * 3 / 4);
+            uiTracking?.SetRange(start, selectedDateTime, trackingTime);
+
             uiChart1?.SetTimeRange(start, selectedDateTime);
             uiChart2?.SetTimeRange(start, selectedDateTime);
             uiChart3?.SetTimeRange(start, selectedDateTime);
