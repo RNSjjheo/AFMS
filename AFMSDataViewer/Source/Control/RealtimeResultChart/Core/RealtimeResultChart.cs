@@ -251,6 +251,7 @@ namespace AFMSDataViewer
                 trackingLine = formsPlot.Plot.Add.VerticalLine(trackingTime.Value.ToOADate());
                 trackingLine.Color = ToScottColor(Color.FromArgb(220, 38, 38));
                 trackingLine.LineWidth = 1F;
+                trackingLine.LineStyle.Hairline = true;
                 trackingLine.EnableAutoscale = false;
             }
 

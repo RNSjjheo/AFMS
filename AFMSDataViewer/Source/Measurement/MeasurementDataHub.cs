@@ -16,6 +16,10 @@ namespace AFMSDataViewer
         string? MeterType = null,
         bool IsValid = true) : IRealtimeMeasurement;
 
+    public sealed record VelocityMeasurementSlotSnapshot(
+        DateTime SlotTime,
+        IReadOnlyList<VelocityMeasurement> Measurements);
+
     public sealed class MeasurementDataChangedEventArgs(DateTime rangeStart, DateTime rangeEnd, long version) : EventArgs
     {
         public DateTime RangeStart { get; } = rangeStart;
@@ -185,6 +189,34 @@ namespace AFMSDataViewer
 
             lock (_syncRoot)
                 return _slots.Where(slot => slot.SlotTime >= alignedFrom && slot.SlotTime <= alignedTo).ToArray();
+        }
+
+        public IReadOnlyList<DischargeMeasurement> GetDischarges(DateTime from, DateTime to)
+        {
+            if (from > to) throw new ArgumentException("시작 시간은 종료 시간보다 늦을 수 없습니다.");
+            DateTime alignedFrom = AlignToSlot(from);
+            DateTime alignedTo = AlignToSlot(to);
+
+            lock (_syncRoot)
+                return _slots
+                    .Where(slot => slot.SlotTime >= alignedFrom && slot.SlotTime <= alignedTo)
+                    .SelectMany(slot => slot.Discharges)
+                    .ToArray();
+        }
+
+        public IReadOnlyList<VelocityMeasurementSlotSnapshot> GetVelocitySlots(DateTime from, DateTime to)
+        {
+            if (from > to) throw new ArgumentException("시작 시간은 종료 시간보다 늦을 수 없습니다.");
+            DateTime alignedFrom = AlignToSlot(from);
+            DateTime alignedTo = AlignToSlot(to);
+
+            lock (_syncRoot)
+                return _slots
+                    .Where(slot => slot.SlotTime >= alignedFrom && slot.SlotTime <= alignedTo)
+                    .Select(slot => new VelocityMeasurementSlotSnapshot(
+                        slot.SlotTime,
+                        slot.MeasurementDevices.HydroMeters.ToArray()))
+                    .ToArray();
         }
 
         public static DateTime AlignToSlot(DateTime time)

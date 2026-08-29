@@ -45,9 +45,10 @@ namespace AFMSDataViewer
 
         public override void LoadData()
         {
-            IReadOnlyList<MeasurementSlot> slots = MeasurementDataHub!.GetSlots(RangeStart, RangeEnd);
+            IReadOnlyList<VelocityMeasurementSlotSnapshot> slots =
+                MeasurementDataHub!.GetVelocitySlots(RangeStart, RangeEnd);
             VelocityMeasurement[] measurements = slots
-                .SelectMany(slot => slot.MeasurementDevices.HydroMeters)
+                .SelectMany(slot => slot.Measurements)
                 .ToArray();
             PopulateDevices(measurements);
 
@@ -61,7 +62,7 @@ namespace AFMSDataViewer
 
             List<RealtimeChartPoint> points = slots.Select(slot =>
             {
-                VelocityMeasurement? measurement = slot.MeasurementDevices.HydroMeters.FirstOrDefault(item =>
+                VelocityMeasurement? measurement = slot.Measurements.FirstOrDefault(item =>
                     item.SourceType == device.SourceType && item.DeviceKey == device.DeviceKey);
                 VelocityTransectMeasurement? value = measurement?.Transects.FirstOrDefault(item =>
                     item.TransectNo == transect.Number);

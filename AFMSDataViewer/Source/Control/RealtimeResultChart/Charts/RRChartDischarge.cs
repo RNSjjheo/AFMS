@@ -33,8 +33,7 @@ namespace AFMSDataViewer
         {
             loadedSeries.Clear();
             foreach (IGrouping<(string DeviceType, int DeviceId, string Method), DischargeMeasurement> group in
-                MeasurementDataHub!.GetSlots(RangeStart, RangeEnd)
-                    .SelectMany(slot => slot.Discharges)
+                MeasurementDataHub!.GetDischarges(RangeStart, RangeEnd)
                     .GroupBy(item => (item.DeviceType, item.DeviceId, item.Method))
                     .OrderBy(group => group.Key.DeviceType == nameof(MeasurementDeviceType.VelocityMeter) ? 0 : 1)
                     .ThenBy(group => group.Key.DeviceId)
