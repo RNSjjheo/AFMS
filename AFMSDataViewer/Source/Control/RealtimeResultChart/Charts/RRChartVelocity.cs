@@ -25,7 +25,7 @@ namespace AFMSDataViewer
                 LoadData();
             };
             TopLayout.uiComboSub.SelectedIndexChanged += (_, _) => { if (!populating) LoadData(); };
-            PointDoubleClicked += ShowAnalysis;
+            TopLayout.uiButtonDetails.Click += ShowAnalysis;
         }
 
         public override void LoadData()
@@ -82,10 +82,16 @@ namespace AFMSDataViewer
                 .FirstOrDefault(item => item.Number == previous) ?? TopLayout.uiComboSub.Items.Cast<object>().FirstOrDefault();
         }
 
-        private void ShowAnalysis(object? sender, RealtimeChartPointEventArgs e)
+        private void ShowAnalysis(object? sender, EventArgs e)
         {
+            RealtimeChartSeries? series = AvailableSeries
+                .Where(series => series.Points.Count > 0)
+                .MaxBy(series => series.Points.Max(point => point.Time));
+            if (series == null) return;
+            RealtimeChartPoint point = series.Points.MaxBy(point => point.Time)!;
+
             int? transect = (TopLayout.uiComboSub.SelectedItem as TransectOption)?.Number;
-            using DlgDataAnalysis dialog = new(ChartType, e.Series, e.Point, transect);
+            using DlgDataAnalysis dialog = new(ChartType, series, point, transect);
             dialog.ShowDialog(FindForm());
         }
     }

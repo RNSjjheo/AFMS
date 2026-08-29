@@ -27,15 +27,16 @@ namespace AFMSDataViewer
             RowStyles.Clear();
             ColumnStyles.Clear();
             RowCount = 3;
-            ColumnCount = 5;
+            ColumnCount = 6;
             RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            RowStyles.Add(new RowStyle(SizeType.Absolute, 7F));
+            RowStyles.Add(new RowStyle(SizeType.Absolute, 5F));
             RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 69F));
+            ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, FIEXED_CONTROL_HEIGTH));
+            ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 160F));
             ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 66F));
-            ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 66F));
-            ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 66F));
+            ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 55F));
+            ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 55F));
+            ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 55F));
 
             uiPnIcon = new Panel();
             uiPnIcon.Dock = DockStyle.Fill;
@@ -70,9 +71,9 @@ namespace AFMSDataViewer
             Controls.Add(uiComboMain, 1, 0);
             Controls.Add(uiComboSub, 1, 2);
 
-            Controls.Add(uiValueMin, 2, 0);
-            Controls.Add(uiValueAvg, 3, 0);
-            Controls.Add(uiValueMax, 4, 0);
+            Controls.Add(uiValueMin, 3, 0);
+            Controls.Add(uiValueAvg, 4, 0);
+            Controls.Add(uiValueMax, 5, 0);
 
             (Color accent, Color background, Color border) = GetChartTheme(chartType);
             uiButtonDetails = new Button
@@ -84,7 +85,7 @@ namespace AFMSDataViewer
                 Visible = supportsDetails
             };
             uiButtonDetails.FlatAppearance.BorderColor = border;
-            Controls.Add(uiButtonDetails, 2, 2);
+            Controls.Add(uiButtonDetails, 3, 2);
             SetColumnSpan(uiButtonDetails, 3);
 
             if (!supportsDetails)
@@ -103,20 +104,6 @@ namespace AFMSDataViewer
             SetRowSpan(uiComboMain, visible ? 1 : 3);
         }
 
-        public void FitStatisticsWidths()
-        {
-            // Include the unit and comparison symbol when reserving space for each label.
-            AFMSLabel[] labels = { uiValueMin, uiValueAvg, uiValueMax };
-            SuspendLayout();
-            for (int i = 0; i < labels.Length; i++)
-            {
-                AFMSLabel label = labels[i];
-                int textWidth = TextRenderer.MeasureText(label.Text, label.Font).Width;
-                ColumnStyles[i + 2].Width = Math.Max(66F * DeviceDpi / 96F,
-                    textWidth + label.Padding.Horizontal + label.Margin.Horizontal + 4);
-            }
-            ResumeLayout(true);
-        }
 
         private void SetupValueCard(AFMSLabel card, string key, ChartMainType chartType, bool highlighted = false)
         {

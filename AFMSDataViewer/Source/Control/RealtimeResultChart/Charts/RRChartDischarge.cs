@@ -26,11 +26,7 @@ namespace AFMSDataViewer
                 ApplySelection();
             };
             TopLayout.uiComboSub.SelectedIndexChanged += (_, _) => { if (!populating) ApplySelection(); };
-            PointDoubleClicked += (_, e) =>
-            {
-                using DlgDataAnalysis dialog = new(ChartType, e.Series, e.Point, null);
-                dialog.ShowDialog(FindForm());
-            };
+            TopLayout.uiButtonDetails.Click += ShowAnalysis;
         }
 
         public override void LoadData()
@@ -117,6 +113,18 @@ namespace AFMSDataViewer
             SetSeries(loadedSeries.Where(series => device != null &&
                 series.DeviceType == device.Type && series.DeviceId == device.Id &&
                 (method == null || series.DischargeMethod == method.Method)));
+        }
+
+        private void ShowAnalysis(object? sender, EventArgs e)
+        {
+            RealtimeChartSeries? series = AvailableSeries
+                .Where(series => series.Points.Count > 0)
+                .MaxBy(series => series.Points.Max(point => point.Time));
+            if (series == null) return;
+            RealtimeChartPoint point = series.Points.MaxBy(point => point.Time)!;
+
+            using DlgDataAnalysis dialog = new(ChartType, series, point, null);
+            dialog.ShowDialog(FindForm());
         }
 
         private static string GetDeviceText(string type, int id, string? meterType)

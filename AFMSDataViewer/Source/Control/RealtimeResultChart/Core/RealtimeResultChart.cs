@@ -80,27 +80,56 @@ namespace AFMSDataViewer
 
         public event EventHandler? MaximizeRequested;
         public event EventHandler? CloseRequested;
-        public event EventHandler<RealtimeChartPointEventArgs>? PointDoubleClicked;
 
         public ChartMainType ChartType { get; }
         public DateTime RangeStart { get; private set; }
         public DateTime RangeEnd { get; private set; }
         public RealtimeResultChartControl TopLayout { get; }
         protected IReadOnlyList<RealtimeChartSeries> AvailableSeries => availableSeries;
-        protected virtual string TitleText => ChartType switch
+        protected virtual string TitleText
         {
-            ChartMainType.Velocity => "유속차트",
-            ChartMainType.Level => "수위차트",
-            ChartMainType.Discharge => "유량차트",
-            _ => "전압차트"
-        };
-        protected virtual string UnitText => ChartType switch
+            get
+            {
+                switch (ChartType)
+                {
+                    case ChartMainType.Velocity:
+                        return "유속차트";
+
+                    case ChartMainType.Level:
+                        return "수위차트";
+
+                    case ChartMainType.Discharge:
+                        return "유량차트";
+
+                    default:
+                        return "전압차트";
+                }
+            }
+        }
+
+
+        protected virtual string UnitText
         {
-            ChartMainType.Velocity => "m/s",
-            ChartMainType.Level => "m",
-            ChartMainType.Discharge => "m³/s",
-            _ => "V"
-        };
+            get
+            {
+                return "";
+
+                switch (ChartType)
+                {
+                    case ChartMainType.Velocity:
+                        return "m/s";
+
+                    case ChartMainType.Level:
+                        return "m";
+
+                    case ChartMainType.Discharge:
+                        return "m³/s";
+
+                    default:
+                        return "V";
+                }
+            }
+        }
 
         public abstract void LoadData();
 
@@ -211,7 +240,6 @@ namespace AFMSDataViewer
             formsPlot.Plot.Axes.Left.TickLabelStyle.FontSize = 8F;
             formsPlot.Plot.Axes.Bottom.TickLabelStyle.FontSize = 7F;
             formsPlot.MouseMove += FormsPlot_MouseMove;
-            formsPlot.DoubleClick += FormsPlot_DoubleClick;
             formsPlot.MouseLeave += (_, _) => hoverTip.Hide(formsPlot);
         }
 
@@ -305,13 +333,6 @@ namespace AFMSDataViewer
             formsPlot.Plot.Axes.Bottom.TickGenerator = ticks;
         }
 
-        private void FormsPlot_DoubleClick(object? sender, EventArgs e)
-        {
-            if (e is MouseEventArgs mouse && mouse.Button != MouseButtons.Left) return;
-            RealtimeChartPointEventArgs? nearest = FindNearestPoint(formsPlot.PointToClient(Control.MousePosition));
-            if (nearest != null) PointDoubleClicked?.Invoke(this, nearest);
-        }
-
         private void FormsPlot_MouseMove(object? sender, MouseEventArgs e)
         {
             RealtimeChartPointEventArgs? nearest = FindNearestPoint(e.Location);
@@ -345,10 +366,9 @@ namespace AFMSDataViewer
         private void UpdateStatistics(IEnumerable<double> values)
         {
             double[] data = values.Where(double.IsFinite).ToArray();
-            TopLayout.uiValueMin.Text = data.Length == 0 ? "-" : $"{data.Min():0.0} {UnitText} ≤";
-            TopLayout.uiValueAvg.Text = data.Length == 0 ? "-" : $"{data.Average():0.0} {UnitText}";
-            TopLayout.uiValueMax.Text = data.Length == 0 ? "-" : $"≤ {data.Max():0.0} {UnitText}";
-            TopLayout.FitStatisticsWidths();
+            TopLayout.uiValueMin.Text = data.Length == 0 ? "-" : $"{data.Min():0.0} {UnitText}≤";
+            TopLayout.uiValueAvg.Text = data.Length == 0 ? "-" : $"{data.Average():0.0}{UnitText}";
+            TopLayout.uiValueMax.Text = data.Length == 0 ? "-" : $"≤ {data.Max():0.0}{UnitText}";
         }
 
         private Color GetThemeColor() => ChartType switch
