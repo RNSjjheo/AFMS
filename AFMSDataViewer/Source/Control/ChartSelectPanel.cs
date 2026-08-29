@@ -123,7 +123,16 @@ namespace AFMSDataViewer.Source.Control
         private void ShowChart(ChartMainType chartType)
         {
             uiResultChart?.Dispose();
-            uiResultChart = new RealtimeResultChart(chartType, rangeStart, rangeEnd);
+            uiResultChart = chartType switch
+            {
+                ChartMainType.Velocity => new RRChartVelocity(rangeStart, rangeEnd),
+                ChartMainType.Level => new RRChartLevel(rangeStart, rangeEnd),
+                ChartMainType.Discharge => new RRChartDischarge(rangeStart, rangeEnd),
+                _ => new RRChartVTH(rangeStart, rangeEnd)
+            };
+            ChartAxisRange axisRange = DataViewerChartSettings.GetAxisRange(chartType);
+            if (axisRange.TryGetFixedRange(out double minimumY, out double maximumY))
+                uiResultChart.SetYAxisRange(minimumY, maximumY);
             uiResultChart.MaximizeRequested += UiResultChart_MaximizeRequested;
             uiResultChart.CloseRequested += UiResultChart_CloseRequested;
             Controls.Clear();

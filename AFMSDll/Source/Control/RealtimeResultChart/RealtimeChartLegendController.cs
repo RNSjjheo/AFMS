@@ -1,6 +1,4 @@
-using AFMSDll;
-
-namespace AFMSDataViewer
+namespace AFMSDll
 {
     internal sealed class RealtimeChartLegendController : IDisposable
     {
@@ -84,23 +82,12 @@ namespace AFMSDataViewer
 
         private string GetKey(RealtimeChartSeries series, int? velocityDeviceId)
         {
-            if (chartType == ChartMainType.Discharge)
-                return $"discharge|{series.DeviceType}|{series.DeviceId}|{series.DischargeMethod}";
-            if (chartType == ChartMainType.Velocity)
-                return $"velocity|{velocityDeviceId}|{series.Name}";
-            return $"{chartType}|{series.SecondaryAxis}|{series.Name}";
+            return series.Key ?? $"{chartType}|{velocityDeviceId}|{series.SecondaryAxis}|{series.Name}";
         }
 
         private string GetText(RealtimeChartSeries series)
         {
-            if (series.SecondaryAxis) return series.Name;
-            if (chartType == ChartMainType.Velocity && series.Name.EndsWith("번 측선", StringComparison.Ordinal))
-                return series.Name[..^3];
-            if (chartType == ChartMainType.Discharge && !string.IsNullOrEmpty(series.DischargeMethod))
-                return Enum.TryParse(series.DischargeMethod, true, out DischargeMethod method)
-                    ? EnumPaser.GetKorString(method) : series.DischargeMethod;
-            if (chartType == ChartMainType.Level && series.Name == "수위계") return "1번";
-            return series.Name;
+            return series.LegendText ?? series.Name;
         }
 
         public void Dispose()
