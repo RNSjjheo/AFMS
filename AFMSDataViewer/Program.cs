@@ -1,4 +1,6 @@
 using Krypton.Toolkit;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace AFMSDataViewer
 {
@@ -18,7 +20,28 @@ namespace AFMSDataViewer
 
             //_kryptonManager.GlobalPaletteMode = PaletteMode.Microsoft365BlackDarkMode;
 
-            Application.Run(new FormMain());
+            using IHost host = Host.CreateDefaultBuilder()
+                .ConfigureServices(services =>
+                {
+                    services.AddSingleton<MeasurementDataHub>();
+                    services.AddSingleton<MeasurementRefreshService>();
+                    services.AddHostedService(provider =>
+                        provider.GetRequiredService<MeasurementRefreshService>());
+                    services.AddSingleton<FormMain>();
+                })
+                .Build();
+
+            // FormMain 생성자에서 Firebird 연결을 초기화한 후 백그라운드 갱신을 시작합니다.
+            FormMain mainForm = host.Services.GetRequiredService<FormMain>();
+            host.Start();
+            try
+            {
+                Application.Run(mainForm);
+            }
+            finally
+            {
+                host.StopAsync().GetAwaiter().GetResult();
+            }
         }
     }
 }
