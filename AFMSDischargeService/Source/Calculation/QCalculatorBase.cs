@@ -160,7 +160,6 @@ namespace AFMSDischargeService
             query.Value(FbtAFMSDischargeResult.COL_DISCHARGE_METHOD, Configuration.Method.ToString());
             query.Value(FbtAFMSDischargeResult.COL_HYDRO_CONFIG_ID, Configuration.DeviceId);
             query.Value(FbtAFMSDischargeResult.COL_DISCHARGE_CONFIG_ID, Configuration.MethodConfigId);
-            query.Value(FbtAFMSDischargeResult.COL_CROSS_SECTION_ID, Configuration.CrossSection.Id);
             query.Value(FbtAFMSDischargeResult.COL_TRANSECT_CONFIG_ID, Configuration.TransectConfigId);
             query.Value(FbtAFMSDischargeResult.COL_METHOD_CONFIG_ID, Configuration.MethodConfigId);
             query.Value(FbtAFMSDischargeResult.COL_WATER_LEVEL,
@@ -612,7 +611,8 @@ namespace AFMSDischargeService
             sql += $" S.{FbtAFMSDischargeTimeslot.COL_MEASURE_DATE},";
             sql += $" S.{FbtAFMSDischargeTimeslot.COL_MEASURE_TIME}";
             sql += $" FROM {FbtAFMSDischargeTimeslot.TABLE_NAME} S";
-            sql += " WHERE NOT EXISTS (";
+            sql += $" WHERE S.{FbtAFMSDischargeTimeslot.COL_CROSS_SECTION_ID} = {StartupCrossSectionId}";
+            sql += " AND NOT EXISTS (";
             sql += $"SELECT 1 FROM {FbtAFMSDischargeResult.TABLE_NAME} R";
             sql += $" WHERE R.{FbtAFMSDischargeResult.COL_SLOT_ID} = S.{FbtAFMSDischargeTimeslot.COL_ID}";
             sql += $" AND R.{FbtAFMSDischargeResult.COL_SOURCE_DEVICE_TYPE} = '{Configuration.DeviceType}'";

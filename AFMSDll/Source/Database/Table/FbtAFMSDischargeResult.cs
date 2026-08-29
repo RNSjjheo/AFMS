@@ -10,7 +10,6 @@ namespace AFMSDll
         public const string COL_DISCHARGE_METHOD = "DISCHARGE_METHOD";
         public const string COL_HYDRO_CONFIG_ID = "HYDRO_CONFIG_ID";
         public const string COL_DISCHARGE_CONFIG_ID = "DISCHARGE_CONFIG_ID";
-        public const string COL_CROSS_SECTION_ID = "CROSS_SECTION_ID";
         public const string COL_TRANSECT_CONFIG_ID = "TRANSECT_CONFIG_ID";
         public const string COL_METHOD_CONFIG_ID = "METHOD_CONFIG_ID";
         public const string COL_WATER_LEVEL = "WATER_LEVEL";
@@ -39,7 +38,6 @@ namespace AFMSDll
             sql += "\n" + $"{COL_DISCHARGE_METHOD} VARCHAR(32) NOT NULL,";
             sql += "\n" + $"{COL_HYDRO_CONFIG_ID} INTEGER,";
             sql += "\n" + $"{COL_DISCHARGE_CONFIG_ID} INTEGER,";
-            sql += "\n" + $"{COL_CROSS_SECTION_ID} INTEGER,";
             sql += "\n" + $"{COL_TRANSECT_CONFIG_ID} INTEGER,";
             sql += "\n" + $"{COL_METHOD_CONFIG_ID} INTEGER,";
             sql += "\n" + $"{COL_WATER_LEVEL} DOUBLE PRECISION,";

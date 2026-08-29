@@ -11,6 +11,7 @@ namespace AFMSDischargeService
     {
         private static readonly TimeSpan SlotInterval = TimeSpan.FromMinutes(10);
         private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(10);
+        private int startupCrossSectionId = -1;
 
         public override async Task StartAsync(CancellationToken cancellationToken)
         {
@@ -36,6 +37,11 @@ namespace AFMSDischargeService
             {
                 throw new InvalidOperationException("유량 테이블을 준비하지 못해 서비스를 시작할 수 없습니다.");
             }
+
+            startupCrossSectionId = LoadStartupCrossSectionId();
+            logger.LogInformation(
+                "유량 슬롯 생성 단면을 고정했습니다: CrossSectionId={CrossSectionId}",
+                startupCrossSectionId);
 
             CreateMissingSlots(stoppingToken);
             logger.LogInformation("초기 유량 슬롯 준비를 완료했습니다.");
@@ -90,7 +96,7 @@ namespace AFMSDischargeService
             {
                 stoppingToken.ThrowIfCancellationRequested();
 
-                string error = InsertSlot(nextSlot);
+                string error = InsertSlot(nextSlot, startupCrossSectionId);
                 if (!string.IsNullOrEmpty(error))
                     throw new InvalidOperationException($"{nextSlot:yyyy-MM-dd HH:mm:ss} 슬롯 생성 실패: {error}");
 
@@ -137,7 +143,21 @@ namespace AFMSDischargeService
             return Convert.ToDateTime(table.Rows[0][FbtAFMSDischargeTimeslot.COL_SLOT_TIME]);
         }
 
-        private static string InsertSlot(DateTime slotTime)
+        private static int LoadStartupCrossSectionId()
+        {
+            string sql = $"SELECT MAX({FbtAFMSCrossSection.COL_ID}) FROM {FbtAFMSCrossSection.TABLE_NAME}";
+
+            using FBDatabase db = FBProvider.Instance.CreateDatabase();
+            DataTable table = db.Execute(sql, out string error);
+            if (!string.IsNullOrEmpty(error))
+                throw new InvalidOperationException($"서비스 시작 단면 조회 실패: {error}");
+            if (table.Rows.Count == 0 || table.Rows[0][0] == DBNull.Value)
+                throw new InvalidOperationException("서비스 시작 시 사용할 단면 정보가 없습니다.");
+
+            return Convert.ToInt32(table.Rows[0][0]);
+        }
+
+        private static string InsertSlot(DateTime slotTime, int crossSectionId)
         {
             QueryBuilderInsert query = new();
             query.Table = FbtAFMSDischargeTimeslot.TABLE_NAME;
@@ -145,6 +165,7 @@ namespace AFMSDischargeService
             query.Value(FbtAFMSDischargeTimeslot.COL_MEASURE_DATE, slotTime.ToString("yyyyMMdd"));
             query.Value(FbtAFMSDischargeTimeslot.COL_MEASURE_TIME, slotTime.ToString("HHmmss"));
             query.Value(FbtAFMSDischargeTimeslot.COL_SLOT_TIME, slotTime, typeof(DateTime));
+            query.Value(FbtAFMSDischargeTimeslot.COL_CROSS_SECTION_ID, crossSectionId);
 
             using FBDatabase db = FBProvider.Instance.CreateDatabase();
             db.Execute(query, out string error);
