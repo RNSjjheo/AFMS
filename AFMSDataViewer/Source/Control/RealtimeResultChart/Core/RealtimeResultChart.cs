@@ -262,7 +262,7 @@ namespace AFMSDataViewer
             formsPlot.Refresh();
 
             // 최초 렌더링으로 축과 데이터 영역이 확정된 뒤 마커 라벨의 방향을 계산합니다.
-            if (trackingTime.HasValue && trackingLabelsExpireAt > DateTime.Now)
+            if (visible.Count == 1 && trackingTime.HasValue && trackingLabelsExpireAt > DateTime.Now)
             {
                 AddTrackingLabels(trackingTime.Value);
                 formsPlot.Refresh();
@@ -379,6 +379,17 @@ namespace AFMSDataViewer
         private void ShowTrackingTooltip(DateTime time)
         {
             if (trackingLine == null) return;
+
+            int visibleSeriesCount = availableSeries.Count(series =>
+                legendController.IsVisible(series, null));
+            if (visibleSeriesCount != 1)
+            {
+                trackingLabelTimer.Stop();
+                trackingLabelsExpireAt = DateTime.MinValue;
+                RemoveTrackingLabels();
+                formsPlot.Refresh();
+                return;
+            }
 
             trackingLabelsExpireAt = DateTime.Now.AddSeconds(10);
             AddTrackingLabels(time);
