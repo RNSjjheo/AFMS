@@ -19,6 +19,7 @@ namespace AFMSDataViewer
         private ChartSelectPanel uiChart3;
         private ChartSelectPanel uiChart4;
         private DateTime selectedDateTime;
+        private long lastTrackingSlotTicks;
         public Tracking uiTracking;
         private readonly MeasurementDataHub measurementDataHub;
 
@@ -112,7 +113,12 @@ namespace AFMSDataViewer
             uiNavigator.LeftButtonClick += (_, _) => MoveSelectedDate(-1);
             uiNavigator.RightButtonClick += (_, _) => MoveSelectedDate(1);
             DateTime now = DateTime.Now;
-            selectedDateTime = new DateTime(now.Year, now.Month, now.Day, now.Hour, now.Minute / 10 * 10, 0, now.Kind);
+            IReadOnlyList<MeasurementSlot> initialSlots = measurementDataHub.GetSlots();
+            selectedDateTime = initialSlots.Count > 0
+                ? initialSlots[^1].SlotTime
+                : MeasurementDataHub.AlignToSlot(now);
+            lastTrackingSlotTicks = selectedDateTime.Ticks;
+            measurementDataHub.Changed += MeasurementDataHub_Changed;
 
             uiChart1 = CreateChartPanel();
             uiChart2 = CreateChartPanel();
@@ -162,6 +168,63 @@ namespace AFMSDataViewer
             2 => TimeSpan.FromDays(7),
             _ => TimeSpan.FromHours(12)
         };
+
+        private void MeasurementDataHub_Changed(object? sender, MeasurementDataChangedEventArgs e)
+        {
+            if (e.RangeEnd == DateTime.MinValue) return;
+
+            long previousTicks;
+            do
+            {
+                previousTicks = Interlocked.Read(ref lastTrackingSlotTicks);
+                if (e.RangeEnd.Ticks <= previousTicks) return;
+            }
+            while (Interlocked.CompareExchange(
+                ref lastTrackingSlotTicks, e.RangeEnd.Ticks, previousTicks) != previousTicks);
+
+            if (IsDisposed) return;
+            if (!IsHandleCreated)
+            {
+                selectedDateTime = e.RangeEnd;
+                return;
+            }
+
+            try
+            {
+                BeginInvoke(new Action(() =>
+                {
+                    if (IsDisposed) return;
+                    selectedDateTime = e.RangeEnd;
+                    ApplyNavigatorRange();
+                }));
+            }
+            catch (InvalidOperationException)
+            {
+                // 컨트롤이 종료되는 동안 도착한 백그라운드 갱신은 무시합니다.
+            }
+        }
+
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+
+            IReadOnlyList<MeasurementSlot> slots = measurementDataHub.GetSlots();
+            if (slots.Count > 0)
+            {
+                selectedDateTime = slots[^1].SlotTime;
+                Interlocked.Exchange(ref lastTrackingSlotTicks, selectedDateTime.Ticks);
+            }
+
+            ApplyNavigatorRange();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+                measurementDataHub.Changed -= MeasurementDataHub_Changed;
+
+            base.Dispose(disposing);
+        }
 
         private void UiBtnTemp_Click(object? sender, EventArgs e)
         {

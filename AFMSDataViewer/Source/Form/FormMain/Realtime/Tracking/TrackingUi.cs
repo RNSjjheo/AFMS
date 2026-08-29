@@ -75,6 +75,25 @@ namespace AFMSDataViewer
 
         public void SetRange(DateTime start, DateTime end, DateTime? selected = null)
         {
+            if (start > end)
+                throw new ArgumentException("트래킹 시작 시각은 종료 시각보다 늦을 수 없습니다.");
+
+            _lbTimeStart.Text = start.ToString("yyyy-MM-dd HH:mm");
+            _lbTimeFinish.Text = end.ToString("yyyy-MM-dd HH:mm");
+
+            int maximum = (int)Math.Min(int.MaxValue,
+                Math.Max(0, (end - start).Ticks / MeasurementDataHub.SlotInterval.Ticks));
+            DateTime selectedTime = selected ?? end;
+            int value = (int)Math.Clamp(
+                (selectedTime - start).Ticks / MeasurementDataHub.SlotInterval.Ticks,
+                0L,
+                maximum);
+
+            CtlItem.Minimum = 0;
+            CtlItem.Maximum = maximum;
+            CtlItem.SmallChange = 1;
+            CtlItem.LargeChange = Math.Max(1, maximum / 12);
+            CtlItem.Value = value;
 
         }
     }
