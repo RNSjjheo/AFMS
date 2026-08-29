@@ -7,7 +7,7 @@ namespace AFMSDataViewer
 {
     public class RealtimeResultChartControl : TableLayoutPanel
     {
-        public const int FIEXED_CONTROL_HEIGTH = 75;
+        public const int FIEXED_CONTROL_HEIGTH = 70;
         public Panel uiPnIcon;
         public AFMSComboBox uiComboMain;
         public AFMSComboBox uiComboSub;
@@ -28,9 +28,9 @@ namespace AFMSDataViewer
             ColumnStyles.Clear();
             RowCount = 3;
             ColumnCount = 6;
-            RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
-            RowStyles.Add(new RowStyle(SizeType.Absolute, 5F));
-            RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            RowStyles.Add(new RowStyle(SizeType.Percent, 35F));
+            RowStyles.Add(new RowStyle(SizeType.Absolute, 3F));
+            RowStyles.Add(new RowStyle(SizeType.Percent, 35F));
             ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, FIEXED_CONTROL_HEIGTH));
             ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 160F));
             ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));

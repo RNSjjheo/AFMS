@@ -125,6 +125,8 @@ namespace AFMSDataViewer
         {
             get
             {
+                return "";
+
                 switch (ChartType)
                 {
                     case ChartMainType.Velocity:
