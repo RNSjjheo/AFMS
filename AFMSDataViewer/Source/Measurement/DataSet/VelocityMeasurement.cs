@@ -6,17 +6,12 @@ namespace AFMSDataViewer
     /// </summary>
     public abstract class VelocityMeasurement : IRealtimeMeasurement
     {
-        protected VelocityMeasurement(
-            DateTime time,
-            string deviceKey,
-            IEnumerable<VelocityTransectMeasurement> transects)
+        protected VelocityMeasurement(DateTime time, string deviceKey, IEnumerable<VelocityTransectMeasurement> transects)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(deviceKey);
             ArgumentNullException.ThrowIfNull(transects);
 
-            VelocityTransectMeasurement[] values = transects
-                .OrderBy(transect => transect.TransectNo)
-                .ToArray();
+            VelocityTransectMeasurement[] values = transects.OrderBy(transect => transect.TransectNo).ToArray();
             ValidateTransects(values);
 
             Time = time;
