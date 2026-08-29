@@ -20,10 +20,13 @@ namespace AFMSDataViewer
         private AFMSButton uiBtnChartDisc;
         private AFMSButton uiBtnChartVTHL;
         private RealtimeResultChart? uiResultChart;
+        private readonly MeasurementDataHub measurementDataHub;
         private DateTime rangeStart;
         private DateTime rangeEnd;
-        public ChartSelectPanel()
+        public ChartSelectPanel(MeasurementDataHub measurementDataHub)
         {
+            ArgumentNullException.ThrowIfNull(measurementDataHub);
+            this.measurementDataHub = measurementDataHub;
             const float NODE_WIDTH = 70F;
             this.BackColor = DllColorHelper.HexToColor("#FFFFFF");
 
@@ -126,9 +129,9 @@ namespace AFMSDataViewer
             uiResultChart = chartType switch
             {
                 ChartMainType.Velocity => new RRChartVelocity(rangeStart, rangeEnd),
-                ChartMainType.Level => new RRChartLevel(rangeStart, rangeEnd),
+                ChartMainType.Level => new RRChartLevel(measurementDataHub, rangeStart, rangeEnd),
                 ChartMainType.Discharge => new RRChartDischarge(rangeStart, rangeEnd),
-                _ => new RRChartVTH(rangeStart, rangeEnd)
+                _ => new RRChartVTH(measurementDataHub, rangeStart, rangeEnd)
             };
             ChartAxisRange axisRange = DataViewerChartSettings.GetAxisRange(chartType);
             if (axisRange.TryGetFixedRange(out double minimumY, out double maximumY))

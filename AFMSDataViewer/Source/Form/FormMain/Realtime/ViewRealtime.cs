@@ -20,8 +20,12 @@ namespace AFMSDataViewer
         private ChartSelectPanel uiChart4;
         private DateTime selectedDateTime;
         public Tracking uiTracking;
-        public ViewRealtime()
+        private readonly MeasurementDataHub measurementDataHub;
+
+        public ViewRealtime(MeasurementDataHub measurementDataHub)
         {
+            ArgumentNullException.ThrowIfNull(measurementDataHub);
+            this.measurementDataHub = measurementDataHub;
             Dock = DockStyle.Fill;
             RowStyles.Clear();
             ColumnStyles.Clear();
@@ -172,7 +176,7 @@ namespace AFMSDataViewer
 
         private ChartSelectPanel CreateChartPanel()
         {
-            ChartSelectPanel panel = new ChartSelectPanel();
+            ChartSelectPanel panel = new ChartSelectPanel(measurementDataHub);
             panel.Dock = DockStyle.Fill;
             panel.BorderRadius = 5;
             panel.Padding = Padding.Empty;

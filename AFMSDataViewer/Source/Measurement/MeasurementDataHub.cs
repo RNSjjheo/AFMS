@@ -1,3 +1,5 @@
+using AFMSDll;
+
 namespace AFMSDataViewer
 {
     public interface IRealtimeMeasurement
@@ -13,30 +15,6 @@ namespace AFMSDataViewer
 
     public sealed record VoltageMeasurement(DateTime Time, string DeviceKey, double? InputVoltage, double? OutputVoltage) : IRealtimeMeasurement;
 
-    public sealed class MeasurementSlot
-    {
-        public MeasurementSlot(DateTime time)
-        {
-            Time = time;
-        }
-
-        public DateTime Time { get; }
-        public List<VelocityMeasurement> Velocities { get; } = new();
-        public List<LevelMeasurement> Levels { get; } = new();
-        public List<DischargeMeasurement> Discharges { get; } = new();
-        public List<VoltageMeasurement> Voltages { get; } = new();
-
-        internal MeasurementSlot Clone()
-        {
-            MeasurementSlot clone = new(Time);
-            clone.Velocities.AddRange(Velocities);
-            clone.Levels.AddRange(Levels);
-            clone.Discharges.AddRange(Discharges);
-            clone.Voltages.AddRange(Voltages);
-            return clone;
-        }
-    }
-
     public sealed class MeasurementDataChangedEventArgs(DateTime rangeStart, DateTime rangeEnd, long version) : EventArgs
     {
         public DateTime RangeStart { get; } = rangeStart;
@@ -46,7 +24,7 @@ namespace AFMSDataViewer
 
     /// <summary>
     /// 실시간 측정 화면에서 사용하는 10분 슬롯을 메모리에 보관합니다.
-    /// 모든 변경은 이 객체를 통해 Upsert되며 외부에는 복사된 스냅샷만 제공합니다.
+    /// 모든 변경은 이 객체를 통해 Upsert되며 외부에는 슬롯의 공유 참조를 제공합니다.
     /// </summary>
     public sealed class MeasurementDataHub
     {
@@ -54,8 +32,15 @@ namespace AFMSDataViewer
 
         private readonly object _syncRoot = new();
         private readonly List<MeasurementSlot> _slots = new();
+        private readonly Func<DateTime, CrossSectionDefinition> _resolveCrossSectionDefinition;
         private TimeSpan _retention = TimeSpan.FromHours(12);
         private long _version;
+
+        public MeasurementDataHub(Func<DateTime, CrossSectionDefinition> resolveCrossSectionDefinition)
+        {
+            ArgumentNullException.ThrowIfNull(resolveCrossSectionDefinition);
+            _resolveCrossSectionDefinition = resolveCrossSectionDefinition;
+        }
 
         public event EventHandler<MeasurementDataChangedEventArgs>? Changed;
 
@@ -75,27 +60,35 @@ namespace AFMSDataViewer
             }
         }
 
-        public void Reset(DateTime rangeEnd, TimeSpan retention)
+        public void Reset(DateTime rangeEnd, TimeSpan retention, IReadOnlyList<LevelMeasurement> levels, IReadOnlyList<VoltageMeasurement> voltages)
         {
+            ArgumentNullException.ThrowIfNull(levels);
+            ArgumentNullException.ThrowIfNull(voltages);
             ValidateRetention(retention);
             DateTime alignedEnd = AlignToSlot(rangeEnd);
             DateTime rangeStart = alignedEnd - retention;
+            IReadOnlyDictionary<DateTime, LevelMeasurement> levelsBySlot = BuildSlotLookup(levels);
+            IReadOnlyDictionary<DateTime, VoltageMeasurement> voltagesBySlot = BuildSlotLookup(voltages);
 
             lock (_syncRoot)
             {
                 _retention = retention;
                 _slots.Clear();
                 for (DateTime time = rangeStart; time <= alignedEnd; time += SlotInterval)
-                    _slots.Add(new MeasurementSlot(time));
+                    _slots.Add(CreateSlot(time, levelsBySlot, voltagesBySlot));
                 _version++;
             }
 
             RaiseChanged();
         }
 
-        public void AdvanceTo(DateTime time)
+        public void AdvanceTo(DateTime time, IReadOnlyList<LevelMeasurement> levels, IReadOnlyList<VoltageMeasurement> voltages)
         {
+            ArgumentNullException.ThrowIfNull(levels);
+            ArgumentNullException.ThrowIfNull(voltages);
             DateTime alignedTime = AlignToSlot(time);
+            IReadOnlyDictionary<DateTime, LevelMeasurement> levelsBySlot = BuildSlotLookup(levels);
+            IReadOnlyDictionary<DateTime, VoltageMeasurement> voltagesBySlot = BuildSlotLookup(voltages);
             bool changed = false;
 
             lock (_syncRoot)
@@ -104,22 +97,22 @@ namespace AFMSDataViewer
                 {
                     DateTime start = alignedTime - _retention;
                     for (DateTime slotTime = start; slotTime <= alignedTime; slotTime += SlotInterval)
-                        _slots.Add(new MeasurementSlot(slotTime));
+                        _slots.Add(CreateSlot(slotTime, levelsBySlot, voltagesBySlot));
                     changed = true;
                 }
                 else
                 {
-                    DateTime next = _slots[^1].Time + SlotInterval;
+                    DateTime next = _slots[^1].SlotTime + SlotInterval;
                     while (next <= alignedTime)
                     {
-                        _slots.Add(new MeasurementSlot(next));
+                        _slots.Add(CreateSlot(next, levelsBySlot, voltagesBySlot));
                         next += SlotInterval;
                         changed = true;
                     }
                 }
 
                 DateTime cutoff = alignedTime - _retention;
-                int removed = _slots.RemoveAll(slot => slot.Time < cutoff);
+                int removed = _slots.RemoveAll(slot => slot.SlotTime < cutoff);
                 changed |= removed > 0;
                 if (changed) _version++;
             }
@@ -137,7 +130,7 @@ namespace AFMSDataViewer
                 foreach (VelocityMeasurement item in batch.Velocities)
                 {
                     MeasurementSlot slot = EnsureSlotCore(item.Time);
-                    Upsert(slot.Velocities, item, current =>
+                    Upsert(slot.MeasurementDevices.HydroMeters, item, current =>
                         current.SourceType == item.SourceType &&
                         current.DeviceKey == item.DeviceKey &&
                         current.TransectNo == item.TransectNo);
@@ -147,7 +140,7 @@ namespace AFMSDataViewer
                 foreach (LevelMeasurement item in batch.Levels)
                 {
                     MeasurementSlot slot = EnsureSlotCore(item.Time);
-                    Upsert(slot.Levels, item, current => current.DeviceKey == item.DeviceKey);
+                    slot.MeasurementDevices.WaterLevelGauge = item;
                     changed = true;
                 }
 
@@ -164,7 +157,7 @@ namespace AFMSDataViewer
                 foreach (VoltageMeasurement item in batch.Voltages)
                 {
                     MeasurementSlot slot = EnsureSlotCore(item.Time);
-                    Upsert(slot.Voltages, item, current => current.DeviceKey == item.DeviceKey);
+                    slot.MeasurementDevices.VoltageMeter = item;
                     changed = true;
                 }
 
@@ -178,21 +171,20 @@ namespace AFMSDataViewer
             if (changed) RaiseChanged();
         }
 
-        public IReadOnlyList<MeasurementSlot> CreateSnapshot()
+        public IReadOnlyList<MeasurementSlot> GetSlots()
         {
             lock (_syncRoot)
-                return _slots.Select(slot => slot.Clone()).ToArray();
+                return _slots.ToArray();
         }
 
-        public IReadOnlyList<MeasurementSlot> CreateSnapshot(DateTime from, DateTime to)
+        public IReadOnlyList<MeasurementSlot> GetSlots(DateTime from, DateTime to)
         {
             if (from > to) throw new ArgumentException("시작 시간은 종료 시간보다 늦을 수 없습니다.");
             DateTime alignedFrom = AlignToSlot(from);
             DateTime alignedTo = AlignToSlot(to);
 
             lock (_syncRoot)
-                return _slots.Where(slot => slot.Time >= alignedFrom && slot.Time <= alignedTo)
-                    .Select(slot => slot.Clone()).ToArray();
+                return _slots.Where(slot => slot.SlotTime >= alignedFrom && slot.SlotTime <= alignedTo).ToArray();
         }
 
         public static DateTime AlignToSlot(DateTime time)
@@ -201,23 +193,63 @@ namespace AFMSDataViewer
             return new DateTime(ticks, time.Kind);
         }
 
+        private static IReadOnlyDictionary<DateTime, T> BuildSlotLookup<T>(IEnumerable<T> measurements) where T : IRealtimeMeasurement
+        {
+            return measurements.GroupBy(item => AlignToSlot(item.Time)).ToDictionary(group => group.Key, group => group.OrderBy(item => item.Time).Last());
+        }
+
+        private MeasurementSlot CreateSlot(DateTime slotTime)
+        {
+            CrossSectionDefinition crossSectionDefinition = _resolveCrossSectionDefinition(slotTime);
+            ArgumentNullException.ThrowIfNull(crossSectionDefinition);
+
+            return new MeasurementSlot(slotTime, crossSectionDefinition);
+        }
+
+        private MeasurementSlot CreateSlot(
+            DateTime slotTime,
+            IReadOnlyDictionary<DateTime, LevelMeasurement> levelsBySlot,
+            IReadOnlyDictionary<DateTime, VoltageMeasurement> voltagesBySlot)
+        {
+            MeasurementSlot slot = CreateSlot(slotTime);
+            if (levelsBySlot.TryGetValue(slotTime, out LevelMeasurement? level)) slot.MeasurementDevices.WaterLevelGauge = level;
+            if (voltagesBySlot.TryGetValue(slotTime, out VoltageMeasurement? voltage)) slot.MeasurementDevices.VoltageMeter = voltage;
+            return slot;
+        }
+
         private MeasurementSlot EnsureSlotCore(DateTime time)
         {
             DateTime alignedTime = AlignToSlot(time);
-            int index = _slots.BinarySearch(
-                new MeasurementSlot(alignedTime), MeasurementSlotTimeComparer.Instance);
+            int index = FindSlotIndex(alignedTime);
             if (index >= 0) return _slots[index];
 
-            MeasurementSlot slot = new(alignedTime);
+            MeasurementSlot slot = CreateSlot(alignedTime);
             _slots.Insert(~index, slot);
             return slot;
+        }
+
+        private int FindSlotIndex(DateTime slotTime)
+        {
+            int low = 0;
+            int high = _slots.Count - 1;
+
+            while (low <= high)
+            {
+                int middle = low + ((high - low) / 2);
+                int comparison = _slots[middle].SlotTime.CompareTo(slotTime);
+                if (comparison == 0) return middle;
+                if (comparison < 0) low = middle + 1;
+                else high = middle - 1;
+            }
+
+            return ~low;
         }
 
         private void RemoveExpiredCore()
         {
             if (_slots.Count == 0) return;
-            DateTime cutoff = _slots[^1].Time - _retention;
-            _slots.RemoveAll(slot => slot.Time < cutoff);
+            DateTime cutoff = _slots[^1].SlotTime - _retention;
+            _slots.RemoveAll(slot => slot.SlotTime < cutoff);
         }
 
         private static void Upsert<T>(List<T> items, T item, Func<T, bool> matches)
@@ -232,8 +264,8 @@ namespace AFMSDataViewer
             MeasurementDataChangedEventArgs args;
             lock (_syncRoot)
             {
-                DateTime start = _slots.Count == 0 ? DateTime.MinValue : _slots[0].Time;
-                DateTime end = _slots.Count == 0 ? DateTime.MinValue : _slots[^1].Time;
+                DateTime start = _slots.Count == 0 ? DateTime.MinValue : _slots[0].SlotTime;
+                DateTime end = _slots.Count == 0 ? DateTime.MinValue : _slots[^1].SlotTime;
                 args = new MeasurementDataChangedEventArgs(start, end, _version);
             }
             Changed?.Invoke(this, args);
@@ -247,11 +279,5 @@ namespace AFMSDataViewer
                 throw new ArgumentException("보관 기간은 10분 단위여야 합니다.", nameof(retention));
         }
 
-        private sealed class MeasurementSlotTimeComparer : IComparer<MeasurementSlot>
-        {
-            public static MeasurementSlotTimeComparer Instance { get; } = new();
-            public int Compare(MeasurementSlot? x, MeasurementSlot? y) =>
-                Nullable.Compare(x?.Time, y?.Time);
-        }
     }
 }

@@ -72,10 +72,11 @@ namespace AFMSDataViewer
             await _refreshLock.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                _dataHub.Reset(DateTime.Now, retention);
                 _lastSuccessfulLoads.Clear();
+                MeasurementBatch batch = await LoadDataSourcesAsync(true, retention, cancellationToken).ConfigureAwait(false);
+                _dataHub.Reset(DateTime.Now, retention, batch.Levels, batch.Voltages);
+                _dataHub.Apply(batch);
                 _requiresFullReload = false;
-                await LoadDataSourcesAsync(true, cancellationToken).ConfigureAwait(false);
             }
             finally
             {
@@ -90,18 +91,20 @@ namespace AFMSDataViewer
             {
                 bool fullReload = forceFullReload || _requiresFullReload;
                 DateTime currentSlot = MeasurementDataHub.AlignToSlot(DateTime.Now);
+                if (fullReload) _lastSuccessfulLoads.Clear();
+
+                MeasurementBatch batch = await LoadDataSourcesAsync(fullReload, _dataHub.Retention, cancellationToken).ConfigureAwait(false);
                 if (fullReload)
                 {
-                    _dataHub.Reset(currentSlot, _dataHub.Retention);
-                    _lastSuccessfulLoads.Clear();
+                    _dataHub.Reset(currentSlot, _dataHub.Retention, batch.Levels, batch.Voltages);
                     _requiresFullReload = false;
                 }
                 else
                 {
-                    _dataHub.AdvanceTo(currentSlot);
+                    _dataHub.AdvanceTo(currentSlot, batch.Levels, batch.Voltages);
                 }
 
-                await LoadDataSourcesAsync(fullReload, cancellationToken).ConfigureAwait(false);
+                _dataHub.Apply(batch);
             }
             finally
             {
@@ -109,10 +112,11 @@ namespace AFMSDataViewer
             }
         }
 
-        private async Task LoadDataSourcesAsync(bool fullReload, CancellationToken cancellationToken)
+        private async Task<MeasurementBatch> LoadDataSourcesAsync(bool fullReload, TimeSpan retention, CancellationToken cancellationToken)
         {
             DateTime to = MeasurementDataHub.AlignToSlot(DateTime.Now);
-            DateTime fullRangeStart = to - _dataHub.Retention;
+            DateTime fullRangeStart = to - retention;
+            MeasurementBatch combinedBatch = new();
 
             foreach (IMeasurementDataSource dataSource in _dataSources)
             {
@@ -126,7 +130,10 @@ namespace AFMSDataViewer
                 {
                     MeasurementBatch batch = await dataSource.LoadAsync(from, to, cancellationToken)
                         .ConfigureAwait(false);
-                    _dataHub.Apply(batch);
+                    combinedBatch.Velocities.AddRange(batch.Velocities);
+                    combinedBatch.Levels.AddRange(batch.Levels);
+                    combinedBatch.Discharges.AddRange(batch.Discharges);
+                    combinedBatch.Voltages.AddRange(batch.Voltages);
                     _lastSuccessfulLoads[dataSource] = to;
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
@@ -140,6 +147,8 @@ namespace AFMSDataViewer
                         dataSource.Name, from, to);
                 }
             }
+
+            return combinedBatch;
         }
 
         private static TimeSpan GetDelayUntilNextRefresh(DateTime now)

@@ -1,5 +1,4 @@
 using AFMSDll;
-using System.Data;
 
 namespace AFMSDataViewer
 {
@@ -9,7 +8,8 @@ namespace AFMSDataViewer
         {
             public override string ToString() => Text;
         }
-        public RRChartVTH(DateTime start, DateTime end) : base(ChartMainType.VTH, start, end)
+        public RRChartVTH(MeasurementDataHub measurementDataHub, DateTime start, DateTime end)
+            : base(ChartMainType.VTH, start, end, measurementDataHub)
         {
             TopLayout.SetSubComboVisible(false);
             TopLayout.uiComboMain.Items.Add(new ValueOption(PowerChartValueType.Input, "입력전압"));
@@ -20,15 +20,26 @@ namespace AFMSDataViewer
 
         public override void LoadData()
         {
-            try
-            {
-                using FBDatabase db = FBProvider.Instance.CreateDatabase();
-                PowerChartValueType type = (TopLayout.uiComboMain.SelectedItem as ValueOption)?.Type ?? PowerChartValueType.Input;
-                DataTable table = db.Execute(new RealtimePowerChartQuery(RangeStart, RangeEnd, type).Build(), out string error);
-                if (!string.IsNullOrEmpty(error)) { ShowDataError(error); return; }
-                SetSeries(RRChartDataMapper.Map(table, GetSeriesColor));
-            }
-            catch (Exception ex) { ShowDataError(ex.Message); }
+            PowerChartValueType type = (TopLayout.uiComboMain.SelectedItem as ValueOption)?.Type ?? PowerChartValueType.Input;
+            List<RealtimeChartPoint> points = MeasurementDataHub!.GetSlots(RangeStart, RangeEnd)
+                .Select(slot => slot.MeasurementDevices.VoltageMeter)
+                .Where(measurement => measurement != null)
+                .Select(measurement => new
+                {
+                    measurement!.Time,
+                    Value = type == PowerChartValueType.Input
+                        ? measurement.InputVoltage
+                        : measurement.OutputVoltage
+                })
+                .Where(item => item.Value.HasValue && double.IsFinite(item.Value.Value))
+                .Select(item => new RealtimeChartPoint(item.Time, item.Value!.Value))
+                .OrderBy(point => point.Time)
+                .ToList();
+
+            string seriesName = type == PowerChartValueType.Input ? "입력전압" : "출력전압";
+            SetSeries(points.Count == 0
+                ? []
+                : [new RealtimeChartSeries(seriesName, GetSeriesColor(0), points)]);
         }
     }
 }

@@ -26,15 +26,19 @@ namespace AFMSDataViewer
         private readonly List<RealtimeChartSeries> availableSeries = new();
         private readonly RealtimeChartLegendController legendController;
         private readonly TableLayoutPanel mainLayout = new();
+        private readonly MeasurementDataHub? measurementDataHub;
+        private int refreshPending;
         private bool isMaximized;
         private double? minimumY;
         private double? maximumY;
 
-        protected RealtimeResultChart(ChartMainType chartType, DateTime rangeStart, DateTime rangeEnd)
+        protected RealtimeResultChart(ChartMainType chartType, DateTime rangeStart, DateTime rangeEnd,
+            MeasurementDataHub? measurementDataHub = null)
         {
             ChartType = chartType;
             RangeStart = rangeStart;
             RangeEnd = rangeEnd;
+            this.measurementDataHub = measurementDataHub;
             Dock = DockStyle.Fill;
             BackColor = Color.White;
             Margin = Padding.Empty;
@@ -76,6 +80,9 @@ namespace AFMSDataViewer
             maximizeToggle.BringToFront();
             closeButton.BringToFront();
             Controls.Add(chartSection);
+
+            if (measurementDataHub != null)
+                measurementDataHub.Changed += MeasurementDataHub_Changed;
         }
 
         public event EventHandler? MaximizeRequested;
@@ -86,6 +93,7 @@ namespace AFMSDataViewer
         public DateTime RangeEnd { get; private set; }
         public RealtimeResultChartControl TopLayout { get; }
         protected IReadOnlyList<RealtimeChartSeries> AvailableSeries => availableSeries;
+        protected MeasurementDataHub? MeasurementDataHub => measurementDataHub;
         protected virtual string TitleText
         {
             get
@@ -112,8 +120,6 @@ namespace AFMSDataViewer
         {
             get
             {
-                return "";
-
                 switch (ChartType)
                 {
                     case ChartMainType.Velocity:
@@ -381,10 +387,30 @@ namespace AFMSDataViewer
 
         private static ScottPlot.Color ToScottColor(Color color) => new(color.R, color.G, color.B, color.A);
 
+        private void MeasurementDataHub_Changed(object? sender, MeasurementDataChangedEventArgs e)
+        {
+            if (IsDisposed || !IsHandleCreated || Interlocked.Exchange(ref refreshPending, 1) != 0) return;
+
+            try
+            {
+                BeginInvoke(new Action(() =>
+                {
+                    Interlocked.Exchange(ref refreshPending, 0);
+                    if (!IsDisposed) LoadData();
+                }));
+            }
+            catch (InvalidOperationException)
+            {
+                Interlocked.Exchange(ref refreshPending, 0);
+            }
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
+                if (measurementDataHub != null)
+                    measurementDataHub.Changed -= MeasurementDataHub_Changed;
                 legendController.Dispose();
                 hoverTip.Dispose();
             }

@@ -1,3 +1,4 @@
+using AFMSDll;
 using Krypton.Toolkit;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -23,7 +24,10 @@ namespace AFMSDataViewer
             using IHost host = Host.CreateDefaultBuilder()
                 .ConfigureServices(services =>
                 {
+                    services.AddSingleton<Func<DateTime, CrossSectionDefinition>>(_ =>
+                        _ => new CrossSectionDefinition(0, string.Empty, 0, []));
                     services.AddSingleton<MeasurementDataHub>();
+                    services.AddSingleton<IMeasurementDataSource, LevelAndVoltageMeasurementDataSource>();
                     services.AddSingleton<MeasurementRefreshService>();
                     services.AddHostedService(provider =>
                         provider.GetRequiredService<MeasurementRefreshService>());
