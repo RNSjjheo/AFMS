@@ -16,7 +16,7 @@ namespace AFMSDataViewer
         private readonly ToolTip toolTip = new();
         private RealtimeChartLegendItem[] items = [];
         private int columns = 1;
-        private int itemWidth = 90;
+        private int itemWidth = 120;
         private int rowCount;
         private int preferredHeight;
         private int hoveredIndex = -1;
@@ -56,6 +56,14 @@ namespace AFMSDataViewer
             UpdateLayout();
         }
 
+        public void SetItemVisibility(string key, bool isVisible)
+        {
+            int index = Array.FindIndex(items, item => item.Key == key);
+            if (index < 0 || items[index].IsVisible == isVisible) return;
+            items[index] = items[index] with { IsVisible = isVisible };
+            Invalidate(GetItemBounds(index));
+        }
+
         protected override void OnSizeChanged(EventArgs e)
         {
             base.OnSizeChanged(e);
@@ -77,13 +85,11 @@ namespace AFMSDataViewer
         private void UpdateLayout()
         {
             int availableWidth = Math.Max(1, ClientSize.Width - Inset * 2);
-            int minimumWidth = items.Length == 0 ? ScalePixels(90) : Math.Max(ScalePixels(90), items.Max(item =>
-                TextRenderer.MeasureText(item.Text, Font, Size.Empty,
-                    TextFormatFlags.SingleLine | TextFormatFlags.NoPadding).Width + MarkerWidth + ScalePixels(16)));
+            int minimumWidth = ScalePixels(120);
             rowCount = items.Length == 0 ? 0 :
                 items.Length == 1 || items.Length * minimumWidth <= availableWidth ? 1 : 2;
             columns = rowCount == 0 ? 1 : (items.Length + rowCount - 1) / rowCount;
-            itemWidth = Math.Max(minimumWidth, availableWidth / columns);
+            itemWidth = minimumWidth;
             int contentWidth = rowCount == 0 ? 0 : columns * itemWidth;
             bool overflow = contentWidth > availableWidth;
             scrollBar.Visible = overflow;

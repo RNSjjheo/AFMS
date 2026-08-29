@@ -76,7 +76,17 @@ namespace AFMSDataViewer
 
         private void OnSeriesToggleRequested(object? sender, LegendSeriesToggleEventArgs e)
         {
-            if (!hiddenSeries.Add(e.Key)) hiddenSeries.Remove(e.Key);
+            bool isVisible;
+            if (hiddenSeries.Add(e.Key))
+            {
+                isVisible = false;
+            }
+            else
+            {
+                hiddenSeries.Remove(e.Key);
+                isVisible = true;
+            }
+            View.SetItemVisibility(e.Key, isVisible);
             VisibilityChanged?.Invoke(this, EventArgs.Empty);
         }
 
