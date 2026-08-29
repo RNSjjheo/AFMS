@@ -41,7 +41,13 @@ namespace AFMSDataViewer
                 DataTable table = db.Execute(new RealtimeDischargeChartQuery(RangeStart, RangeEnd).Build(), out string error);
                 if (!string.IsNullOrEmpty(error)) { ShowDataError(error); return; }
                 loadedSeries.Clear();
-                loadedSeries.AddRange(RRChartDataMapper.Map(table, GetSeriesColor, GetSeriesName));
+                loadedSeries.AddRange(RRChartDataMapper.Map(table, GetSeriesColor, GetSeriesName)
+                    .Select(series => series with
+                    {
+                        LegendText = string.IsNullOrWhiteSpace(series.DischargeMethod)
+                            ? series.Name
+                            : GetMethodText(series.DischargeMethod)
+                    }));
                 PopulateDevices();
                 ApplySelection();
             }
@@ -97,7 +103,7 @@ namespace AFMSDataViewer
                     .Select(series => series.DischargeMethod).Where(method => !string.IsNullOrWhiteSpace(method))
                     .Cast<string>().Distinct().OrderBy(GetMethodOrder))
                     TopLayout.uiComboSub.Items.Add(new MethodOption(method, GetMethodText(method)));
-                TopLayout.uiComboSub.SelectedItem = TopLayout.uiComboSub.Items.Cast<MethodOption>()
+                TopLayout.uiComboSub.SelectedItem = TopLayout.uiComboSub.Items.Cast<object>().OfType<MethodOption>()
                     .FirstOrDefault(item => item.Method == previous) ?? TopLayout.uiComboSub.Items[0];
                 TopLayout.SetSubComboVisible(device?.Type == nameof(MeasurementDeviceType.VelocityMeter));
             }

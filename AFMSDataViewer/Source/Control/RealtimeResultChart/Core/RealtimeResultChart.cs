@@ -1,9 +1,10 @@
+using AFMSDll;
 using ScottPlot;
 using ScottPlot.Plottables;
 using ScottPlot.WinForms;
 using Color = System.Drawing.Color;
 
-namespace AFMSDll
+namespace AFMSDataViewer
 {
     /// <summary>
     /// Reusable realtime chart shell. Data access belongs to the application-specific child class.

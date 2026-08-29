@@ -1,6 +1,6 @@
 using System.Drawing.Drawing2D;
 
-namespace AFMSDll
+namespace AFMSDataViewer
 {
     internal sealed record RealtimeChartLegendItem(string Key, string Text, Color Color, bool IsVisible);
 

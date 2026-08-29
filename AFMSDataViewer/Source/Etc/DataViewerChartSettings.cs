@@ -1,5 +1,3 @@
-using AFMSDll;
-
 namespace AFMSDataViewer
 {
     /// <summary>

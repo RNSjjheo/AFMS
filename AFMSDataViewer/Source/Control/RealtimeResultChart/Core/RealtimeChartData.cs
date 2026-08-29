@@ -1,4 +1,4 @@
-namespace AFMSDll
+namespace AFMSDataViewer
 {
     public enum ChartMainType
     {

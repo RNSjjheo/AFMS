@@ -1,4 +1,4 @@
-namespace AFMSDll
+namespace AFMSDataViewer
 {
     internal sealed class RealtimeChartLegendController : IDisposable
     {
