@@ -10,9 +10,9 @@ namespace AFMSDataViewer
         public Panel uiPnIcon;
         public AFMSComboBox uiComboMain;
         public AFMSComboBox uiComboSub;
-        public RoundedTwoLabel uiValueMin;
-        public RoundedTwoLabel uiValueAvg;
-        public RoundedTwoLabel uiValueMax;
+        public AFMSLabel uiValueMin;
+        public AFMSLabel uiValueAvg;
+        public AFMSLabel uiValueMax;
         public Button uiButtonDetails;
         public const int ControlAreaHeight = 75;
         private readonly bool supportsDetails;
@@ -57,9 +57,9 @@ namespace AFMSDataViewer
             uiComboSub.PlaceholderText = GetSubPlaceholder(chartType);
             uiComboSub.BorderRadius = 5;
 
-            uiValueMin = new RoundedTwoLabel(false);
-            uiValueAvg = new RoundedTwoLabel(false);
-            uiValueMax = new RoundedTwoLabel(false);
+            uiValueMin = new AFMSLabel();
+            uiValueAvg = new AFMSLabel();
+            uiValueMax = new AFMSLabel();
 
             SetupValueCard(uiValueMin, "최소", chartType);
             SetupValueCard(uiValueAvg, "평균", chartType, true);
@@ -103,7 +103,22 @@ namespace AFMSDataViewer
             SetRowSpan(uiComboMain, visible ? 1 : 3);
         }
 
-        private void SetupValueCard(RoundedTwoLabel card, string key, ChartMainType chartType, bool highlighted = false)
+        public void FitStatisticsWidths()
+        {
+            // Include the unit and comparison symbol when reserving space for each label.
+            AFMSLabel[] labels = { uiValueMin, uiValueAvg, uiValueMax };
+            SuspendLayout();
+            for (int i = 0; i < labels.Length; i++)
+            {
+                AFMSLabel label = labels[i];
+                int textWidth = TextRenderer.MeasureText(label.Text, label.Font).Width;
+                ColumnStyles[i + 2].Width = Math.Max(66F * DeviceDpi / 96F,
+                    textWidth + label.Padding.Horizontal + label.Margin.Horizontal + 4);
+            }
+            ResumeLayout(true);
+        }
+
+        private void SetupValueCard(AFMSLabel card, string key, ChartMainType chartType, bool highlighted = false)
         {
             (Color accent, Color background, Color border) = GetChartTheme(chartType);
             card.Dock = DockStyle.Fill;
@@ -113,31 +128,13 @@ namespace AFMSDataViewer
             card.BorderThickness = 1F;
             card.BorderColor = highlighted ? border : ColorTranslator.FromHtml("#DCE5EF");
             card.BackColor = highlighted ? background : Color.White;
-            card.MainTablePanel.BackColor = Color.Transparent;
-            card.Key = key switch { "최소" => "↓", "평균" => "x\u0304", _ => "↑" };
             card.AccessibleName = key;
-            card.MainTablePanel.Controls.Clear();
-            card.MainTablePanel.RowStyles.Clear();
-            card.MainTablePanel.ColumnStyles.Clear();
-            card.MainTablePanel.RowCount = 1;
-            card.MainTablePanel.ColumnCount = 2;
-            card.MainTablePanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            card.MainTablePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 18F));
-            card.MainTablePanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            card.MainTablePanel.Controls.Add(card.LbKey, 0, 0);
-            card.MainTablePanel.Controls.Add(card.LbValue, 1, 0);
             statisticsTip.SetToolTip(card, key);
-            statisticsTip.SetToolTip(card.LbKey, key);
-            statisticsTip.SetToolTip(card.LbValue, key);
-            card.Value = "-";
-            card.KeyFont = new Font("Segoe UI", 11F, FontStyle.Regular);
-            card.ValueFont = new Font("맑은 고딕", 9F, FontStyle.Regular);
-            card.LbKey.TextAlign = ContentAlignment.MiddleCenter;
-            card.LbKey.Padding = Padding.Empty;
-            card.LbValue.TextAlign = ContentAlignment.MiddleCenter;
-            card.LbValue.Padding = Padding.Empty;
-            card.KeyForeColor = ColorTranslator.FromHtml("#64748B");
-            card.ValueForeColor = highlighted ? accent : ColorTranslator.FromHtml("#64748B");
+            statisticsTip.SetToolTip(card.InnerLabel, key);
+            card.Text = "-";
+            card.Font = new Font("맑은 고딕", 9F, FontStyle.Regular);
+            card.TextAlign = ContentAlignment.MiddleCenter;
+            card.ForeColor = highlighted ? accent : ColorTranslator.FromHtml("#64748B");
         }
 
         protected override void Dispose(bool disposing)

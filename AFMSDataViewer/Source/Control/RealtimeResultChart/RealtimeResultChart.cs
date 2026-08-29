@@ -719,9 +719,11 @@ namespace AFMSDataViewer
             minimum.Text = data.Length == 0 ? "최소\n-" : $"최소\n{data.Min():0.0}";
             average.Text = data.Length == 0 ? "평균\n-" : $"평균\n{data.Average():0.0}";
             maximum.Text = data.Length == 0 ? "최대\n-" : $"최대\n{data.Max():0.0}";
-            TopLayout.uiValueMin.Value = data.Length == 0 ? "-" : $"{data.Min():0.0}";
-            TopLayout.uiValueAvg.Value = data.Length == 0 ? "-" : $"{data.Average():0.0}";
-            TopLayout.uiValueMax.Value = data.Length == 0 ? "-" : $"{data.Max():0.0}";
+            string unit = GetUnit();
+            TopLayout.uiValueMin.Text = data.Length == 0 ? "-" : $"{data.Min():0.0} {unit} ≤";
+            TopLayout.uiValueAvg.Text = data.Length == 0 ? "-" : $"{data.Average():0.0} {unit}";
+            TopLayout.uiValueMax.Text = data.Length == 0 ? "-" : $"≤ {data.Max():0.0} {unit}";
+            TopLayout.FitStatisticsWidths();
         }
 
         private void ShowMessage(string message)
