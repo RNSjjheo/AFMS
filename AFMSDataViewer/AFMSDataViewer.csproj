@@ -58,4 +58,8 @@
     </EmbeddedResource>
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Source\Measurement\DataSet\" />
+  </ItemGroup>
+
 </Project>

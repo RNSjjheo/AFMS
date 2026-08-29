@@ -7,8 +7,6 @@ namespace AFMSDataViewer
         DateTime Time { get; }
     }
 
-    public sealed record VelocityMeasurement(DateTime Time, string SourceType, string DeviceKey, int TransectNo, double Value) : IRealtimeMeasurement;
-
     public sealed record DischargeMeasurement(DateTime Time, string DeviceType, int DeviceId, string Method, double Value) : IRealtimeMeasurement;
 
     public sealed class MeasurementDataChangedEventArgs(DateTime rangeStart, DateTime rangeEnd, long version) : EventArgs
@@ -128,8 +126,7 @@ namespace AFMSDataViewer
                     MeasurementSlot slot = EnsureSlotCore(item.Time);
                     Upsert(slot.MeasurementDevices.HydroMeters, item, current =>
                         current.SourceType == item.SourceType &&
-                        current.DeviceKey == item.DeviceKey &&
-                        current.TransectNo == item.TransectNo);
+                        current.DeviceKey == item.DeviceKey);
                     changed = true;
                 }
 
