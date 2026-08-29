@@ -129,9 +129,9 @@ namespace AFMSDataViewer
             uiResultChart?.Dispose();
             uiResultChart = chartType switch
             {
-                ChartMainType.Velocity => new RRChartVelocity(rangeStart, rangeEnd),
+                ChartMainType.Velocity => new RRChartVelocity(measurementDataHub, rangeStart, rangeEnd),
                 ChartMainType.Level => new RRChartLevel(measurementDataHub, rangeStart, rangeEnd),
-                ChartMainType.Discharge => new RRChartDischarge(rangeStart, rangeEnd),
+                ChartMainType.Discharge => new RRChartDischarge(measurementDataHub, rangeStart, rangeEnd),
                 _ => new RRChartVTH(measurementDataHub, rangeStart, rangeEnd)
             };
             ChartAxisRange axisRange = DataViewerChartSettings.GetAxisRange(chartType);

@@ -1,14 +1,20 @@
 using AFMSDll;
-using System.Data;
 
 namespace AFMSDataViewer
 {
     internal sealed class RRChartVelocity : RealtimeResultChart
     {
-        private sealed record DeviceOption(int Id, string SourceType, int Number, int TransectCount, string Text)
+        private sealed record DeviceOption(
+            int Id,
+            string SourceType,
+            string DeviceKey,
+            int Number,
+            int TransectCount,
+            string Text)
         {
             public override string ToString() => Text;
         }
+
         private sealed record TransectOption(int Number)
         {
             public override string ToString() => $"{Number}번 측선";
@@ -16,12 +22,21 @@ namespace AFMSDataViewer
 
         private bool populating;
 
-        public RRChartVelocity(DateTime start, DateTime end) : base(ChartMainType.Velocity, start, end)
+        public RRChartVelocity(MeasurementDataHub measurementDataHub, DateTime start, DateTime end)
+            : base(ChartMainType.Velocity, start, end, measurementDataHub)
         {
             TopLayout.uiComboMain.SelectedIndexChanged += (_, _) =>
             {
                 if (populating) return;
-                PopulateTransects(true);
+                populating = true;
+                try
+                {
+                    PopulateTransects(true);
+                }
+                finally
+                {
+                    populating = false;
+                }
                 LoadData();
             };
             TopLayout.uiComboSub.SelectedIndexChanged += (_, _) => { if (!populating) LoadData(); };
@@ -30,45 +45,72 @@ namespace AFMSDataViewer
 
         public override void LoadData()
         {
-            try
+            IReadOnlyList<MeasurementSlot> slots = MeasurementDataHub!.GetSlots(RangeStart, RangeEnd);
+            VelocityMeasurement[] measurements = slots
+                .SelectMany(slot => slot.MeasurementDevices.HydroMeters)
+                .ToArray();
+            PopulateDevices(measurements);
+
+            DeviceOption? device = TopLayout.uiComboMain.SelectedItem as DeviceOption;
+            TransectOption? transect = TopLayout.uiComboSub.SelectedItem as TransectOption;
+            if (device == null || transect == null)
             {
-                using FBDatabase db = FBProvider.Instance.CreateDatabase();
-                PopulateDevices(db);
-                DeviceOption? device = TopLayout.uiComboMain.SelectedItem as DeviceOption;
-                TransectOption? transect = TopLayout.uiComboSub.SelectedItem as TransectOption;
-                string sql = new RealtimeVelocityChartQuery(RangeStart, RangeEnd,
-                    device?.SourceType, device?.Number, transect?.Number).Build();
-                DataTable table = db.Execute(sql, out string error);
-                if (!string.IsNullOrEmpty(error)) { ShowDataError(error); return; }
-                SetSeries(RRChartDataMapper.Map(table, GetSeriesColor));
+                SetSeries([]);
+                return;
             }
-            catch (Exception ex) { ShowDataError(ex.Message); }
+
+            List<RealtimeChartPoint> points = slots.Select(slot =>
+            {
+                VelocityMeasurement? measurement = slot.MeasurementDevices.HydroMeters.FirstOrDefault(item =>
+                    item.SourceType == device.SourceType && item.DeviceKey == device.DeviceKey);
+                VelocityTransectMeasurement? value = measurement?.Transects.FirstOrDefault(item =>
+                    item.TransectNo == transect.Number);
+                bool isValid = value is { IsValid: true } && double.IsFinite(value.Velocity);
+                return new RealtimeChartPoint(
+                    measurement?.Time ?? slot.SlotTime,
+                    isValid ? value!.Velocity : 0D,
+                    !isValid);
+            }).OrderBy(point => point.Time).ToList();
+
+            SetSeries([new RealtimeChartSeries($"{transect.Number}번 측선", GetSeriesColor(0), points)]);
         }
 
-        private void PopulateDevices(FBDatabase db)
+        private void PopulateDevices(IReadOnlyList<VelocityMeasurement> measurements)
         {
             DeviceOption? previous = TopLayout.uiComboMain.SelectedItem as DeviceOption;
-            DataTable table = db.Execute(new RealtimeVelocityChartQuery(RangeStart, RangeEnd).BuildDeviceList(), out string error);
-            if (!string.IsNullOrEmpty(error)) return;
             populating = true;
             try
             {
                 TopLayout.uiComboMain.Items.Clear();
-                foreach (DataRow row in table.Rows)
+                foreach (VelocityMeasurement measurement in measurements
+                    .GroupBy(item => (item.SourceType, item.DeviceKey))
+                    .Select(group => group.First())
+                    .OrderBy(item => item.DeviceNo)
+                    .ThenBy(item => item.DeviceId))
                 {
-                    int id = Convert.ToInt32(row["DEVICE_ID"]);
-                    int number = row["DEVICE_NO"] == DBNull.Value ? id : Convert.ToInt32(row["DEVICE_NO"]);
-                    int count = row["TRANSECT_COUNT"] == DBNull.Value ? 1 : Math.Max(1, Convert.ToInt32(row["TRANSECT_COUNT"]));
-                    string meterType = row["METER_TYPE"].ToText().Trim();
-                    HydroMeterType parsed = Enum.TryParse(meterType, true, out HydroMeterType value) ? value : HydroMeterType.None;
-                    TopLayout.uiComboMain.Items.Add(new DeviceOption(id, row["SOURCE_TYPE"].ToText().Trim(),
-                        number, count, EnumPaser.GetKorString(parsed)));
+                    HydroMeterType meterType = Enum.TryParse(measurement.MeterType, true, out HydroMeterType parsed)
+                        ? parsed
+                        : HydroMeterType.None;
+                    int transectCount = Math.Max(1,
+                        measurement.Transects.Select(item => item.TransectNo).DefaultIfEmpty(1).Max());
+                    TopLayout.uiComboMain.Items.Add(new DeviceOption(
+                        measurement.DeviceId,
+                        measurement.SourceType,
+                        measurement.DeviceKey,
+                        measurement.DeviceNo,
+                        transectCount,
+                        EnumPaser.GetKorString(meterType)));
                 }
+
                 TopLayout.uiComboMain.SelectedItem = TopLayout.uiComboMain.Items.Cast<DeviceOption>()
-                    .FirstOrDefault(item => item.Id == previous?.Id) ?? TopLayout.uiComboMain.Items.Cast<object>().FirstOrDefault();
+                    .FirstOrDefault(item => item.Id == previous?.Id && item.SourceType == previous?.SourceType)
+                    ?? TopLayout.uiComboMain.Items.Cast<object>().FirstOrDefault();
                 PopulateTransects();
             }
-            finally { populating = false; }
+            finally
+            {
+                populating = false;
+            }
         }
 
         private void PopulateTransects(bool reset = false)

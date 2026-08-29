@@ -7,7 +7,14 @@ namespace AFMSDataViewer
         DateTime Time { get; }
     }
 
-    public sealed record DischargeMeasurement(DateTime Time, string DeviceType, int DeviceId, string Method, double Value) : IRealtimeMeasurement;
+    public sealed record DischargeMeasurement(
+        DateTime Time,
+        string DeviceType,
+        int DeviceId,
+        string Method,
+        double Value,
+        string? MeterType = null,
+        bool IsValid = true) : IRealtimeMeasurement;
 
     public sealed class MeasurementDataChangedEventArgs(DateTime rangeStart, DateTime rangeEnd, long version) : EventArgs
     {

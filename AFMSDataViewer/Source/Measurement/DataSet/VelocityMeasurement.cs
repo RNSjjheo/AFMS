@@ -6,7 +6,13 @@ namespace AFMSDataViewer
     /// </summary>
     public abstract class VelocityMeasurement : IRealtimeMeasurement
     {
-        protected VelocityMeasurement(DateTime time, string deviceKey, IEnumerable<VelocityTransectMeasurement> transects)
+        protected VelocityMeasurement(
+            DateTime time,
+            string deviceKey,
+            IEnumerable<VelocityTransectMeasurement> transects,
+            int deviceId = 0,
+            int deviceNo = 0,
+            string? meterType = null)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(deviceKey);
             ArgumentNullException.ThrowIfNull(transects);
@@ -17,11 +23,20 @@ namespace AFMSDataViewer
             Time = time;
             DeviceKey = deviceKey.Trim();
             Transects = values;
+            DeviceId = deviceId;
+            DeviceNo = deviceNo;
+            MeterType = meterType?.Trim();
         }
 
         public DateTime Time { get; }
 
         public string DeviceKey { get; }
+
+        public int DeviceId { get; }
+
+        public int DeviceNo { get; }
+
+        public string? MeterType { get; }
 
         public abstract string SourceType { get; }
 

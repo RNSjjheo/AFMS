@@ -15,11 +15,12 @@ namespace AFMSDataViewer
             return table;
         }
 
-        public static string BuildTimeCondition(DateTime from, DateTime to)
+        public static string BuildTimeCondition(DateTime from, DateTime to, string? alias = null)
         {
             string fromValue = from.ToString("yyyyMMdd HHmmss", CultureInfo.InvariantCulture);
             string toValue = to.ToString("yyyyMMdd HHmmss", CultureInfo.InvariantCulture);
-            string measuredAt = $"({_FBTableBase.COL_MEASURE_DATE} || ' ' || {_FBTableBase.COL_MEASURE_TIME})";
+            string prefix = string.IsNullOrWhiteSpace(alias) ? string.Empty : alias.Trim() + ".";
+            string measuredAt = $"({prefix}{_FBTableBase.COL_MEASURE_DATE} || ' ' || {prefix}{_FBTableBase.COL_MEASURE_TIME})";
             return $"{measuredAt} >= '{fromValue}' AND {measuredAt} <= '{toValue}'";
         }
 

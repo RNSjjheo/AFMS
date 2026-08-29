@@ -27,7 +27,9 @@ namespace AFMSDataViewer
                     services.AddSingleton<Func<DateTime, CrossSectionDefinition>>(_ =>
                         _ => new CrossSectionDefinition(0, string.Empty, 0, []));
                     services.AddSingleton<MeasurementDataHub>();
+                    services.AddSingleton<IMeasurementDataSource, VelocityMeasurementDataSource>();
                     services.AddSingleton<IMeasurementDataSource, WaterLevelMeasurementDataSource>();
+                    services.AddSingleton<IMeasurementDataSource, DischargeMeasurementDataSource>();
                     services.AddSingleton<IMeasurementDataSource, PowerMeasurementDataSource>();
                     services.AddSingleton<MeasurementRefreshService>();
                     services.AddHostedService(provider =>

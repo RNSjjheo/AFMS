@@ -7,7 +7,7 @@ namespace AFMSDataViewer
     /// <summary>전력 DB 자료를 Hub 전달용 VoltageMeasurement로 변환합니다.</summary>
     internal sealed class PowerMeasurementDataSource : IMeasurementDataSource
     {
-        public string Name => "전력";
+        public string Name => "전원";
 
         public Task<MeasurementBatch> LoadAsync(DateTime from, DateTime to, CancellationToken cancellationToken)
         {

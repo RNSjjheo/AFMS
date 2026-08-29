@@ -1,5 +1,4 @@
 using AFMSDll;
-using System.Data;
 
 namespace AFMSDataViewer
 {
@@ -17,7 +16,8 @@ namespace AFMSDataViewer
         private readonly List<RealtimeChartSeries> loadedSeries = new();
         private bool populating;
 
-        public RRChartDischarge(DateTime start, DateTime end) : base(ChartMainType.Discharge, start, end)
+        public RRChartDischarge(MeasurementDataHub measurementDataHub, DateTime start, DateTime end)
+            : base(ChartMainType.Discharge, start, end, measurementDataHub)
         {
             TopLayout.uiComboMain.SelectedIndexChanged += (_, _) =>
             {
@@ -31,33 +31,38 @@ namespace AFMSDataViewer
 
         public override void LoadData()
         {
-            try
+            loadedSeries.Clear();
+            foreach (IGrouping<(string DeviceType, int DeviceId, string Method), DischargeMeasurement> group in
+                MeasurementDataHub!.GetSlots(RangeStart, RangeEnd)
+                    .SelectMany(slot => slot.Discharges)
+                    .GroupBy(item => (item.DeviceType, item.DeviceId, item.Method))
+                    .OrderBy(group => group.Key.DeviceType == nameof(MeasurementDeviceType.VelocityMeter) ? 0 : 1)
+                    .ThenBy(group => group.Key.DeviceId)
+                    .ThenBy(group => GetMethodOrder(group.Key.Method)))
             {
-                using FBDatabase db = FBProvider.Instance.CreateDatabase();
-                DataTable table = db.Execute(new RealtimeDischargeChartQuery(RangeStart, RangeEnd).Build(), out string error);
-                if (!string.IsNullOrEmpty(error)) { ShowDataError(error); return; }
-                loadedSeries.Clear();
-                loadedSeries.AddRange(RRChartDataMapper.Map(table, GetSeriesColor, GetSeriesName)
-                    .Select(series => series with
-                    {
-                        LegendText = string.IsNullOrWhiteSpace(series.DischargeMethod)
-                            ? series.Name
-                            : GetMethodText(series.DischargeMethod)
-                    }));
-                PopulateDevices();
-                ApplySelection();
+                DischargeMeasurement first = group.First();
+                string deviceText = GetDeviceText(first.DeviceType, first.DeviceId, first.MeterType);
+                string name = first.DeviceType == nameof(MeasurementDeviceType.VelocityMeter)
+                    ? $"{GetMethodText(first.Method)} {deviceText}"
+                    : deviceText;
+                List<RealtimeChartPoint> points = group
+                    .OrderBy(item => item.Time)
+                    .Select(item => new RealtimeChartPoint(item.Time, item.IsValid ? item.Value : 0D, !item.IsValid))
+                    .ToList();
+                loadedSeries.Add(new RealtimeChartSeries(
+                    name,
+                    GetSeriesColor(loadedSeries.Count),
+                    points,
+                    Key: $"{first.DeviceType}|{first.DeviceId}|{first.Method}",
+                    LegendText: GetMethodText(first.Method),
+                    DeviceType: first.DeviceType,
+                    DeviceId: first.DeviceId,
+                    DischargeMethod: first.Method,
+                    MeterType: first.MeterType));
             }
-            catch (Exception ex) { ShowDataError(ex.Message); }
-        }
 
-        private string GetSeriesName(DataRow row, string fallback)
-        {
-            string type = row.Table.Columns.Contains("DEVICE_TYPE") ? row["DEVICE_TYPE"].ToText().Trim() : string.Empty;
-            int id = row.Table.Columns.Contains("DEVICE_ID") && row["DEVICE_ID"] != DBNull.Value
-                ? Convert.ToInt32(row["DEVICE_ID"]) : 0;
-            string method = row.Table.Columns.Contains("DISCHARGE_METHOD") ? row["DISCHARGE_METHOD"].ToText().Trim() : string.Empty;
-            if (type != nameof(MeasurementDeviceType.VelocityMeter)) return fallback;
-            return $"{GetMethodText(method)} {GetDeviceText(type, id, row["METER_TYPE"].ToText())}";
+            PopulateDevices();
+            ApplySelection();
         }
 
         private void PopulateDevices()

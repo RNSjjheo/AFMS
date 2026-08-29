@@ -23,10 +23,15 @@ namespace AFMSDataViewer
         private AFMSTabBarItem _TabRealtime;
         private AFMSTabBarItem _TabHistory;
         public ViewRealtime _ViewRealtime;
+        private readonly MeasurementRefreshService measurementRefreshService;
+        private MeasurementDataLoadCompletedEventArgs? pendingLoadReport;
 
-        public FormMain(MeasurementDataHub measurementDataHub)
+        public FormMain(MeasurementDataHub measurementDataHub, MeasurementRefreshService measurementRefreshService)
         {
             ArgumentNullException.ThrowIfNull(measurementDataHub);
+            ArgumentNullException.ThrowIfNull(measurementRefreshService);
+            this.measurementRefreshService = measurementRefreshService;
+            measurementRefreshService.FullLoadCompleted += MeasurementRefreshService_FullLoadCompleted;
             RnsLog.Init(Environment.UserInteractive, PROCESS_NAME, 100, 0);
             RnsLog.Start();
             RnsLog.AppenderInfo();
@@ -91,11 +96,52 @@ namespace AFMSDataViewer
             BeginInvoke(new Action(() =>
             {
                 RefreshMainLayout();
+                MeasurementDataLoadCompletedEventArgs? report = Interlocked.Exchange(ref pendingLoadReport, null);
+                if (report != null) ShowDataLoadReport(report);
             }));
+        }
+
+        private void MeasurementRefreshService_FullLoadCompleted(
+            object? sender,
+            MeasurementDataLoadCompletedEventArgs e)
+        {
+            if (IsDisposed) return;
+            if (!IsHandleCreated)
+            {
+                Interlocked.Exchange(ref pendingLoadReport, e);
+                return;
+            }
+
+            try
+            {
+                BeginInvoke(new Action(() => ShowDataLoadReport(e)));
+            }
+            catch (InvalidOperationException)
+            {
+                Interlocked.Exchange(ref pendingLoadReport, e);
+            }
+        }
+
+        private void ShowDataLoadReport(MeasurementDataLoadCompletedEventArgs report)
+        {
+            if (IsDisposed) return;
+
+            string details = string.Join(Environment.NewLine, report.DataSources.Select(timing =>
+                $"{timing.Name}: {timing.Elapsed.TotalSeconds:0.000}초" +
+                (timing.Succeeded ? string.Empty : " (실패)")));
+            string message = $"{details}{Environment.NewLine}{Environment.NewLine}" +
+                $"전체: {report.TotalElapsed.TotalSeconds:0.000}초";
+            System.Windows.Forms.MessageBox.Show(
+                this,
+                message,
+                "차트 DB 로딩 시간",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information);
         }
 
         protected override void OnFormClosed(FormClosedEventArgs e)
         {
+            measurementRefreshService.FullLoadCompleted -= MeasurementRefreshService_FullLoadCompleted;
             ApplicationDiag.IsRunning = false;
             base.OnFormClosed(e);
         }

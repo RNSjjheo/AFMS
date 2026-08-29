@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -22,11 +23,26 @@ namespace AFMSDataViewer
         Task<MeasurementBatch> LoadAsync(DateTime from, DateTime to, CancellationToken cancellationToken);
     }
 
+    public sealed record MeasurementDataSourceLoadTiming(string Name, TimeSpan Elapsed, bool Succeeded);
+
+    public sealed class MeasurementDataLoadCompletedEventArgs(
+        IReadOnlyList<MeasurementDataSourceLoadTiming> dataSources,
+        TimeSpan totalElapsed) : EventArgs
+    {
+        public IReadOnlyList<MeasurementDataSourceLoadTiming> DataSources { get; } = dataSources;
+        public TimeSpan TotalElapsed { get; } = totalElapsed;
+    }
+
     /// <summary>
     /// 10분 경계마다 데이터 소스를 증분 조회하고 MeasurementDataHub를 갱신합니다.
     /// </summary>
     public sealed class MeasurementRefreshService : BackgroundService
     {
+        private sealed record LoadDataSourcesResult(
+            MeasurementBatch Batch,
+            IReadOnlyList<MeasurementDataSourceLoadTiming> Timings,
+            TimeSpan TotalElapsed);
+
         private static readonly TimeSpan QueryOverlap = TimeSpan.FromMinutes(20);
         private static readonly TimeSpan SettleDelay = TimeSpan.FromSeconds(5);
 
@@ -43,6 +59,8 @@ namespace AFMSDataViewer
             _dataSources = dataSources.ToArray();
             _logger = logger;
         }
+
+        public event EventHandler<MeasurementDataLoadCompletedEventArgs>? FullLoadCompleted;
 
         public Task ReloadAsync(TimeSpan retention, CancellationToken cancellationToken = default)
         {
@@ -80,10 +98,11 @@ namespace AFMSDataViewer
             try
             {
                 _lastSuccessfulLoads.Clear();
-                MeasurementBatch batch = await LoadDataSourcesAsync(true, retention, cancellationToken).ConfigureAwait(false);
-                _dataHub.Reset(DateTime.Now, retention, batch.Levels, batch.Voltages);
-                _dataHub.Apply(batch);
+                LoadDataSourcesResult result = await LoadDataSourcesAsync(true, retention, cancellationToken).ConfigureAwait(false);
+                _dataHub.Reset(DateTime.Now, retention, result.Batch.Levels, result.Batch.Voltages);
+                _dataHub.Apply(result.Batch);
                 _requiresFullReload = false;
+                RaiseFullLoadCompleted(result);
             }
             finally
             {
@@ -100,7 +119,8 @@ namespace AFMSDataViewer
                 DateTime currentSlot = MeasurementDataHub.AlignToSlot(DateTime.Now);
                 if (fullReload) _lastSuccessfulLoads.Clear();
 
-                MeasurementBatch batch = await LoadDataSourcesAsync(fullReload, _dataHub.Retention, cancellationToken).ConfigureAwait(false);
+                LoadDataSourcesResult result = await LoadDataSourcesAsync(fullReload, _dataHub.Retention, cancellationToken).ConfigureAwait(false);
+                MeasurementBatch batch = result.Batch;
                 if (fullReload)
                 {
                     _dataHub.Reset(currentSlot, _dataHub.Retention, batch.Levels, batch.Voltages);
@@ -112,6 +132,7 @@ namespace AFMSDataViewer
                 }
 
                 _dataHub.Apply(batch);
+                if (fullReload) RaiseFullLoadCompleted(result);
             }
             finally
             {
@@ -119,11 +140,13 @@ namespace AFMSDataViewer
             }
         }
 
-        private async Task<MeasurementBatch> LoadDataSourcesAsync(bool fullReload, TimeSpan retention, CancellationToken cancellationToken)
+        private async Task<LoadDataSourcesResult> LoadDataSourcesAsync(bool fullReload, TimeSpan retention, CancellationToken cancellationToken)
         {
             DateTime to = MeasurementDataHub.AlignToSlot(DateTime.Now);
             DateTime fullRangeStart = to - retention;
             MeasurementBatch combinedBatch = new();
+            List<MeasurementDataSourceLoadTiming> timings = new(_dataSources.Count);
+            Stopwatch totalStopwatch = Stopwatch.StartNew();
 
             foreach (IMeasurementDataSource dataSource in _dataSources)
             {
@@ -133,6 +156,8 @@ namespace AFMSDataViewer
                     : lastLoaded - QueryOverlap;
                 if (from < fullRangeStart) from = fullRangeStart;
 
+                Stopwatch stopwatch = Stopwatch.StartNew();
+                bool succeeded = false;
                 try
                 {
                     MeasurementBatch batch = await dataSource.LoadAsync(from, to, cancellationToken)
@@ -142,6 +167,7 @@ namespace AFMSDataViewer
                     combinedBatch.Discharges.AddRange(batch.Discharges);
                     combinedBatch.Voltages.AddRange(batch.Voltages);
                     _lastSuccessfulLoads[dataSource] = to;
+                    succeeded = true;
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
@@ -153,10 +179,20 @@ namespace AFMSDataViewer
                         "측정 데이터 갱신 실패: {DataSource}, {From:yyyy-MM-dd HH:mm} ~ {To:yyyy-MM-dd HH:mm}",
                         dataSource.Name, from, to);
                 }
+                finally
+                {
+                    stopwatch.Stop();
+                    timings.Add(new MeasurementDataSourceLoadTiming(dataSource.Name, stopwatch.Elapsed, succeeded));
+                }
             }
 
-            return combinedBatch;
+            totalStopwatch.Stop();
+            return new LoadDataSourcesResult(combinedBatch, timings, totalStopwatch.Elapsed);
         }
+
+        private void RaiseFullLoadCompleted(LoadDataSourcesResult result) =>
+            FullLoadCompleted?.Invoke(this,
+                new MeasurementDataLoadCompletedEventArgs(result.Timings, result.TotalElapsed));
 
         private static TimeSpan GetDelayUntilNextRefresh(DateTime now)
         {

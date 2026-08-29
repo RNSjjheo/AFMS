@@ -8,8 +8,11 @@ namespace AFMSDataViewer
         public MpdsVelocityMeasurement(
             DateTime time,
             string deviceKey,
-            IEnumerable<VelocityTransectMeasurement> transects)
-            : base(time, deviceKey, transects)
+            IEnumerable<VelocityTransectMeasurement> transects,
+            int deviceId = 0,
+            int deviceNo = 0,
+            string? meterType = null)
+            : base(time, deviceKey, transects, deviceId, deviceNo, meterType)
         {
         }
 
