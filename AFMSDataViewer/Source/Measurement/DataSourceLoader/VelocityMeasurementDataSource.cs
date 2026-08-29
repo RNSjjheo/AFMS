@@ -14,7 +14,11 @@ namespace AFMSDataViewer
             string SourceTable,
             string MeterType);
 
-        private sealed record TransectValue(double Velocity, double Uncertainty, bool IsValid);
+        private sealed record TransectValue(
+            double Velocity,
+            double Uncertainty,
+            bool IsValid,
+            IReadOnlyDictionary<string, double?> AdditionalValues);
 
         public string Name => "유속";
 
@@ -51,7 +55,8 @@ namespace AFMSDataViewer
                             number,
                             found && value!.IsValid ? value.Velocity : 0D,
                             found && value!.IsValid ? value.Uncertainty : 0D,
-                            found && value!.IsValid));
+                            found && value!.IsValid,
+                            found ? value!.AdditionalValues : null));
                     }
 
                     string deviceKey = configuration.Id.ToString(CultureInfo.InvariantCulture);
@@ -101,12 +106,24 @@ namespace AFMSDataViewer
         {
             string sql = $"SELECT M.{_FBTableBase.COL_MEASURE_DATE}, M.{_FBTableBase.COL_MEASURE_TIME},";
             sql += $" C.{FbtHYDROMETERMPDSCELL.COL_DEV_NO}, AVG(C.{FbtHYDROMETERMPDSCELL.COL_VELOCITY}),";
-            sql += $" AVG(C.{FbtHYDROMETERMPDSCELL.COL_VSTDUNCERT})";
+            sql += $" AVG(C.{FbtHYDROMETERMPDSCELL.COL_VSTDUNCERT}),";
+            sql += $" AVG(C.{FbtHYDROMETERMPDSCELL.COL_WATER_LEVEL}),";
+            sql += $" AVG(C.{FbtHYDROMETERMPDSCELL.COL_SNR}),";
+            sql += $" AVG(C.{FbtHYDROMETERMPDSCELL.COL_DISCHARGE}),";
+            sql += $" AVG(C.{FbtHYDROMETERMPDSCELL.COL_FVELOCITY}),";
+            sql += $" AVG(C.{FbtHYDROMETERMPDSCELL.COL_OPPOSITE}),";
+            sql += $" AVG(C.{FbtHYDROMETERMPDSCELL.COL_INCLINATION}),";
+            sql += $" AVG(C.{FbtHYDROMETERMPDSCELL.COL_RFRSSI}),";
+            sql += $" AVG(C.{FbtHYDROMETERMPDSCELL.COL_VEXTUNCERT})";
             sql += $" FROM {FbtHYDROMETERMPDS.TABLE_NAME} M JOIN {FbtHYDROMETERMPDSCELL.TABLE_NAME} C";
             sql += $" ON C.{FbtHYDROMETERMPDSCELL.COL_MPDS_ID} = M.{_FBTableBase.COL_ID}";
             sql += $" WHERE {MeasurementDataSourceReader.BuildTimeCondition(from, to, "M")}";
             sql += $" GROUP BY M.{_FBTableBase.COL_MEASURE_DATE}, M.{_FBTableBase.COL_MEASURE_TIME}, C.{FbtHYDROMETERMPDSCELL.COL_DEV_NO}";
-            return LoadTransects(database, sql, "기간 MPDS 유속 조회 실패", cancellationToken);
+            return LoadTransects(database, sql, "기간 MPDS 유속 조회 실패", cancellationToken,
+            [
+                "수위(m)", "SNR", "유량(m³/s)", "필터 유속(m/s)",
+                "반대방향", "경사", "RF RSSI", "확장 불확도"
+            ]);
         }
 
         private static IReadOnlyDictionary<DateTime, IReadOnlyDictionary<int, TransectValue>> LoadVideo(
@@ -117,19 +134,24 @@ namespace AFMSDataViewer
         {
             string sql = $"SELECT M.{_FBTableBase.COL_MEASURE_DATE}, M.{_FBTableBase.COL_MEASURE_TIME},";
             sql += $" C.{FbtHYDROMETERVIDEOCELL.COL_CELL_NO}, AVG(C.{FbtHYDROMETERVIDEOCELL.COL_VELOCITY}),";
-            sql += $" AVG(C.{FbtHYDROMETERVIDEOCELL.COL_UNCERTAINTY})";
+            sql += $" AVG(C.{FbtHYDROMETERVIDEOCELL.COL_UNCERTAINTY}),";
+            sql += $" AVG(M.{FbtHYDROMETERVIDEO.COL_WATERLEVEL}),";
+            sql += $" AVG(C.{FbtHYDROMETERVIDEOCELL.COL_POS_X}),";
+            sql += $" AVG(C.{FbtHYDROMETERVIDEOCELL.COL_POS_Y})";
             sql += $" FROM {FbtHYDROMETERVIDEO.TABLE_NAME} M JOIN {FbtHYDROMETERVIDEOCELL.TABLE_NAME} C";
             sql += $" ON C.{FbtHYDROMETERVIDEOCELL.COL_VIDEO_ID} = M.{_FBTableBase.COL_ID}";
             sql += $" WHERE {MeasurementDataSourceReader.BuildTimeCondition(from, to, "M")}";
             sql += $" GROUP BY M.{_FBTableBase.COL_MEASURE_DATE}, M.{_FBTableBase.COL_MEASURE_TIME}, C.{FbtHYDROMETERVIDEOCELL.COL_CELL_NO}";
-            return LoadTransects(database, sql, "기간 영상식 유속 조회 실패", cancellationToken);
+            return LoadTransects(database, sql, "기간 영상식 유속 조회 실패", cancellationToken,
+                ["수위(m)", "영상 X", "영상 Y"]);
         }
 
         private static IReadOnlyDictionary<DateTime, IReadOnlyDictionary<int, TransectValue>> LoadTransects(
             FBDatabase database,
             string sql,
             string errorContext,
-            CancellationToken cancellationToken)
+            CancellationToken cancellationToken,
+            IReadOnlyList<string> additionalColumnNames)
         {
             DataTable table = MeasurementDataSourceReader.Execute(database, sql, errorContext);
             Dictionary<DateTime, Dictionary<int, TransectValue>> byTime = new();
@@ -143,6 +165,17 @@ namespace AFMSDataViewer
                 double velocity = row[3] == DBNull.Value ? 0D : Convert.ToDouble(row[3], CultureInfo.InvariantCulture);
                 double uncertainty = row[4] == DBNull.Value ? 0D : Convert.ToDouble(row[4], CultureInfo.InvariantCulture);
                 bool isValid = row[3] != DBNull.Value && double.IsFinite(velocity) && double.IsFinite(uncertainty);
+                Dictionary<string, double?> additionalValues = new(additionalColumnNames.Count);
+                for (int index = 0; index < additionalColumnNames.Count; index++)
+                {
+                    object raw = row[index + 5];
+                    double? value = raw == DBNull.Value
+                        ? null
+                        : Convert.ToDouble(raw, CultureInfo.InvariantCulture);
+                    additionalValues[additionalColumnNames[index]] = value is null || double.IsFinite(value.Value)
+                        ? value
+                        : null;
+                }
                 if (!byTime.TryGetValue(time, out Dictionary<int, TransectValue>? transects))
                 {
                     transects = new Dictionary<int, TransectValue>();
@@ -151,7 +184,8 @@ namespace AFMSDataViewer
                 transects[transectNo] = new TransectValue(
                     isValid ? velocity : 0D,
                     isValid ? uncertainty : 0D,
-                    isValid);
+                    isValid,
+                    additionalValues);
             }
 
             return byTime

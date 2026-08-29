@@ -99,6 +99,7 @@ namespace AFMSDataViewer
         public RealtimeResultChartControl TopLayout { get; }
         protected IReadOnlyList<RealtimeChartSeries> AvailableSeries => availableSeries;
         protected MeasurementDataHub? MeasurementDataHub => measurementDataHub;
+        protected DateTime? TrackingTime => trackingTime;
         protected virtual string TitleText
         {
             get

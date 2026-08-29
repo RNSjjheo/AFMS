@@ -89,23 +89,22 @@ namespace AFMSDll
                     int index = HitTestTab(point);
                     _pressedIndex = index;
                     Capture = index >= 0;
+                    base.WndProc(ref m);
                     SelectTabFromHeader(index);
-
-                    m.Result = IntPtr.Zero;
                     return;
                 }
 
                 int pressedIndex = _pressedIndex;
                 int releasedIndex = inHeader ? HitTestTab(point) : -1;
 
-                if (releasedIndex >= 0 && (pressedIndex < 0 || pressedIndex == releasedIndex)) SelectTabFromHeader(releasedIndex);
-
                 _pressedIndex = -1;
                 Capture = false;
 
                 if (inHeader || pressedIndex >= 0)
                 {
-                    m.Result = IntPtr.Zero;
+                    base.WndProc(ref m);
+                    if (releasedIndex >= 0 && (pressedIndex < 0 || pressedIndex == releasedIndex))
+                        SelectTabFromHeader(releasedIndex);
                     return;
                 }
             }
@@ -115,9 +114,11 @@ namespace AFMSDll
 
         private void SelectTabFromHeader(int index)
         {
-            if (index < 0 || index >= TabPages.Count || SelectedIndex == index) return;
+            if (index < 0 || index >= TabPages.Count) return;
 
-            SelectedTab = TabPages[index];
+            if (SelectedIndex != index) SelectedIndex = index;
+            TabPages[index].BringToFront();
+            PerformLayout();
             Invalidate(new Rectangle(0, 0, Width, Math.Min(HeaderHeight, Height)));
         }
 

@@ -127,14 +127,27 @@ namespace AFMSDataViewer
 
         private void ShowAnalysis(object? sender, EventArgs e)
         {
-            RealtimeChartSeries? series = AvailableSeries
-                .Where(series => series.Points.Count > 0)
-                .MaxBy(series => series.Points.Max(point => point.Time));
-            if (series == null) return;
-            RealtimeChartPoint point = series.Points.MaxBy(point => point.Time)!;
-
+            DeviceOption? device = TopLayout.uiComboMain.SelectedItem as DeviceOption;
             int? transect = (TopLayout.uiComboSub.SelectedItem as TransectOption)?.Number;
-            using DlgDataAnalysis dialog = new(ChartType, series, point, transect);
+            RealtimeChartSeries? series = AvailableSeries.FirstOrDefault(item => item.Points.Count > 0);
+            if (device == null || transect == null || series == null) return;
+
+            DateTime detailTime = MeasurementDataHub.AlignToSlot(TrackingTime ?? RangeEnd);
+            VelocityMeasurement? measurement = MeasurementDataHub!
+                .GetVelocitySlots(detailTime, detailTime)
+                .SelectMany(slot => slot.Measurements)
+                .FirstOrDefault(item => item.SourceType == device.SourceType && item.DeviceKey == device.DeviceKey);
+            if (measurement == null) return;
+
+            VelocityTransectMeasurement? selectedValue = measurement.Transects
+                .FirstOrDefault(item => item.TransectNo == transect.Value);
+            RealtimeChartPoint point = new(
+                measurement.Time,
+                selectedValue is { IsValid: true } ? selectedValue.Velocity : 0D,
+                selectedValue is not { IsValid: true });
+
+            using DlgDataAnalysis dialog = new(
+                ChartType, series, point, transect, MeasurementDataHub, measurement);
             dialog.ShowDialog(FindForm());
         }
     }
