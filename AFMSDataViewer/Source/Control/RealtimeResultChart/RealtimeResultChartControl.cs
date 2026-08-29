@@ -7,6 +7,7 @@ namespace AFMSDataViewer
 {
     public class RealtimeResultChartControl : TableLayoutPanel
     {
+        public const int FIEXED_CONTROL_HEIGTH = 75;
         public Panel uiPnIcon;
         public AFMSComboBox uiComboMain;
         public AFMSComboBox uiComboSub;
@@ -14,7 +15,6 @@ namespace AFMSDataViewer
         public AFMSLabel uiValueAvg;
         public AFMSLabel uiValueMax;
         public Button uiButtonDetails;
-        public const int ControlAreaHeight = 75;
         private readonly bool supportsDetails;
         private readonly ToolTip statisticsTip = new();
 
