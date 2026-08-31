@@ -110,7 +110,7 @@ namespace AFMSDataViewer
                     return AFMSIcon.Get(AFMSIcons.WaterLevel, SIZE, cornerRadius: CORNER_RADIUS);
 
                 case ChartMainType.Discharge:
-                    return AFMSIcon.Get(AFMSIcons.FlowVelocity, SIZE, cornerRadius: CORNER_RADIUS);
+                    return AFMSIcon.Get(AFMSIcons.FlowRate, SIZE, cornerRadius: CORNER_RADIUS);
                 default:
                     return AFMSIcon.Get(AFMSIcons.Vth, SIZE, cornerRadius: CORNER_RADIUS);
             }

@@ -43,6 +43,12 @@ namespace AFMSDataViewer
             RangeStart = rangeStart;
             RangeEnd = rangeEnd;
             this.measurementDataHub = measurementDataHub;
+            ChartAxisRange axisRange = DataViewerChartSettings.GetAxisRange(chartType);
+            if (axisRange.TryGetFixedRange(out double configuredMinimumY, out double configuredMaximumY))
+            {
+                minimumY = configuredMinimumY;
+                maximumY = configuredMaximumY;
+            }
             Dock = DockStyle.Fill;
             BackColor = Color.White;
             Margin = Padding.Empty;
@@ -225,11 +231,15 @@ namespace AFMSDataViewer
             formsPlot.Plot.Axes.Right.IsVisible = false;
             List<RealtimeChartSeries> visible = availableSeries
                 .Where(series => legendController.IsVisible(series, null)).ToList();
+            double primaryMissingValue = GetMissingDisplayValue(visible, secondaryAxis: false);
+            double secondaryMissingValue = GetMissingDisplayValue(visible, secondaryAxis: true);
 
             foreach (RealtimeChartSeries source in visible)
             {
+                double missingValue = source.SecondaryAxis ? secondaryMissingValue : primaryMissingValue;
                 double[] xs = source.Points.Select(point => point.Time.ToOADate()).ToArray();
-                double[] ys = source.Points.Select(point => point.Value).ToArray();
+                double[] ys = source.Points.Select(point =>
+                    point.IsMissing ? missingValue : point.Value).ToArray();
                 if (xs.Length == 0) continue;
                 Scatter scatter = formsPlot.Plot.Add.Scatter(xs, ys);
                 scatter.LegendText = source.Name;
@@ -239,8 +249,8 @@ namespace AFMSDataViewer
                 scatter.FillY = true;
                 scatter.FillYValue = 0;
                 scatter.FillYColor = ToScottColor(Color.FromArgb(45, source.Color));
-                AddPointMarkers(source, false, source.Color);
-                AddPointMarkers(source, true, Color.FromArgb(75, 85, 99));
+                AddPointMarkers(source, false, source.Color, missingValue);
+                AddPointMarkers(source, true, Color.FromArgb(75, 85, 99), missingValue);
                 if (source.SecondaryAxis)
                 {
                     scatter.Axes.YAxis = formsPlot.Plot.Axes.Right;
@@ -360,17 +370,33 @@ namespace AFMSDataViewer
             e.Graphics.DrawLine(pen, 18, 10, 10, 18);
         }
 
-        private void AddPointMarkers(RealtimeChartSeries source, bool missing, Color color)
+        private void AddPointMarkers(RealtimeChartSeries source, bool missing, Color color, double missingValue)
         {
             RealtimeChartPoint[] points = source.Points.Where(point => point.IsMissing == missing).ToArray();
             if (points.Length == 0) return;
             Scatter markers = formsPlot.Plot.Add.Scatter(
                 points.Select(point => point.Time.ToOADate()).ToArray(),
-                points.Select(point => point.Value).ToArray());
+                points.Select(point => point.IsMissing ? missingValue : point.Value).ToArray());
             markers.Color = ToScottColor(color);
             markers.LineWidth = 0;
             markers.MarkerSize = 5;
             if (source.SecondaryAxis) markers.Axes.YAxis = formsPlot.Plot.Axes.Right;
+        }
+
+        private double GetMissingDisplayValue(
+            IEnumerable<RealtimeChartSeries> series,
+            bool secondaryAxis)
+        {
+            if (!secondaryAxis && minimumY.HasValue)
+                return minimumY.Value;
+
+            double[] validValues = series
+                .Where(item => item.SecondaryAxis == secondaryAxis)
+                .SelectMany(item => item.Points)
+                .Where(point => !point.IsMissing && double.IsFinite(point.Value))
+                .Select(point => point.Value)
+                .ToArray();
+            return validValues.Length == 0 ? 0D : validValues.Min();
         }
 
         private void AddUnitAnnotation()
@@ -424,18 +450,28 @@ namespace AFMSDataViewer
             RemoveTrackingLabels();
 
             DateTime slotTime = MeasurementDataHub.AlignToSlot(time);
-            foreach (RealtimeChartSeries series in availableSeries
-                .Where(series => legendController.IsVisible(series, null)))
+            RealtimeChartSeries[] visibleSeries = availableSeries
+                .Where(series => legendController.IsVisible(series, null))
+                .ToArray();
+            double primaryMissingValue = GetMissingDisplayValue(visibleSeries, secondaryAxis: false);
+            double secondaryMissingValue = GetMissingDisplayValue(visibleSeries, secondaryAxis: true);
+
+            foreach (RealtimeChartSeries series in visibleSeries)
             {
                 RealtimeChartPoint? point = series.Points
                     .Where(point => MeasurementDataHub.AlignToSlot(point.Time) == slotTime)
                     .MinBy(point => Math.Abs((point.Time - time).Ticks));
-                if (point == null || point.IsMissing)
+                if (point == null)
                     continue;
 
                 string unit = series.SecondaryAxis ? "m³/s" : UnitText;
-                string text = $"{series.Name}: {point.Value:0.00} {unit}".TrimEnd();
-                Text label = formsPlot.Plot.Add.Text(text, point.Time.ToOADate(), point.Value);
+                string text = point.IsMissing
+                    ? $"{series.Name}: 결측"
+                    : $"{series.Name}: {point.Value:0.00} {unit}".TrimEnd();
+                double displayValue = point.IsMissing
+                    ? (series.SecondaryAxis ? secondaryMissingValue : primaryMissingValue)
+                    : point.Value;
+                Text label = formsPlot.Plot.Add.Text(text, point.Time.ToOADate(), displayValue);
                 IYAxis yAxis = series.SecondaryAxis
                     ? formsPlot.Plot.Axes.Right
                     : formsPlot.Plot.Axes.Left;
@@ -447,7 +483,7 @@ namespace AFMSDataViewer
                 if (dataRect.HasArea)
                 {
                     Pixel markerPixel = formsPlot.Plot.GetPixel(
-                        new Coordinates(point.Time.ToOADate(), point.Value),
+                        new Coordinates(point.Time.ToOADate(), displayValue),
                         formsPlot.Plot.Axes.Bottom,
                         yAxis);
                     float maximumWidth = Math.Max(80F, dataRect.Width / 2F);

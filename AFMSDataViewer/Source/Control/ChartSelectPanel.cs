@@ -134,9 +134,6 @@ namespace AFMSDataViewer
                 ChartMainType.Discharge => new RRChartDischarge(measurementDataHub, rangeStart, rangeEnd),
                 _ => new RRChartVTH(measurementDataHub, rangeStart, rangeEnd)
             };
-            ChartAxisRange axisRange = DataViewerChartSettings.GetAxisRange(chartType);
-            if (axisRange.TryGetFixedRange(out double minimumY, out double maximumY))
-                uiResultChart.SetYAxisRange(minimumY, maximumY);
             if (trackingTime.HasValue)
                 uiResultChart.SetTrackingTime(trackingTime.Value);
             uiResultChart.MaximizeRequested += UiResultChart_MaximizeRequested;

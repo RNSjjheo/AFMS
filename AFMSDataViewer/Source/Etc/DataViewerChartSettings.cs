@@ -8,7 +8,7 @@ namespace AFMSDataViewer
     {
         public static ChartAxisRange Velocity { get; } = new();
         public static ChartAxisRange Level { get; } = new(0.9, 1.3);
-        public static ChartAxisRange Discharge { get; } = new();
+        public static ChartAxisRange Discharge { get; } = new(0, 200);
         public static ChartAxisRange Voltage { get; } = new();
 
         public static ChartAxisRange GetAxisRange(ChartMainType chartType) => chartType switch
