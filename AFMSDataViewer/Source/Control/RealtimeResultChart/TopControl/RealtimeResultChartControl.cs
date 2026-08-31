@@ -28,7 +28,7 @@ namespace AFMSDataViewer
             RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, FIEXED_CONTROL_HEIGTH));
             ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140F));
-            ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140F));
+            ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100F));
             ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70F));
 
