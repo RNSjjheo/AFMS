@@ -12,6 +12,7 @@ namespace AFMSDataViewer
     public abstract class RealtimeResultChart : UserControl
     {
         private const string ChartFontName = "맑은 고딕";
+        private const float GRID_THICKNESS = 1F;
         private static readonly Color[] SeriesColors =
         {
             Color.FromArgb(19, 187, 130), Color.FromArgb(30, 190, 210),
@@ -297,17 +298,20 @@ namespace AFMSDataViewer
             formsPlot.Plot.Font.Set(ChartFontName);
             formsPlot.Plot.FigureBackground.Color = ScottPlot.Color.FromHex("#FFFFFF");
             formsPlot.Plot.DataBackground.Color = ScottPlot.Color.FromHex("#FFFFFF");
-            formsPlot.Plot.Layout.Fixed(new PixelPadding(15, 15, 26, 16));
+            formsPlot.Plot.Layout.Fixed(new PixelPadding(25, GRID_THICKNESS, 26, 5));
             formsPlot.Plot.Grid.MajorLineColor = gridColor;
             formsPlot.Plot.DataBorder.Color = ScottPlot.Colors.Transparent;
 
-            formsPlot.Plot.Axes.Top.FrameLineStyle.IsVisible = false;
+            formsPlot.Plot.Axes.Top.FrameLineStyle.IsVisible = true;
+            formsPlot.Plot.Axes.Top.FrameLineStyle.Color = gridColor;
+            formsPlot.Plot.Axes.Top.FrameLineStyle.Width = GRID_THICKNESS;
+            formsPlot.Plot.Axes.Top.FrameLineStyle.Hairline = true;
             formsPlot.Plot.Axes.Right.FrameLineStyle.IsVisible = false;
             formsPlot.Plot.Axes.Left.FrameLineStyle.Color = gridColor;
-            formsPlot.Plot.Axes.Left.FrameLineStyle.Width = 1F;
+            formsPlot.Plot.Axes.Left.FrameLineStyle.Width = GRID_THICKNESS;
             formsPlot.Plot.Axes.Left.FrameLineStyle.Hairline = true;
             formsPlot.Plot.Axes.Left.MajorTickStyle.Color = gridColor;
-            formsPlot.Plot.Axes.Left.MajorTickStyle.Width = 1F;
+            formsPlot.Plot.Axes.Left.MajorTickStyle.Width = GRID_THICKNESS;
             formsPlot.Plot.Axes.Left.MajorTickStyle.Hairline = true;
             formsPlot.Plot.Axes.Left.MinorTickStyle.Length = 0F;
 
