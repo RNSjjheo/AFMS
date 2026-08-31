@@ -2,7 +2,7 @@ using AFMSDll;
 
 namespace AFMSDataViewer
 {
-    internal sealed class RRChartVelocity : RealtimeStatisticsChart
+    internal sealed class RRChartVelocity : RealtimeResultChart
     {
         private sealed record DeviceOption(
             int Id,

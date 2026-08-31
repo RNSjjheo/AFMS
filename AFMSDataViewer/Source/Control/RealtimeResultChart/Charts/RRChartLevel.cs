@@ -2,7 +2,7 @@ using AFMSDll;
 
 namespace AFMSDataViewer
 {
-    internal sealed class RRChartLevel : RealtimeStatisticsChart
+    internal sealed class RRChartLevel : RealtimeResultChart
     {
         public RRChartLevel(MeasurementDataHub measurementDataHub, DateTime start, DateTime end)
             : base(ChartMainType.Level, start, end, measurementDataHub)

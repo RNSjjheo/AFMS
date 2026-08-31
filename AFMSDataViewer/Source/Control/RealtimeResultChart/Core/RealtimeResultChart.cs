@@ -161,7 +161,6 @@ namespace AFMSDataViewer
         {
             availableSeries.Clear();
             availableSeries.AddRange(series);
-            OnSeriesChanged(availableSeries);
             chartSection.HeaderText = TitleText;
             legendController.Update(availableSeries, null);
             DrawSeries();
@@ -170,7 +169,6 @@ namespace AFMSDataViewer
         public void AddSeries(RealtimeChartSeries series)
         {
             availableSeries.Add(series);
-            OnSeriesChanged(availableSeries);
             legendController.Update(availableSeries, null);
             DrawSeries();
         }
@@ -178,7 +176,6 @@ namespace AFMSDataViewer
         public void ClearSeries()
         {
             availableSeries.Clear();
-            OnSeriesChanged(availableSeries);
             legendController.Clear();
             DrawSeries();
         }
@@ -209,19 +206,6 @@ namespace AFMSDataViewer
         protected Color GetSeriesColor(int seriesIndex) => seriesIndex == 0
             ? GetThemeColor()
             : SeriesColors[(seriesIndex - 1) % SeriesColors.Length];
-
-        /// <summary>데이터 계열 위에 기준선 등의 추가 요소를 그립니다.</summary>
-        protected virtual void DrawChartOverlays(Plot plot)
-        {
-        }
-
-        /// <summary>차트 데이터 계열이 교체되거나 변경된 뒤 호출됩니다.</summary>
-        protected virtual void OnSeriesChanged(IReadOnlyList<RealtimeChartSeries> series)
-        {
-        }
-
-        /// <summary>현재 데이터와 설정으로 차트를 다시 그립니다.</summary>
-        protected void RedrawChart() => DrawSeries();
 
         protected void ShowDataError(string message)
         {
@@ -273,8 +257,6 @@ namespace AFMSDataViewer
                 trackingLine.EnableAutoscale = false;
             }
 
-            DrawChartOverlays(formsPlot.Plot);
-
             AddUnitAnnotation();
             ConfigureTimeTicks();
             formsPlot.Plot.Axes.AutoScale();
@@ -299,14 +281,27 @@ namespace AFMSDataViewer
 
         private void ConfigurePlot()
         {
+            ScottPlot.Color gridColor = ScottPlot.Color.FromHex("#E1EAF2");
+
             formsPlot.Dock = DockStyle.Fill;
             formsPlot.Margin = Padding.Empty;
             formsPlot.Plot.Font.Set(ChartFontName);
             formsPlot.Plot.FigureBackground.Color = ScottPlot.Color.FromHex("#FFFFFF");
             formsPlot.Plot.DataBackground.Color = ScottPlot.Color.FromHex("#FFFFFF");
             formsPlot.Plot.Layout.Fixed(new PixelPadding(15, 15, 26, 16));
-            formsPlot.Plot.Grid.MajorLineColor = ScottPlot.Color.FromHex("#E1EAF2");
-            formsPlot.Plot.DataBorder.Color = ScottPlot.Color.FromHex("#B8C9D8");
+            formsPlot.Plot.Grid.MajorLineColor = gridColor;
+            formsPlot.Plot.DataBorder.Color = ScottPlot.Colors.Transparent;
+
+            formsPlot.Plot.Axes.Top.FrameLineStyle.IsVisible = false;
+            formsPlot.Plot.Axes.Right.FrameLineStyle.IsVisible = false;
+            formsPlot.Plot.Axes.Left.FrameLineStyle.Color = gridColor;
+            formsPlot.Plot.Axes.Left.FrameLineStyle.Width = 1F;
+            formsPlot.Plot.Axes.Left.FrameLineStyle.Hairline = true;
+            formsPlot.Plot.Axes.Left.MajorTickStyle.Color = gridColor;
+            formsPlot.Plot.Axes.Left.MajorTickStyle.Width = 1F;
+            formsPlot.Plot.Axes.Left.MajorTickStyle.Hairline = true;
+            formsPlot.Plot.Axes.Left.MinorTickStyle.Length = 0F;
+
             formsPlot.Plot.Axes.Left.TickLabelStyle.FontSize = 8F;
             formsPlot.Plot.Axes.Bottom.TickLabelStyle.FontSize = 7F;
         }
