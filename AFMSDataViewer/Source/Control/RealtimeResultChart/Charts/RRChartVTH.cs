@@ -47,4 +47,10 @@ namespace AFMSDataViewer
                 : [new RealtimeChartSeries(seriesName, GetSeriesColor(0), points)]);
         }
     }
+
+    internal enum PowerChartValueType
+    {
+        Input,
+        Output
+    }
 }

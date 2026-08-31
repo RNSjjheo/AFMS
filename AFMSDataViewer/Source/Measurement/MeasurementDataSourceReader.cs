@@ -31,6 +31,18 @@ namespace AFMSDataViewer
                 DateTimeStyles.None, out time);
         }
 
+        public static DateTime ParseSourceTime(object value)
+        {
+            if (value is DateTime time) return time;
+
+            string text = Convert.ToString(value, CultureInfo.InvariantCulture)?.Trim() ?? string.Empty;
+            if (DateTime.TryParseExact(text, new[] { "yyyyMMdd HHmmss", "yyyyMMdd HHmmss.fff" },
+                CultureInfo.InvariantCulture, DateTimeStyles.None, out time))
+                return time;
+
+            return Convert.ToDateTime(value, CultureInfo.InvariantCulture);
+        }
+
         public static IEnumerable<DateTime> EnumerateSlots(DateTime from, DateTime to)
         {
             DateTime first = MeasurementDataHub.AlignToSlot(from);
