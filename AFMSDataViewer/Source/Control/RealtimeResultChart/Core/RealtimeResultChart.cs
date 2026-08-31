@@ -35,6 +35,8 @@ namespace AFMSDataViewer
         private DateTime trackingLabelsExpireAt;
         private int refreshPending;
         private bool isMaximized;
+        private readonly double? defaultMaximumY;
+        private readonly double? ValueStep;
         private double? minimumY;
         private double? maximumY;
 
@@ -46,6 +48,8 @@ namespace AFMSDataViewer
             RangeEnd = rangeEnd;
             this.measurementDataHub = measurementDataHub;
             ChartAxisRange axisRange = DataViewerChartSettings.GetAxisRange(chartType);
+            defaultMaximumY = axisRange.Maximum;
+            ValueStep = axisRange.Step;
             if (axisRange.TryGetFixedRange(out double configuredMinimumY, out double configuredMaximumY))
             {
                 minimumY = configuredMinimumY;
@@ -297,10 +301,11 @@ namespace AFMSDataViewer
             formsPlot.Dock = DockStyle.Fill;
             formsPlot.Margin = Padding.Empty;
             formsPlot.UserInputProcessor.Disable();
+            formsPlot.MouseWheel += FormsPlot_MouseWheel;
             formsPlot.Plot.Font.Set(ChartFontName);
             formsPlot.Plot.FigureBackground.Color = ScottPlot.Color.FromHex("#FFFFFF");
             formsPlot.Plot.DataBackground.Color = ScottPlot.Color.FromHex("#FFFFFF");
-            formsPlot.Plot.Layout.Fixed(new PixelPadding(25, GRID_THICKNESS, 26, 5));
+            formsPlot.Plot.Layout.Fixed(new PixelPadding(30, GRID_THICKNESS, 26, 5));
             formsPlot.Plot.Grid.MajorLineColor = gridColor;
             formsPlot.Plot.Grid.MajorLineWidth = GRID_THICKNESS;
             formsPlot.Plot.DataBorder.Color = ScottPlot.Colors.Transparent;
@@ -320,6 +325,30 @@ namespace AFMSDataViewer
 
             formsPlot.Plot.Axes.Left.TickLabelStyle.FontSize = 8F;
             formsPlot.Plot.Axes.Bottom.TickLabelStyle.FontSize = 7F;
+        }
+
+        private void FormsPlot_MouseWheel(object? sender, MouseEventArgs e)
+        {
+            if (!defaultMaximumY.HasValue || !ValueStep.HasValue ||
+                !double.IsFinite(defaultMaximumY.Value) || !double.IsFinite(ValueStep.Value) ||
+                ValueStep.Value <= 0D || e.Delta == 0)
+                return;
+
+            int steps = Math.Max(1, Math.Abs(e.Delta) / SystemInformation.MouseWheelScrollDelta);
+            double currentMaximum = maximumY ?? defaultMaximumY.Value;
+            double changedMaximum = e.Delta > 0
+                ? currentMaximum + ValueStep.Value * steps
+                : currentMaximum - ValueStep.Value * steps;
+            double minimumMaximum = minimumY.HasValue
+                ? minimumY.Value + ValueStep.Value
+                : defaultMaximumY.Value;
+            maximumY = Math.Max(minimumMaximum, changedMaximum);
+
+            if (minimumY.HasValue && maximumY.Value <= minimumY.Value)
+                maximumY = minimumMaximum;
+
+            formsPlot.Plot.Axes.SetLimitsY(minimumY ?? formsPlot.Plot.Axes.GetLimits().Bottom, maximumY.Value);
+            formsPlot.Refresh();
         }
 
         private void ConfigureHeaderButtons()

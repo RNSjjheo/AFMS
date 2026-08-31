@@ -6,10 +6,10 @@ namespace AFMSDataViewer
     /// </summary>
     public static class DataViewerChartSettings
     {
-        public static ChartAxisRange Velocity { get; } = new(0, 5);
-        public static ChartAxisRange Level { get; } = new(0.9, 1.3);
-        public static ChartAxisRange Discharge { get; } = new(0, 200);
-        public static ChartAxisRange Voltage { get; } = new();
+        public static ChartAxisRange Velocity { get; } = new(0, 5, 0.2);
+        public static ChartAxisRange Level { get; } = new(0.9, 1.3, 0.2);
+        public static ChartAxisRange Discharge { get; } = new(0, 200, 50);
+        public static ChartAxisRange Voltage { get; } = new(0, 15, 1);
 
         public static ChartAxisRange GetAxisRange(ChartMainType chartType) => chartType switch
         {
@@ -22,14 +22,16 @@ namespace AFMSDataViewer
 
     public sealed class ChartAxisRange
     {
-        public ChartAxisRange(double? minimum = null, double? maximum = null)
+        public ChartAxisRange(double? minimum = null, double? maximum = null, double? step = null)
         {
             Minimum = minimum;
             Maximum = maximum;
+            Step = step;
         }
 
         public double? Minimum { get; set; }
         public double? Maximum { get; set; }
+        public double? Step { get; set; }
 
         public bool TryGetFixedRange(out double minimum, out double maximum)
         {
