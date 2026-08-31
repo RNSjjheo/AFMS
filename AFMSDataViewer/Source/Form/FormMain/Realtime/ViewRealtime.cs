@@ -6,6 +6,12 @@ namespace AFMSDataViewer
 {
     public class ViewRealtime : TableLayoutPanel
     {
+        private sealed record QueryPeriodOption(RealtimeQueryPeriod Period, string Text)
+        {
+            public TimeSpan Duration => TimeSpan.FromHours((int)Period);
+            public override string ToString() => Text;
+        }
+
         private const int LAYOUT_ICON_SIZE = 16;
         public AFMSPanel uiPnHeader;
         public MaximizableTableLayoutPanel uiTpField;
@@ -88,10 +94,11 @@ namespace AFMSDataViewer
                 BorderRadius = 5,
                 PlaceholderText = "조회 시간"
             };
-            uiRangeCombo.Items.Add("최근 6시간");
-            uiRangeCombo.Items.Add("최근 12시간");
-            uiRangeCombo.Items.Add("최근 24시간");
-            uiRangeCombo.SelectedIndex = 1;
+            QueryPeriodOption defaultPeriod = new(RealtimeQueryPeriod.Hours6, "최근 6시간");
+            uiRangeCombo.Items.Add(defaultPeriod);
+            uiRangeCombo.Items.Add(new QueryPeriodOption(RealtimeQueryPeriod.Hours12, "최근 12시간"));
+            uiRangeCombo.Items.Add(new QueryPeriodOption(RealtimeQueryPeriod.Hours24, "최근 24시간"));
+            uiRangeCombo.SelectedItem = defaultPeriod;
             uiRangeCombo.SelectedIndexChanged += UiRangeCombo_SelectedIndexChanged;
 
             uiBtnTemp = new AFMSButtonGroup();
@@ -183,12 +190,9 @@ namespace AFMSDataViewer
             }
         }
 
-        private TimeSpan GetSelectedDuration() => uiRangeCombo.SelectedIndex switch
-        {
-            0 => TimeSpan.FromHours(6),
-            2 => TimeSpan.FromHours(24),
-            _ => TimeSpan.FromHours(12)
-        };
+        private TimeSpan GetSelectedDuration() =>
+            (uiRangeCombo.SelectedItem as QueryPeriodOption)?.Duration ??
+            TimeSpan.FromHours((int)RealtimeQueryPeriod.Hours6);
 
         private void UiTracking_SelectedTimeChanged(object? sender, TrackingTimeChangedEventArgs e)
         {
