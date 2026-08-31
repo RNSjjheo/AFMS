@@ -21,11 +21,16 @@ namespace AFMSDataViewer
         private long lastTrackingSlotTicks;
         public Tracking uiTracking;
         private readonly MeasurementDataHub measurementDataHub;
+        private readonly MeasurementRefreshService measurementRefreshService;
 
-        public ViewRealtime(MeasurementDataHub measurementDataHub)
+        public ViewRealtime(
+            MeasurementDataHub measurementDataHub,
+            MeasurementRefreshService measurementRefreshService)
         {
             ArgumentNullException.ThrowIfNull(measurementDataHub);
+            ArgumentNullException.ThrowIfNull(measurementRefreshService);
             this.measurementDataHub = measurementDataHub;
+            this.measurementRefreshService = measurementRefreshService;
             Dock = DockStyle.Fill;
             RowStyles.Clear();
             ColumnStyles.Clear();
@@ -87,7 +92,7 @@ namespace AFMSDataViewer
             uiRangeCombo.Items.Add("최근 12시간");
             uiRangeCombo.Items.Add("최근 24시간");
             uiRangeCombo.SelectedIndex = 1;
-            uiRangeCombo.SelectedIndexChanged += (_, _) => ApplyNavigatorRange();
+            uiRangeCombo.SelectedIndexChanged += UiRangeCombo_SelectedIndexChanged;
 
             uiBtnTemp = new AFMSButtonGroup();
             uiBtnTemp.Dock = DockStyle.Fill;
@@ -151,6 +156,31 @@ namespace AFMSDataViewer
             uiChart2?.SetTimeRange(start, selectedDateTime);
             uiChart3?.SetTimeRange(start, selectedDateTime);
             uiChart4?.SetTimeRange(start, selectedDateTime);
+        }
+
+        private async void UiRangeCombo_SelectedIndexChanged(object? sender, EventArgs e)
+        {
+            uiRangeCombo.Enabled = false;
+            try
+            {
+                await measurementRefreshService.EnsureRetentionAsync(GetSelectedDuration());
+                IReadOnlyList<MeasurementSlot> slots = measurementDataHub.GetSlots();
+                if (slots.Count > 0) selectedDateTime = slots[^1].SlotTime;
+                ApplyNavigatorRange();
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show(
+                    FindForm(),
+                    $"조회 기간 데이터를 불러오지 못했습니다.\n{exception.Message}",
+                    "데이터 조회 오류",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                if (!IsDisposed) uiRangeCombo.Enabled = true;
+            }
         }
 
         private TimeSpan GetSelectedDuration() => uiRangeCombo.SelectedIndex switch
@@ -221,6 +251,7 @@ namespace AFMSDataViewer
         {
             if (disposing)
             {
+                uiRangeCombo.SelectedIndexChanged -= UiRangeCombo_SelectedIndexChanged;
                 uiTracking.SelectedTimeChanged -= UiTracking_SelectedTimeChanged;
                 measurementDataHub.Changed -= MeasurementDataHub_Changed;
             }

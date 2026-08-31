@@ -73,6 +73,39 @@ namespace AFMSDataViewer
 
         public Task RefreshNowAsync(CancellationToken cancellationToken = default) => RefreshCoreAsync(false, cancellationToken);
 
+        public async Task EnsureRetentionAsync(TimeSpan retention, CancellationToken cancellationToken = default)
+        {
+            if (retention < MeasurementDataHub.SlotInterval ||
+                retention.Ticks % MeasurementDataHub.SlotInterval.Ticks != 0)
+                throw new ArgumentOutOfRangeException(nameof(retention), "조회 기간은 10분 단위여야 합니다.");
+
+            await _refreshLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                IReadOnlyList<MeasurementSlot> slots = _dataHub.GetSlots();
+                DateTime rangeEnd = slots.Count == 0
+                    ? MeasurementDataHub.AlignToSlot(DateTime.Now)
+                    : slots[^1].SlotTime;
+                DateTime desiredStart = rangeEnd - retention;
+
+                if (slots.Count > 0 && slots[0].SlotTime <= desiredStart)
+                    return;
+
+                DateTime queryEnd = slots.Count == 0
+                    ? rangeEnd
+                    : slots[0].SlotTime - MeasurementDataHub.SlotInterval;
+                LoadDataSourcesResult result = await LoadDataSourcesRangeAsync(
+                    desiredStart, queryEnd, cancellationToken).ConfigureAwait(false);
+                _dataHub.ExtendRangeStart(
+                    desiredStart, retention, result.Batch.Levels, result.Batch.Voltages);
+                _dataHub.Apply(result.Batch);
+            }
+            finally
+            {
+                _refreshLock.Release();
+            }
+        }
+
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             try
@@ -177,6 +210,51 @@ namespace AFMSDataViewer
                 {
                     _logger.LogError(exception,
                         "측정 데이터 갱신 실패: {DataSource}, {From:yyyy-MM-dd HH:mm} ~ {To:yyyy-MM-dd HH:mm}",
+                        dataSource.Name, from, to);
+                }
+                finally
+                {
+                    stopwatch.Stop();
+                    timings.Add(new MeasurementDataSourceLoadTiming(dataSource.Name, stopwatch.Elapsed, succeeded));
+                }
+            }
+
+            totalStopwatch.Stop();
+            return new LoadDataSourcesResult(combinedBatch, timings, totalStopwatch.Elapsed);
+        }
+
+        private async Task<LoadDataSourcesResult> LoadDataSourcesRangeAsync(
+            DateTime from,
+            DateTime to,
+            CancellationToken cancellationToken)
+        {
+            MeasurementBatch combinedBatch = new();
+            List<MeasurementDataSourceLoadTiming> timings = new(_dataSources.Count);
+            Stopwatch totalStopwatch = Stopwatch.StartNew();
+
+            foreach (IMeasurementDataSource dataSource in _dataSources)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                Stopwatch stopwatch = Stopwatch.StartNew();
+                bool succeeded = false;
+                try
+                {
+                    MeasurementBatch batch = await dataSource.LoadAsync(from, to, cancellationToken)
+                        .ConfigureAwait(false);
+                    combinedBatch.Velocities.AddRange(batch.Velocities);
+                    combinedBatch.Levels.AddRange(batch.Levels);
+                    combinedBatch.Discharges.AddRange(batch.Discharges);
+                    combinedBatch.Voltages.AddRange(batch.Voltages);
+                    succeeded = true;
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    throw;
+                }
+                catch (Exception exception)
+                {
+                    _logger.LogError(exception,
+                        "과거 측정 데이터 조회 실패: {DataSource}, {From:yyyy-MM-dd HH:mm} ~ {To:yyyy-MM-dd HH:mm}",
                         dataSource.Name, from, to);
                 }
                 finally

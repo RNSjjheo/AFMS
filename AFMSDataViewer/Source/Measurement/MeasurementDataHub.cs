@@ -125,6 +125,43 @@ namespace AFMSDataViewer
             if (changed) RaiseChanged();
         }
 
+        public void ExtendRangeStart(
+            DateTime rangeStart,
+            TimeSpan retention,
+            IReadOnlyList<LevelMeasurement> levels,
+            IReadOnlyList<VoltageMeasurement> voltages)
+        {
+            ArgumentNullException.ThrowIfNull(levels);
+            ArgumentNullException.ThrowIfNull(voltages);
+            ValidateRetention(retention);
+            DateTime alignedStart = AlignToSlot(rangeStart);
+            IReadOnlyDictionary<DateTime, LevelMeasurement> levelsBySlot = BuildSlotLookup(levels);
+            IReadOnlyDictionary<DateTime, VoltageMeasurement> voltagesBySlot = BuildSlotLookup(voltages);
+            bool changed = false;
+
+            lock (_syncRoot)
+            {
+                if (retention > _retention)
+                {
+                    _retention = retention;
+                    changed = true;
+                }
+
+                DateTime firstExisting = _slots.Count == 0
+                    ? AlignToSlot(DateTime.Now) + SlotInterval
+                    : _slots[0].SlotTime;
+                for (DateTime time = firstExisting - SlotInterval; time >= alignedStart; time -= SlotInterval)
+                {
+                    _slots.Insert(0, CreateSlot(time, levelsBySlot, voltagesBySlot));
+                    changed = true;
+                }
+
+                if (changed) _version++;
+            }
+
+            if (changed) RaiseChanged();
+        }
+
         public void Apply(MeasurementBatch batch)
         {
             ArgumentNullException.ThrowIfNull(batch);

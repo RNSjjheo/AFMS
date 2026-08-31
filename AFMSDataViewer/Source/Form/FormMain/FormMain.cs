@@ -57,7 +57,7 @@ namespace AFMSDataViewer
             afmsTabBar1.RightButtonImage = AFMSIcon.Get(AFMSIcons.Setting, 24);
             afmsTabBar1.RightButtonClick += AfmsTabBar1_RightButtonClick;
 
-            _ViewRealtime = new ViewRealtime(measurementDataHub);
+            _ViewRealtime = new ViewRealtime(measurementDataHub, measurementRefreshService);
             _ViewRealtime.uiPnHeader.BorderRadius = 5;
             _ViewRealtime.uiPnHeader.BorderColor = DllColorHelper.HexToColor("#E3E9F1");
             _ViewRealtime.uiPnHeader.BorderThickness = 1;
