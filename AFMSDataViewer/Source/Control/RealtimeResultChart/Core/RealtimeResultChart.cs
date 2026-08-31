@@ -159,6 +159,7 @@ namespace AFMSDataViewer
         {
             availableSeries.Clear();
             availableSeries.AddRange(series);
+            OnSeriesChanged(availableSeries);
             chartSection.HeaderText = TitleText;
             legendController.Update(availableSeries, null);
             DrawSeries();
@@ -167,6 +168,7 @@ namespace AFMSDataViewer
         public void AddSeries(RealtimeChartSeries series)
         {
             availableSeries.Add(series);
+            OnSeriesChanged(availableSeries);
             legendController.Update(availableSeries, null);
             DrawSeries();
         }
@@ -174,6 +176,7 @@ namespace AFMSDataViewer
         public void ClearSeries()
         {
             availableSeries.Clear();
+            OnSeriesChanged(availableSeries);
             legendController.Clear();
             DrawSeries();
         }
@@ -204,6 +207,19 @@ namespace AFMSDataViewer
         protected Color GetSeriesColor(int seriesIndex) => seriesIndex == 0
             ? GetThemeColor()
             : SeriesColors[(seriesIndex - 1) % SeriesColors.Length];
+
+        /// <summary>데이터 계열 위에 기준선 등의 추가 요소를 그립니다.</summary>
+        protected virtual void DrawChartOverlays(Plot plot)
+        {
+        }
+
+        /// <summary>차트 데이터 계열이 교체되거나 변경된 뒤 호출됩니다.</summary>
+        protected virtual void OnSeriesChanged(IReadOnlyList<RealtimeChartSeries> series)
+        {
+        }
+
+        /// <summary>현재 데이터와 설정으로 차트를 다시 그립니다.</summary>
+        protected void RedrawChart() => DrawSeries();
 
         protected void ShowDataError(string message)
         {
@@ -254,6 +270,8 @@ namespace AFMSDataViewer
                 trackingLine.LineWidth = 0.5F;
                 trackingLine.EnableAutoscale = false;
             }
+
+            DrawChartOverlays(formsPlot.Plot);
 
             AddUnitAnnotation();
             ConfigureTimeTicks();
@@ -479,9 +497,9 @@ namespace AFMSDataViewer
         private void UpdateStatistics(IEnumerable<double> values)
         {
             double[] data = values.Where(double.IsFinite).ToArray();
-            TopLayout.uiValueMin.Text = data.Length == 0 ? "-" : $"{data.Min():0.0} {UnitText}≤";
-            TopLayout.uiValueAvg.Text = data.Length == 0 ? "-" : $"{data.Average():0.0}{UnitText}";
-            TopLayout.uiValueMax.Text = data.Length == 0 ? "-" : $"≤ {data.Max():0.0}{UnitText}";
+            //TopLayout.uiValueMin.Text = data.Length == 0 ? "-" : $"{data.Min():0.0} {UnitText}≤";
+            //TopLayout.uiValueAvg.Text = data.Length == 0 ? "-" : $"{data.Average():0.0}{UnitText}";
+            //TopLayout.uiValueMax.Text = data.Length == 0 ? "-" : $"≤ {data.Max():0.0}{UnitText}";
         }
 
         private Color GetThemeColor() => ChartType switch

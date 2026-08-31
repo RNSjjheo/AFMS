@@ -108,9 +108,9 @@ namespace AFMSDll
                 if (transect.No != expectedNo)
                     throw new ArgumentException($"측선 번호는 1부터 연속되어야 합니다. 예상 번호: {expectedNo}");
                 if (!double.IsFinite(transect.CenterLeftBankDistance) || transect.CenterLeftBankDistance < 0.0)
-                    throw new ArgumentException($"{transect.No}번 측선 거리가 올바르지 않습니다.");
+                    throw new ArgumentException($"측선{transect.No} 거리가 올바르지 않습니다.");
                 if (transect.CenterLeftBankDistance <= previousDistance)
-                    throw new ArgumentException($"{transect.No}번 측선 거리는 이전 측선보다 커야 합니다.");
+                    throw new ArgumentException($"측선{transect.No} 측선 거리는 이전 측선보다 커야 합니다.");
 
                 previousDistance = transect.CenterLeftBankDistance;
                 expectedNo++;

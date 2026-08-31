@@ -7,13 +7,10 @@ namespace AFMSDataViewer
 {
     public class RealtimeResultChartControl : TableLayoutPanel
     {
-        public const int FIEXED_CONTROL_HEIGTH = 70;
+        public const int FIEXED_CONTROL_HEIGTH = 35;
         public Panel uiPnIcon;
         public AFMSComboBox uiComboMain;
         public AFMSComboBox uiComboSub;
-        public AFMSLabel uiValueMin;
-        public AFMSLabel uiValueAvg;
-        public AFMSLabel uiValueMax;
         public Button uiButtonDetails;
         private readonly bool supportsDetails;
         private readonly ToolTip statisticsTip = new();
@@ -26,16 +23,13 @@ namespace AFMSDataViewer
             supportsDetails = chartType is ChartMainType.Velocity or ChartMainType.Discharge;
             RowStyles.Clear();
             ColumnStyles.Clear();
-            RowCount = 3;
-            ColumnCount = 6;
-            RowStyles.Add(new RowStyle(SizeType.Percent, 35F));
-            RowStyles.Add(new RowStyle(SizeType.Absolute, 3F));
-            RowStyles.Add(new RowStyle(SizeType.Percent, 35F));
+            RowCount = 1;
+            ColumnCount = 5;
+            RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, FIEXED_CONTROL_HEIGTH));
-            ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 160F));
+            ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140F));
+            ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140F));
             ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 55F));
-            ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 55F));
             ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 55F));
 
             uiPnIcon = new Panel();
@@ -58,22 +52,9 @@ namespace AFMSDataViewer
             uiComboSub.PlaceholderText = GetSubPlaceholder(chartType);
             uiComboSub.BorderRadius = 5;
 
-            uiValueMin = new AFMSLabel();
-            uiValueAvg = new AFMSLabel();
-            uiValueMax = new AFMSLabel();
-
-            SetupValueCard(uiValueMin, "최소", chartType);
-            SetupValueCard(uiValueAvg, "평균", chartType, true);
-            SetupValueCard(uiValueMax, "최대", chartType);
-
             Controls.Add(uiPnIcon, 0, 0);
-            SetRowSpan(uiPnIcon, 3);
             Controls.Add(uiComboMain, 1, 0);
-            Controls.Add(uiComboSub, 1, 2);
-
-            Controls.Add(uiValueMin, 3, 0);
-            Controls.Add(uiValueAvg, 4, 0);
-            Controls.Add(uiValueMax, 5, 0);
+            Controls.Add(uiComboSub, 2, 0);
 
             (Color accent, Color background, Color border) = GetChartTheme(chartType);
             uiButtonDetails = new Button
@@ -85,15 +66,8 @@ namespace AFMSDataViewer
                 Visible = supportsDetails
             };
             uiButtonDetails.FlatAppearance.BorderColor = border;
-            Controls.Add(uiButtonDetails, 3, 2);
-            SetColumnSpan(uiButtonDetails, 3);
+            Controls.Add(uiButtonDetails, 4, 0);
 
-            if (!supportsDetails)
-            {
-                SetRowSpan(uiValueMin, 3);
-                SetRowSpan(uiValueAvg, 3);
-                SetRowSpan(uiValueMax, 3);
-            }
             SetSubComboVisible(supportsDetails);
         }
 
@@ -102,26 +76,6 @@ namespace AFMSDataViewer
             visible &= supportsDetails;
             uiComboSub.Visible = visible;
             SetRowSpan(uiComboMain, visible ? 1 : 3);
-        }
-
-
-        private void SetupValueCard(AFMSLabel card, string key, ChartMainType chartType, bool highlighted = false)
-        {
-            (Color accent, Color background, Color border) = GetChartTheme(chartType);
-            card.Dock = DockStyle.Fill;
-            card.Margin = new Padding(3, 0, 3, 0);
-            card.Padding = new Padding(2);
-            card.BorderRadius = 5;
-            card.BorderThickness = 1F;
-            card.BorderColor = highlighted ? border : ColorTranslator.FromHtml("#DCE5EF");
-            card.BackColor = highlighted ? background : Color.White;
-            card.AccessibleName = key;
-            statisticsTip.SetToolTip(card, key);
-            statisticsTip.SetToolTip(card.InnerLabel, key);
-            card.Text = "-";
-            card.Font = new Font("맑은 고딕", 9F, FontStyle.Regular);
-            card.TextAlign = ContentAlignment.MiddleCenter;
-            card.ForeColor = highlighted ? accent : ColorTranslator.FromHtml("#64748B");
         }
 
         protected override void Dispose(bool disposing)
@@ -142,13 +96,24 @@ namespace AFMSDataViewer
             _ => (ColorTranslator.FromHtml("#2563EB"), ColorTranslator.FromHtml("#EAF1FF"), ColorTranslator.FromHtml("#B7CDFD"))
         };
 
-        private static Image GetChartIcon(ChartMainType chartType) => chartType switch
+        private static Image GetChartIcon(ChartMainType chartType) 
         {
-            ChartMainType.Velocity => AFMSIcon.Get(AFMSIcons.FlowVelocity, 126),
-            ChartMainType.Level => AFMSIcon.Get(AFMSIcons.WaterLevel, 126),
-            ChartMainType.Discharge => AFMSIcon.Get(AFMSIcons.FlowRate, 126),
-            _ => AFMSIcon.Get(AFMSIcons.Vth, 126)
-        };
+            const int SIZE = FIEXED_CONTROL_HEIGTH - 2;
+
+            switch(chartType)
+            {
+                case ChartMainType.Velocity:
+                    return AFMSIcon.Get(AFMSIcons.FlowVelocity, SIZE);
+
+                case ChartMainType.Level:
+                    return AFMSIcon.Get(AFMSIcons.WaterLevel, SIZE);
+
+                case ChartMainType.Discharge:
+                    return AFMSIcon.Get(AFMSIcons.FlowVelocity, SIZE);
+                default:
+                    return AFMSIcon.Get(AFMSIcons.Vth, SIZE);
+            }
+        }
 
         private static string GetMainPlaceholder(ChartMainType chartType) => chartType switch
         {

@@ -2,7 +2,7 @@ using AFMSDll;
 
 namespace AFMSDataViewer
 {
-    internal sealed class RRChartVelocity : RealtimeResultChart
+    internal sealed class RRChartVelocity : RealtimeStatisticsChart
     {
         private sealed record DeviceOption(
             int Id,
@@ -17,7 +17,7 @@ namespace AFMSDataViewer
 
         private sealed record TransectOption(int Number)
         {
-            public override string ToString() => $"{Number}번 측선";
+            public override string ToString() => $"측선{Number}";
         }
 
         private bool populating;
@@ -73,7 +73,7 @@ namespace AFMSDataViewer
                     !isValid);
             }).OrderBy(point => point.Time).ToList();
 
-            SetSeries([new RealtimeChartSeries($"{transect.Number}번 측선", GetSeriesColor(0), points)]);
+            SetSeries([new RealtimeChartSeries($"측선{transect.Number}", GetSeriesColor(0), points)]);
         }
 
         private void PopulateDevices(IReadOnlyList<VelocityMeasurement> measurements)

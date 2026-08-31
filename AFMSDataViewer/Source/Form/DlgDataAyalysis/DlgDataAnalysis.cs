@@ -139,8 +139,8 @@ namespace AFMSDataViewer
             VelocityTimeDistributionChart chart = new()
             {
                 Dock = DockStyle.Fill,
-                MinimumVelocity = -0.2D,
-                MaximumVelocity = 0.2D
+                MinimumVelocity = -0.5D,
+                MaximumVelocity = 0.5D
             };
             if (measurementDataHub != null)
                 chart.SetData(measurementDataHub, velocityMeasurement!, context.Transects);
@@ -208,7 +208,7 @@ namespace AFMSDataViewer
                 ForeColor = Color.FromArgb(55, 65, 81),
                 Text = main == null
                     ? "주흐름을 판단할 수 있는 유효한 유속 자료가 없습니다."
-                    : $"주흐름  {main.TransectNo}번 측선   {main.Velocity:N3} m/s"
+                    : $"주흐름 측선{main.TransectNo}   {main.Velocity:N3} m/s"
             };
 
             FormsPlot plot = new() { Dock = DockStyle.Fill };
@@ -267,6 +267,19 @@ namespace AFMSDataViewer
             catch (InvalidOperationException ex)
             {
                 message = string.IsNullOrWhiteSpace(message) ? ex.Message : $"{message} / {ex.Message}";
+            }
+
+            foreach (Transect transect in transects)
+                transect.Elevation = double.NaN;
+            if (points.Count >= 2 && transects.Count > 0)
+            {
+                try { transects.CalculateSectionAreas(points, waterLevel ?? 0D); }
+                catch (ArgumentException ex)
+                {
+                    foreach (Transect transect in transects)
+                        transect.Elevation = double.NaN;
+                    message = string.IsNullOrWhiteSpace(message) ? ex.Message : $"{message} / {ex.Message}";
+                }
             }
 
             return new SectionContext(points, transects, waterLevel, message);

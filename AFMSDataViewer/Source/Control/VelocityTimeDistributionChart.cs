@@ -7,13 +7,13 @@ namespace AFMSDataViewer
 {
     /// <summary>
     /// MeasurementDataHub의 전체 보관 범위에 있는 측선별 유속을 시간-위치 색상 분포로 표시합니다.
-    /// 차트는 항상 900×600 비트맵으로 먼저 만든 뒤 현재 컨트롤 크기에 맞춰 렌더링합니다.
+    /// 차트는 항상 600×900 비트맵으로 먼저 만든 뒤 현재 컨트롤 크기에 맞춰 렌더링합니다.
     /// </summary>
     [DesignerCategory("Code")]
     public sealed class VelocityTimeDistributionChart : Control
     {
-        private const int RenderWidth = 900;
-        private const int RenderHeight = 600;
+        private const int RenderWidth = 600;
+        private const int RenderHeight = 900;
 
         private readonly object imageSync = new();
         private readonly List<TransectPosition> transectPositions = [];
@@ -21,10 +21,15 @@ namespace AFMSDataViewer
         private string sourceType = string.Empty;
         private string deviceKey = string.Empty;
         private Bitmap? renderedImage;
-        private double minimumVelocity = -0.2D;
-        private double maximumVelocity = 0.2D;
+        private double minimumVelocity = -0.5D;
+        private double maximumVelocity = 0.5D;
 
-        private sealed record TransectPosition(int Number, double Position);
+        private sealed record TransectPosition(int Number, double Position, double Elevation);
+
+        private sealed record TimeDistributionSlot(
+            DateTime SlotTime,
+            VelocityMeasurement? Measurement,
+            double? GaugeWaterLevel);
 
         public VelocityTimeDistributionChart()
         {
@@ -39,7 +44,7 @@ namespace AFMSDataViewer
         }
 
         [Category("AFMS Data")]
-        [DefaultValue(-0.2D)]
+        [DefaultValue(-0.5D)]
         [Description("파란색으로 표시할 최저 유속입니다. 단위는 m/s입니다.")]
         public double MinimumVelocity
         {
@@ -55,7 +60,7 @@ namespace AFMSDataViewer
         }
 
         [Category("AFMS Data")]
-        [DefaultValue(0.2D)]
+        [DefaultValue(0.5D)]
         [Description("빨간색으로 표시할 최고 유속입니다. 단위는 m/s입니다.")]
         public double MaximumVelocity
         {
@@ -92,7 +97,7 @@ namespace AFMSDataViewer
                 .GroupBy(item => item.No)
                 .Select(group => group.First())
                 .OrderBy(item => item.CenterLeftBankDistance)
-                .Select(item => new TransectPosition(item.No, item.CenterLeftBankDistance)));
+                .Select(item => new TransectPosition(item.No, item.CenterLeftBankDistance, item.Elevation)));
 
             measurementDataHub.Changed += MeasurementDataHub_Changed;
             RebuildImage();
@@ -173,9 +178,9 @@ namespace AFMSDataViewer
 
             graphics.DrawString("유속 시간분포", titleFont, titleBrush, 28F, 17F);
 
-            RectangleF plot = new(92F, 58F, 688F, 470F);
-            RectangleF legend = new(815F, 88F, 22F, 390F);
-            IReadOnlyList<VelocityMeasurementSlotSnapshot> slots = GetVelocitySlots();
+            RectangleF plot = new(82F, 65F, 400F, 740F);
+            RectangleF legend = new(515F, 115F, 20F, 600F);
+            IReadOnlyList<TimeDistributionSlot> slots = GetTimeDistributionSlots();
             IReadOnlyList<TransectPosition> positions = transectPositions.ToArray();
 
             if (slots.Count == 0 || positions.Count == 0)
@@ -212,18 +217,24 @@ namespace AFMSDataViewer
             return bitmap;
         }
 
-        private IReadOnlyList<VelocityMeasurementSlotSnapshot> GetVelocitySlots()
+        private IReadOnlyList<TimeDistributionSlot> GetTimeDistributionSlots()
         {
             if (measurementDataHub == null) return [];
             IReadOnlyList<MeasurementSlot> hubSlots = measurementDataHub.GetSlots();
             if (hubSlots.Count == 0) return [];
-            return measurementDataHub.GetVelocitySlots(hubSlots[0].SlotTime, hubSlots[^1].SlotTime);
+            return hubSlots.Select(slot => new TimeDistributionSlot(
+                slot.SlotTime,
+                slot.MeasurementDevices.HydroMeters.FirstOrDefault(item =>
+                    item.SourceType == sourceType && item.DeviceKey == deviceKey),
+                slot.MeasurementDevices.WaterLevelGauge.IsValid
+                    ? slot.MeasurementDevices.WaterLevelGauge.Level
+                    : null)).ToArray();
         }
 
         private void DrawCells(
             Graphics graphics,
             RectangleF plot,
-            IReadOnlyList<VelocityMeasurementSlotSnapshot> slots,
+            IReadOnlyList<TimeDistributionSlot> slots,
             IReadOnlyList<TransectPosition> positions,
             double leftBound,
             double rightBound)
@@ -233,8 +244,7 @@ namespace AFMSDataViewer
             {
                 float top = plot.Top + (plot.Height * row / slots.Count);
                 float bottom = plot.Top + (plot.Height * (row + 1) / slots.Count);
-                VelocityMeasurement? measurement = slots[row].Measurements.FirstOrDefault(item =>
-                    item.SourceType == sourceType && item.DeviceKey == deviceKey);
+                VelocityMeasurement? measurement = slots[row].Measurement;
                 IReadOnlyDictionary<int, VelocityTransectMeasurement> values = measurement?.Transects
                     .ToDictionary(item => item.TransectNo)
                     ?? new Dictionary<int, VelocityTransectMeasurement>();
@@ -249,10 +259,16 @@ namespace AFMSDataViewer
                         : (positions[column].Position + positions[column + 1].Position) / 2D;
                     float left = MapX(cellLeft, plot, leftBound, rightBound);
                     float right = MapX(cellRight, plot, leftBound, rightBound);
-                    Color color = values.TryGetValue(positions[column].Number, out VelocityTransectMeasurement? value) &&
+                    double? gaugeWaterLevel = slots[row].GaugeWaterLevel;
+                    bool isMeasurableAtWaterLevel = sourceType != VideoVelocityMeasurement.SourceName ||
+                        (gaugeWaterLevel is double level &&
+                         double.IsFinite(positions[column].Elevation) &&
+                         level > positions[column].Elevation);
+                    Color color = isMeasurableAtWaterLevel &&
+                                  values.TryGetValue(positions[column].Number, out VelocityTransectMeasurement? value) &&
                                   value.IsValid && double.IsFinite(value.Velocity)
                         ? GetVelocityColor(value.Velocity)
-                        : Color.FromArgb(229, 231, 235);
+                        : Color.White;
                     brush.Color = color;
                     graphics.FillRectangle(brush, left, top, Math.Max(1F, right - left), Math.Max(1F, bottom - top));
                 }
@@ -262,7 +278,7 @@ namespace AFMSDataViewer
         private void DrawGridAndAxes(
             Graphics graphics,
             RectangleF plot,
-            IReadOnlyList<VelocityMeasurementSlotSnapshot> slots,
+            IReadOnlyList<TimeDistributionSlot> slots,
             IReadOnlyList<TransectPosition> positions,
             double leftBound,
             double rightBound,
@@ -299,7 +315,7 @@ namespace AFMSDataViewer
             graphics.DrawRectangle(axisPen, plot.X, plot.Y, plot.Width, plot.Height);
             using StringFormat axisFormat = new() { Alignment = StringAlignment.Center };
             graphics.DrawString("측선 번호 / 좌안 기준 위치", axisFont, textBrush,
-                new RectangleF(plot.Left, 572F, plot.Width, 22F), axisFormat);
+                new RectangleF(plot.Left, 858F, plot.Width, 22F), axisFormat);
 
             GraphicsState state = graphics.Save();
             graphics.TranslateTransform(17F, plot.Top + (plot.Height / 2F));
@@ -327,10 +343,10 @@ namespace AFMSDataViewer
             }
             graphics.DrawString($"{MinimumVelocity:0.###}", font, textBrush, legend.Right + 7F, legend.Bottom - 8F);
             graphics.DrawString("m/s", font, textBrush, legend.Left - 1F, legend.Top - 25F);
-            graphics.DrawString("자료 없음", font, textBrush, 805F, 510F);
-            using SolidBrush missingBrush = new(Color.FromArgb(229, 231, 235));
-            graphics.FillRectangle(missingBrush, 815F, 535F, 22F, 14F);
-            graphics.DrawRectangle(borderPen, 815F, 535F, 22F, 14F);
+            graphics.DrawString("자료 없음", font, textBrush, 505F, 755F);
+            using SolidBrush missingBrush = new(Color.White);
+            graphics.FillRectangle(missingBrush, 515F, 780F, 20F, 14F);
+            graphics.DrawRectangle(borderPen, 515F, 780F, 20F, 14F);
         }
 
         private Color GetVelocityColor(double velocity)

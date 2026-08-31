@@ -2,7 +2,7 @@ using AFMSDll;
 
 namespace AFMSDataViewer
 {
-    internal sealed class RRChartVTH : RealtimeResultChart
+    internal sealed class RRChartVTH : RealtimeStatisticsChart
     {
         private sealed record ValueOption(PowerChartValueType Type, string Text)
         {

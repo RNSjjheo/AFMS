@@ -39,7 +39,7 @@ namespace AFMSDataViewer
         private string BuildMpdsQuery(int selectedTransectNo)
         {
             string sql = $"SELECT {SlotTimeValue()} AS SOURCE_TIME,";
-            sql += $" '{selectedTransectNo}번 측선' AS SERIES, V.CHART_VALUE";
+            sql += $" '측선 {selectedTransectNo}' AS SERIES, V.CHART_VALUE";
             sql += $" FROM {FbtAFMSDischargeTimeslot.TABLE_NAME} S";
             sql += $" LEFT JOIN (SELECT M.{_FBTableBase.COL_MEASURE_DATE} AS M_DATE, M.{_FBTableBase.COL_MEASURE_TIME} AS M_TIME,";
             sql += $" AVG(C.{FbtHYDROMETERMPDSCELL.COL_VELOCITY}) AS CHART_VALUE";
@@ -55,7 +55,7 @@ namespace AFMSDataViewer
         private string BuildVideoQuery(int selectedTransectNo)
         {
             string sql = $"SELECT {SlotTimeValue()} AS SOURCE_TIME,";
-            sql += $" '{selectedTransectNo}번 측선' AS SERIES, V.CHART_VALUE";
+            sql += $" '측선{selectedTransectNo}' AS SERIES, V.CHART_VALUE";
             sql += $" FROM {FbtAFMSDischargeTimeslot.TABLE_NAME} S";
             sql += $" LEFT JOIN (SELECT M.{_FBTableBase.COL_MEASURE_DATE} AS M_DATE, M.{_FBTableBase.COL_MEASURE_TIME} AS M_TIME,";
             sql += $" AVG(C.{FbtHYDROMETERVIDEOCELL.COL_VELOCITY}) AS CHART_VALUE";
