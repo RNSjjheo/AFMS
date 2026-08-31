@@ -6,7 +6,7 @@ namespace AFMSDataViewer
     /// </summary>
     public static class DataViewerChartSettings
     {
-        public static ChartAxisRange Velocity { get; } = new();
+        public static ChartAxisRange Velocity { get; } = new(0, 5);
         public static ChartAxisRange Level { get; } = new(0.9, 1.3);
         public static ChartAxisRange Discharge { get; } = new(0, 200);
         public static ChartAxisRange Voltage { get; } = new();
