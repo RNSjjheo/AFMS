@@ -353,8 +353,11 @@ namespace AFMSDataViewer
 
         private void ConfigureHeaderButtons()
         {
-            ConfigureHeaderButton(maximizeToggle, "차트 최대화");
-            ConfigureHeaderButton(closeButton, "차트 닫기");
+            int buttonHeight = chartSection.HeaderHeight;
+            int buttonWidth = (int)Math.Round(buttonHeight * 2D / 3D);
+            Size buttonSize = new(buttonWidth, buttonHeight);
+            ConfigureHeaderButton(maximizeToggle, "차트 최대화", buttonSize);
+            ConfigureHeaderButton(closeButton, "차트 닫기", buttonSize);
             maximizeToggle.Paint += MaximizeToggle_Paint;
             closeButton.Paint += CloseButton_Paint;
             maximizeToggle.Click += (_, _) =>
@@ -366,13 +369,15 @@ namespace AFMSDataViewer
             closeButton.Click += (_, _) => CloseRequested?.Invoke(this, EventArgs.Empty);
         }
 
-        private static void ConfigureHeaderButton(Button button, string accessibleName)
+        private static void ConfigureHeaderButton(Button button, string accessibleName, Size size)
         {
-            button.Size = new Size(28, 28);
+            button.Size = size;
             button.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-            button.Location = new Point(0, 1);
+            button.Location = Point.Empty;
             button.FlatStyle = FlatStyle.Flat;
             button.FlatAppearance.BorderSize = 0;
+            button.FlatAppearance.MouseOverBackColor = Color.FromArgb(225, 229, 235);
+            button.FlatAppearance.MouseDownBackColor = Color.FromArgb(209, 214, 220);
             button.BackColor = Color.Transparent;
             button.ForeColor = Color.FromArgb(55, 62, 72);
             button.Cursor = Cursors.Hand;
@@ -383,26 +388,32 @@ namespace AFMSDataViewer
         protected override void OnResize(EventArgs e)
         {
             base.OnResize(e);
-            closeButton.Left = Math.Max(0, Width - closeButton.Width - 8);
-            maximizeToggle.Left = Math.Max(0, closeButton.Left - maximizeToggle.Width - 2);
+            closeButton.Left = Math.Max(0, Width - closeButton.Width - chartSection.BorderRadius);
+            maximizeToggle.Left = Math.Max(0, closeButton.Left - maximizeToggle.Width);
         }
 
         private void MaximizeToggle_Paint(object? sender, PaintEventArgs e)
         {
             using Pen pen = new(maximizeToggle.ForeColor, 1.4F);
+            int iconSize = 10;
+            int left = (maximizeToggle.ClientSize.Width - iconSize) / 2;
+            int top = (maximizeToggle.ClientSize.Height - iconSize) / 2;
             if (isMaximized)
             {
-                e.Graphics.DrawRectangle(pen, 11, 8, 8, 8);
-                e.Graphics.DrawRectangle(pen, 8, 11, 8, 8);
+                e.Graphics.DrawRectangle(pen, left + 3, top, iconSize - 3, iconSize - 3);
+                e.Graphics.DrawRectangle(pen, left, top + 3, iconSize - 3, iconSize - 3);
             }
-            else e.Graphics.DrawRectangle(pen, 9, 9, 10, 10);
+            else e.Graphics.DrawRectangle(pen, left, top, iconSize, iconSize);
         }
 
         private void CloseButton_Paint(object? sender, PaintEventArgs e)
         {
             using Pen pen = new(closeButton.ForeColor, 1.4F);
-            e.Graphics.DrawLine(pen, 10, 10, 18, 18);
-            e.Graphics.DrawLine(pen, 18, 10, 10, 18);
+            int iconSize = 8;
+            int left = (closeButton.ClientSize.Width - iconSize) / 2;
+            int top = (closeButton.ClientSize.Height - iconSize) / 2;
+            e.Graphics.DrawLine(pen, left, top, left + iconSize, top + iconSize);
+            e.Graphics.DrawLine(pen, left + iconSize, top, left, top + iconSize);
         }
 
         private void AddPointMarkers(RealtimeChartSeries source, bool missing, Color color, double missingValue)
