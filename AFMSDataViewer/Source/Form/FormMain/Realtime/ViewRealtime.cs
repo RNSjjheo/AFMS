@@ -9,9 +9,8 @@ namespace AFMSDataViewer
         private const int LAYOUT_ICON_SIZE = 16;
         public AFMSPanel uiPnHeader;
         public MaximizableTableLayoutPanel uiTpField;
-        public AFMSButtonGroup uiBtnGroups;
+        public AFMSComboBox uiRangeCombo;
         public AFMSButtonGroup uiBtnTemp;
-        public AFMSNavigatorBox uiNavigator;
 
         private TableLayoutPanel uiTpTop;
         private ChartSelectPanel uiChart1;
@@ -68,21 +67,27 @@ namespace AFMSDataViewer
             uiTpTop.RowStyles.Clear();
             uiTpTop.ColumnStyles.Clear();
             uiTpTop.RowCount = 1;
-            uiTpTop.ColumnCount = 4;
-            uiTpTop.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 100F));
-            uiTpTop.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 250F));
+            uiTpTop.ColumnCount = 3;
+            uiTpTop.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 130F));
             uiTpTop.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             uiTpTop.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 120F));
             uiTpTop.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             uiTpTop.Margin = Padding.Empty;
             uiTpTop.Padding = Padding.Empty;
 
-            uiBtnGroups = new AFMSButtonGroup();
-            uiBtnGroups.Dock = DockStyle.Fill;
-            uiBtnGroups.AddButton("12H");
-            uiBtnGroups.AddButton("24H");
-            uiBtnGroups.AddButton("1주일");
-            uiBtnGroups.SelectedIndexChanged += (_, _) => ApplyNavigatorRange();
+            uiRangeCombo = new AFMSComboBox
+            {
+                Dock = DockStyle.Fill,
+                Margin = Padding.Empty,
+                Padding = new Padding(2),
+                BorderRadius = 5,
+                PlaceholderText = "조회 시간"
+            };
+            uiRangeCombo.Items.Add("최근 6시간");
+            uiRangeCombo.Items.Add("최근 12시간");
+            uiRangeCombo.Items.Add("최근 24시간");
+            uiRangeCombo.SelectedIndex = 1;
+            uiRangeCombo.SelectedIndexChanged += (_, _) => ApplyNavigatorRange();
 
             uiBtnTemp = new AFMSButtonGroup();
             uiBtnTemp.Dock = DockStyle.Fill;
@@ -107,11 +112,6 @@ namespace AFMSDataViewer
                 AFMSIcon.Get(AFMSIcons.Layout11On, LAYOUT_ICON_SIZE),
                 MaximizableTableLayoutType.Layout1_1);
 
-            uiNavigator = new AFMSNavigatorBox();
-            uiNavigator.Dock = DockStyle.Fill;
-            uiNavigator.ReadOnly = true;
-            uiNavigator.LeftButtonClick += (_, _) => MoveSelectedDate(-1);
-            uiNavigator.RightButtonClick += (_, _) => MoveSelectedDate(1);
             DateTime now = DateTime.Now;
             IReadOnlyList<MeasurementSlot> initialSlots = measurementDataHub.GetSlots();
             selectedDateTime = initialSlots.Count > 0
@@ -127,9 +127,8 @@ namespace AFMSDataViewer
             uiTracking.SelectedTimeChanged += UiTracking_SelectedTimeChanged;
             ApplyNavigatorRange();
 
-            uiTpTop.Controls.Add(uiBtnGroups, 0, 0);
-            uiTpTop.Controls.Add(uiNavigator, 1, 0);
-            uiTpTop.Controls.Add(uiBtnTemp, 3, 0);
+            uiTpTop.Controls.Add(uiRangeCombo, 0, 0);
+            uiTpTop.Controls.Add(uiBtnTemp, 2, 0);
 
             uiPnHeader.Controls.Add(uiTpTop);
 
@@ -141,17 +140,8 @@ namespace AFMSDataViewer
             uiBtnTemp.PerformClick(x2);
         }
 
-        private void MoveSelectedDate(int direction)
-        {
-            selectedDateTime = selectedDateTime.AddTicks(GetSelectedDuration().Ticks * direction);
-            ApplyNavigatorRange();
-        }
-
         private void ApplyNavigatorRange()
         {
-            if (uiNavigator == null) return;
-            uiNavigator.Text = selectedDateTime.ToString("yyyy-MM-dd HH:mm");
-
             DateTime start = selectedDateTime.Subtract(GetSelectedDuration());
 
             DateTime trackingTime = start.AddTicks(GetSelectedDuration().Ticks * 3 / 4);
@@ -163,10 +153,10 @@ namespace AFMSDataViewer
             uiChart4?.SetTimeRange(start, selectedDateTime);
         }
 
-        private TimeSpan GetSelectedDuration() => uiBtnGroups.SelectedIndex switch
+        private TimeSpan GetSelectedDuration() => uiRangeCombo.SelectedIndex switch
         {
-            1 => TimeSpan.FromHours(24),
-            2 => TimeSpan.FromDays(7),
+            0 => TimeSpan.FromHours(6),
+            2 => TimeSpan.FromHours(24),
             _ => TimeSpan.FromHours(12)
         };
 

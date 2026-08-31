@@ -15,6 +15,7 @@ namespace AFMSDataViewer
         private readonly ToolTip toolTip = new();
         private RealtimeChartLegendItem[] items = [];
         private int itemWidth;
+
         private int rowCount;
         private int preferredHeight;
         private int hoveredIndex = -1;
