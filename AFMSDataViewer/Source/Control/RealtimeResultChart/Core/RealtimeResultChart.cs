@@ -267,7 +267,6 @@ namespace AFMSDataViewer
                 trackingLine.EnableAutoscale = false;
             }
 
-            AddUnitAnnotation();
             ConfigureTimeTicks();
             formsPlot.Plot.Axes.AutoScale();
             formsPlot.Plot.Axes.SetLimitsX(RangeStart.ToOADate(), RangeEnd.ToOADate());
@@ -397,17 +396,6 @@ namespace AFMSDataViewer
                 .Select(point => point.Value)
                 .ToArray();
             return validValues.Length == 0 ? 0D : validValues.Min();
-        }
-
-        private void AddUnitAnnotation()
-        {
-            Annotation unit = formsPlot.Plot.Add.Annotation(UnitText, Alignment.UpperLeft);
-            unit.LabelStyle.FontName = ChartFontName;
-            unit.LabelStyle.FontSize = 8F;
-            unit.LabelStyle.ForeColor = ScottPlot.Color.FromHex("#64748B");
-            unit.LabelStyle.BackgroundColor = ScottPlot.Colors.Transparent;
-            unit.OffsetX = -18;
-            unit.OffsetY = -14;
         }
 
         private void ConfigureTimeTicks()
