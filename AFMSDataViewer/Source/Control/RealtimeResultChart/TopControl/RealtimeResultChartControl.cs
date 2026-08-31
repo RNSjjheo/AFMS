@@ -68,12 +68,12 @@ namespace AFMSDataViewer
                 PressedBackColor = background,
                 BorderColor = border,
                 BorderThickness = 1,
+                BorderRadius = 5,
                 ForeColor = accent,
                 Font = new Font("맑은 고딕", 9F),
                 Cursor = Cursors.Hand,
                 Visible = supportsDetails,
                 TextAlign = ContentAlignment.MiddleCenter,
-                BorderRadius = 5,
                 TabStop = false
             };
             Controls.Add(uiButtonDetails, 4, 0);
