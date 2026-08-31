@@ -17,7 +17,7 @@ namespace AFMSDataViewer
 
         public RealtimeResultChartControl(ChartMainType chartType)
         {
-            BackColor = Color.Transparent;
+            BackColor = Color.White;
             Margin = Padding.Empty;
             Padding = new Padding(0, 0, 0, 0);
             supportsDetails = chartType is ChartMainType.Velocity or ChartMainType.Discharge;
@@ -63,16 +63,19 @@ namespace AFMSDataViewer
                 AccessibleName = "상세",
                 Dock = DockStyle.Fill,
                 Margin = new Padding(3, 0, 3, 0),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = background,
+                BackColor = Color.White,
+                HoverBackColor = background,
+                PressedBackColor = background,
+                BorderColor = border,
+                BorderThickness = 1,
                 ForeColor = accent,
                 Font = new Font("맑은 고딕", 9F),
                 Cursor = Cursors.Hand,
                 Visible = supportsDetails,
                 TextAlign = ContentAlignment.MiddleCenter,
-                BorderRadius = 5
+                BorderRadius = 5,
+                TabStop = false
             };
-            uiButtonDetails.FlatAppearance.BorderColor = border;
             Controls.Add(uiButtonDetails, 4, 0);
 
             SetSubComboVisible(supportsDetails);
