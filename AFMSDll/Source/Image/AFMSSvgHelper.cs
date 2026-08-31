@@ -16,9 +16,9 @@ namespace AFMSDll
         /// 배경은 투명으로 처리하며, shapeColor는 SVG 도형 자체의 색상입니다.
         /// borderThickness와 borderColor는 Bitmap 외곽선이 아니라 SVG 도형의 외곽선입니다.
         /// </summary>
-        public static Bitmap ToBitmap(byte[] svgData, int width, int height, Color? shapeColor = null, float borderThickness = 0, Color? borderColor = null)
+        public static Bitmap ToBitmap(byte[] svgData, int width, int height, Color? shapeColor = null, float borderThickness = 0, Color? borderColor = null, float? cornerRadius = null)
         {
-            return ToBitmap(svgData, width, height, shapeColor, Color.Transparent, borderThickness, borderColor);
+            return ToBitmap(svgData, width, height, shapeColor, Color.Transparent, borderThickness, borderColor, cornerRadius);
         }
 
         /// <summary>
@@ -26,16 +26,16 @@ namespace AFMSDll
         /// 도형 색상, 배경 색상, 도형 외곽선 굵기/색상을 각각 지정할 수 있습니다.
         /// borderThickness는 최종 Bitmap 기준 픽셀 단위입니다.
         /// </summary>
-        public static Bitmap ToBitmap(byte[] svgData, int width, int height, Color? shapeColor, Color? backgroundColor, float borderThickness, Color? borderColor)
+        public static Bitmap ToBitmap(byte[] svgData, int width, int height, Color? shapeColor, Color? backgroundColor, float borderThickness, Color? borderColor, float? cornerRadius = null)
         {
             if (svgData == null || svgData.Length == 0)
                 throw new ArgumentException("SVG 데이터가 없습니다.", nameof(svgData));
 
-            ValidateSize(width, height, borderThickness);
+            ValidateSize(width, height, borderThickness, cornerRadius);
 
             using MemoryStream stream = new MemoryStream(svgData);
             XDocument document = XDocument.Load(stream, LoadOptions.PreserveWhitespace);
-            ApplySvgStyle(document, width, height, shapeColor, borderThickness, borderColor);
+            ApplySvgStyle(document, width, height, shapeColor, borderThickness, borderColor, cornerRadius);
 
             SvgDocument svgDocument = SvgDocument.FromSvg<SvgDocument>(document.ToString(SaveOptions.DisableFormatting));
             return CreateBitmap(svgDocument, width, height, backgroundColor);
@@ -46,9 +46,9 @@ namespace AFMSDll
         /// 배경은 투명으로 처리하며, shapeColor는 SVG 도형 자체의 색상입니다.
         /// borderThickness와 borderColor는 Bitmap 외곽선이 아니라 SVG 도형의 외곽선입니다.
         /// </summary>
-        public static Bitmap ToBitmap(string svgText, int width, int height, Color? shapeColor = null, float borderThickness = 0, Color? borderColor = null)
+        public static Bitmap ToBitmap(string svgText, int width, int height, Color? shapeColor = null, float borderThickness = 0, Color? borderColor = null, float? cornerRadius = null)
         {
-            return ToBitmap(svgText, width, height, shapeColor, Color.Transparent, borderThickness, borderColor);
+            return ToBitmap(svgText, width, height, shapeColor, Color.Transparent, borderThickness, borderColor, cornerRadius);
         }
 
         /// <summary>
@@ -56,21 +56,21 @@ namespace AFMSDll
         /// 도형 색상, 배경 색상, 도형 외곽선 굵기/색상을 각각 지정할 수 있습니다.
         /// borderThickness는 최종 Bitmap 기준 픽셀 단위입니다.
         /// </summary>
-        public static Bitmap ToBitmap(string svgText, int width, int height, Color? shapeColor, Color? backgroundColor, float borderThickness, Color? borderColor)
+        public static Bitmap ToBitmap(string svgText, int width, int height, Color? shapeColor, Color? backgroundColor, float borderThickness, Color? borderColor, float? cornerRadius = null)
         {
             if (string.IsNullOrWhiteSpace(svgText))
                 throw new ArgumentException("SVG 데이터가 없습니다.", nameof(svgText));
 
-            ValidateSize(width, height, borderThickness);
+            ValidateSize(width, height, borderThickness, cornerRadius);
 
             XDocument document = XDocument.Parse(svgText, LoadOptions.PreserveWhitespace);
-            ApplySvgStyle(document, width, height, shapeColor, borderThickness, borderColor);
+            ApplySvgStyle(document, width, height, shapeColor, borderThickness, borderColor, cornerRadius);
 
             SvgDocument svgDocument = SvgDocument.FromSvg<SvgDocument>(document.ToString(SaveOptions.DisableFormatting));
             return CreateBitmap(svgDocument, width, height, backgroundColor);
         }
 
-        private static void ValidateSize(int width, int height, float borderThickness)
+        private static void ValidateSize(int width, int height, float borderThickness, float? cornerRadius)
         {
             if (width <= 0)
                 throw new ArgumentOutOfRangeException(nameof(width));
@@ -80,6 +80,9 @@ namespace AFMSDll
 
             if (borderThickness < 0)
                 throw new ArgumentOutOfRangeException(nameof(borderThickness));
+
+            if (cornerRadius < 0)
+                throw new ArgumentOutOfRangeException(nameof(cornerRadius));
         }
 
         private static Bitmap CreateBitmap(SvgDocument svgDocument, int width, int height, Color? backgroundColor)
@@ -100,12 +103,25 @@ namespace AFMSDll
             return result;
         }
 
-        private static void ApplySvgStyle(XDocument document, int bitmapWidth, int bitmapHeight, Color? shapeColor, float borderThickness, Color? borderColor)
+        private static void ApplySvgStyle(XDocument document, int bitmapWidth, int bitmapHeight, Color? shapeColor, float borderThickness, Color? borderColor, float? cornerRadius)
         {
             XElement? root = document.Root;
 
             if (root == null)
                 throw new InvalidDataException("유효한 SVG 문서가 아닙니다.");
+
+            if (cornerRadius.HasValue)
+            {
+                XElement? backgroundRect = root.Elements()
+                    .FirstOrDefault(element => element.Name.LocalName.Equals("rect", StringComparison.OrdinalIgnoreCase));
+                if (backgroundRect != null)
+                {
+                    float svgRadius = ConvertPixelToSvgUnit(root, bitmapWidth, bitmapHeight, cornerRadius.Value);
+                    string radiusText = svgRadius.ToString("0.###", CultureInfo.InvariantCulture);
+                    backgroundRect.SetAttributeValue("rx", radiusText);
+                    backgroundRect.SetAttributeValue("ry", radiusText);
+                }
+            }
 
             string? shapeColorText = shapeColor.HasValue ? ToSvgColor(shapeColor.Value) : null;
             string borderColorText = ToSvgColor(borderColor ?? shapeColor ?? Color.Black);

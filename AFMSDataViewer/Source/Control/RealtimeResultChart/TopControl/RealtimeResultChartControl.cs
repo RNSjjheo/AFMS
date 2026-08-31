@@ -99,19 +99,20 @@ namespace AFMSDataViewer
         private static Image GetChartIcon(ChartMainType chartType) 
         {
             const int SIZE = FIEXED_CONTROL_HEIGTH - 2;
+            const float CORNER_RADIUS = 5F;
 
             switch(chartType)
             {
                 case ChartMainType.Velocity:
-                    return AFMSIcon.Get(AFMSIcons.FlowVelocity, SIZE);
+                    return AFMSIcon.Get(AFMSIcons.FlowVelocity, SIZE, cornerRadius: CORNER_RADIUS);
 
                 case ChartMainType.Level:
-                    return AFMSIcon.Get(AFMSIcons.WaterLevel, SIZE);
+                    return AFMSIcon.Get(AFMSIcons.WaterLevel, SIZE, cornerRadius: CORNER_RADIUS);
 
                 case ChartMainType.Discharge:
-                    return AFMSIcon.Get(AFMSIcons.FlowVelocity, SIZE);
+                    return AFMSIcon.Get(AFMSIcons.FlowVelocity, SIZE, cornerRadius: CORNER_RADIUS);
                 default:
-                    return AFMSIcon.Get(AFMSIcons.Vth, SIZE);
+                    return AFMSIcon.Get(AFMSIcons.Vth, SIZE, cornerRadius: CORNER_RADIUS);
             }
         }
 

@@ -46,7 +46,17 @@ namespace AFMSDll
     {
         public static Bitmap Get(AFMSIcons iconType, int size) => Get(iconType, size, size);
 
+        /// <summary>SVG 최상위 배경 사각형의 모서리 반경을 최종 Bitmap 픽셀 단위로 지정합니다.</summary>
+        public static Bitmap Get(AFMSIcons iconType, int size, float cornerRadius) =>
+            Get(iconType, size, size, cornerRadius);
+
         public static Bitmap Get(AFMSIcons iconType, int width, int height)
+        {
+            return Get(iconType, width, height, null);
+        }
+
+        /// <summary>SVG 최상위 배경 사각형의 모서리 반경을 최종 Bitmap 픽셀 단위로 지정합니다.</summary>
+        public static Bitmap Get(AFMSIcons iconType, int width, int height, float? cornerRadius)
         {
             string resource;
 
@@ -161,7 +171,7 @@ namespace AFMSDll
                     throw new ArgumentOutOfRangeException(nameof(iconType), iconType, null);
             }
 
-            return AFMSSvgHelper.ToBitmap(resource, width, height);
+            return AFMSSvgHelper.ToBitmap(resource, width, height, cornerRadius: cornerRadius);
         }
 
         public static Icon GetIcon(AFMSIcons iconType, int size)
