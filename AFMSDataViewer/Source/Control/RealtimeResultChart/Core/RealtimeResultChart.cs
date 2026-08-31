@@ -79,21 +79,20 @@ namespace AFMSDataViewer
             mainLayout.Dock = DockStyle.Fill;
             mainLayout.Margin = Padding.Empty;
             mainLayout.BackColor = Color.Transparent;
-            mainLayout.RowCount = 4;
+            mainLayout.RowCount = 3;
             mainLayout.ColumnCount = 1;
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, RealtimeResultChartControl.FIEXED_CONTROL_HEIGTH));
-            mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 0F));
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, RealtimeChartStatisticsControl.FixedHeight));
             mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
             TopLayout = new RealtimeResultChartControl(chartType) { Dock = DockStyle.Fill };
             StatisticsLayout = new RealtimeChartStatisticsControl();
-            legendController = new RealtimeChartLegendController(chartType, mainLayout, 1);
+            legendController = new RealtimeChartLegendController(chartType, TopLayout.uiPnLegend);
             legendController.VisibilityChanged += (_, _) => DrawSeries();
             mainLayout.Controls.Add(TopLayout, 0, 0);
-            mainLayout.Controls.Add(formsPlot, 0, 2);
-            mainLayout.Controls.Add(StatisticsLayout, 0, 3);
+            mainLayout.Controls.Add(formsPlot, 0, 1);
+            mainLayout.Controls.Add(StatisticsLayout, 0, 2);
             chartSection.ContentLayout.Controls.Add(mainLayout);
             chartSection.Controls.Add(maximizeToggle);
             chartSection.Controls.Add(closeButton);
@@ -237,6 +236,7 @@ namespace AFMSDataViewer
             formsPlot.Plot.Axes.Right.IsVisible = false;
             List<RealtimeChartSeries> visible = availableSeries
                 .Where(series => legendController.IsVisible(series, null)).ToList();
+            bool fillSeriesArea = ChartType != ChartMainType.Discharge || visible.Count == 1;
             double primaryMissingValue = GetMissingDisplayValue(visible, secondaryAxis: false);
             double secondaryMissingValue = GetMissingDisplayValue(visible, secondaryAxis: true);
 
@@ -252,7 +252,7 @@ namespace AFMSDataViewer
                 scatter.Color = ToScottColor(source.Color);
                 scatter.LineWidth = 2;
                 scatter.MarkerSize = 0;
-                scatter.FillY = true;
+                scatter.FillY = fillSeriesArea;
                 scatter.FillYValue = 0;
                 scatter.FillYColor = ToScottColor(Color.FromArgb(45, source.Color));
                 AddPointMarkers(source, false, source.Color, missingValue);

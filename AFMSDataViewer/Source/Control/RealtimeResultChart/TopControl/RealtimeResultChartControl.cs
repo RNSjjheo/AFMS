@@ -11,7 +11,9 @@ namespace AFMSDataViewer
         public Panel uiPnIcon;
         public AFMSComboBox uiComboMain;
         public AFMSComboBox uiComboSub;
+        public Panel uiPnLegend;
         public AFMSButton uiButtonDetails;
+        private readonly bool supportsSubCombo;
         private readonly bool supportsDetails;
         private readonly ToolTip statisticsTip = new();
 
@@ -20,6 +22,7 @@ namespace AFMSDataViewer
             BackColor = Color.White;
             Margin = Padding.Empty;
             Padding = new Padding(0, 0, 0, 0);
+            supportsSubCombo = chartType == ChartMainType.Velocity;
             supportsDetails = chartType is ChartMainType.Velocity or ChartMainType.Discharge;
             RowStyles.Clear();
             ColumnStyles.Clear();
@@ -53,9 +56,20 @@ namespace AFMSDataViewer
             uiComboSub.PlaceholderText = GetSubPlaceholder(chartType);
             uiComboSub.BorderRadius = 5;
 
+            uiPnLegend = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Margin = new Padding(0, 0, 6, 0),
+                Padding = Padding.Empty,
+                BackColor = Color.White,
+                Visible = chartType == ChartMainType.Discharge
+            };
+
             Controls.Add(uiPnIcon, 0, 0);
             Controls.Add(uiComboMain, 1, 0);
             Controls.Add(uiComboSub, 2, 0);
+            Controls.Add(uiPnLegend, 2, 0);
+            SetColumnSpan(uiPnLegend, 2);
 
             (Color accent, Color background, Color border) = GetChartTheme(chartType);
             uiButtonDetails = new AFMSButton
@@ -79,14 +93,13 @@ namespace AFMSDataViewer
             };
             Controls.Add(uiButtonDetails, 4, 0);
 
-            SetSubComboVisible(supportsDetails);
+            SetSubComboVisible(supportsSubCombo);
         }
 
         public void SetSubComboVisible(bool visible)
         {
-            visible &= supportsDetails;
+            visible &= supportsSubCombo;
             uiComboSub.Visible = visible;
-            SetRowSpan(uiComboMain, visible ? 1 : 3);
         }
 
         protected override void Dispose(bool disposing)
@@ -137,7 +150,6 @@ namespace AFMSDataViewer
 
         private static string GetSubPlaceholder(ChartMainType chartType) => chartType switch
         {
-            ChartMainType.Discharge => "유량 산정법 선택",
             ChartMainType.Velocity => "측선 선택",
             _ => "측정값 선택"
         };

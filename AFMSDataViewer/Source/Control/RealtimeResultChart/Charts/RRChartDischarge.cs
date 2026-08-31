@@ -8,11 +8,6 @@ namespace AFMSDataViewer
         {
             public override string ToString() => Text;
         }
-        private sealed record MethodOption(string Method, string Text)
-        {
-            public override string ToString() => Text;
-        }
-
         private readonly List<RealtimeChartSeries> loadedSeries = new();
         private bool populating;
 
@@ -22,11 +17,10 @@ namespace AFMSDataViewer
             TopLayout.uiComboMain.SelectedIndexChanged += (_, _) =>
             {
                 if (populating) return;
-                PopulateMethods();
                 ApplySelection();
             };
-            TopLayout.uiComboSub.SelectedIndexChanged += (_, _) => { if (!populating) ApplySelection(); };
             TopLayout.uiButtonDetails.Click += ShowAnalysis;
+            TopLayout.SetSubComboVisible(false);
         }
 
         public override void LoadData()
@@ -82,41 +76,15 @@ namespace AFMSDataViewer
                 TopLayout.uiComboMain.SelectedItem = TopLayout.uiComboMain.Items.Cast<DeviceOption>()
                     .FirstOrDefault(item => item.Type == previous?.Type && item.Id == previous?.Id)
                     ?? TopLayout.uiComboMain.Items.Cast<object>().FirstOrDefault();
-                PopulateMethods();
             }
             finally { populating = false; }
-        }
-
-        private void PopulateMethods()
-        {
-            DeviceOption? device = TopLayout.uiComboMain.SelectedItem as DeviceOption;
-            string? previous = (TopLayout.uiComboSub.SelectedItem as MethodOption)?.Method;
-            bool wasPopulating = populating;
-            populating = true;
-            try
-            {
-                TopLayout.uiComboSub.Items.Clear();
-                TopLayout.uiComboSub.Items.Add("전체");
-                if (device != null)
-                foreach (string method in loadedSeries
-                    .Where(series => series.DeviceType == device.Type && series.DeviceId == device.Id)
-                    .Select(series => series.DischargeMethod).Where(method => !string.IsNullOrWhiteSpace(method))
-                    .Cast<string>().Distinct().OrderBy(GetMethodOrder))
-                    TopLayout.uiComboSub.Items.Add(new MethodOption(method, GetMethodText(method)));
-                TopLayout.uiComboSub.SelectedItem = TopLayout.uiComboSub.Items.Cast<object>().OfType<MethodOption>()
-                    .FirstOrDefault(item => item.Method == previous) ?? TopLayout.uiComboSub.Items[0];
-                TopLayout.SetSubComboVisible(device?.Type == nameof(MeasurementDeviceType.VelocityMeter));
-            }
-            finally { populating = wasPopulating; }
         }
 
         private void ApplySelection()
         {
             DeviceOption? device = TopLayout.uiComboMain.SelectedItem as DeviceOption;
-            MethodOption? method = TopLayout.uiComboSub.SelectedItem as MethodOption;
             SetSeries(loadedSeries.Where(series => device != null &&
-                series.DeviceType == device.Type && series.DeviceId == device.Id &&
-                (method == null || series.DischargeMethod == method.Method)));
+                series.DeviceType == device.Type && series.DeviceId == device.Id));
         }
 
         private void ShowAnalysis(object? sender, EventArgs e)

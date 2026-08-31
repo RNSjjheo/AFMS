@@ -9,14 +9,12 @@ namespace AFMSDataViewer
         public string Key { get; } = key;
     }
 
-    // Chart-independent legend: at most two rows, with scrolling for overflow.
+    // Chart-independent legend: a single row clipped by the available width.
     internal sealed class RealtimeChartLegend : Control
     {
-        private readonly HScrollBar scrollBar = new() { Dock = DockStyle.Bottom, Visible = false };
         private readonly ToolTip toolTip = new();
         private RealtimeChartLegendItem[] items = [];
-        private int columns = 1;
-        private int itemWidth = 120;
+        private int itemWidth;
         private int rowCount;
         private int preferredHeight;
         private int hoveredIndex = -1;
@@ -40,19 +38,15 @@ namespace AFMSDataViewer
             Font = new Font("맑은 고딕", 9F);
             Margin = Padding.Empty;
             TabStop = false;
-            scrollBar.ValueChanged += (_, _) => Invalidate();
-            Controls.Add(scrollBar);
         }
 
         public void SetItems(IEnumerable<RealtimeChartLegendItem> newItems)
         {
             RealtimeChartLegendItem[] next = newItems.ToArray();
             if (items.SequenceEqual(next)) return;
-            bool sameKeys = items.Select(item => item.Key).SequenceEqual(next.Select(item => item.Key));
             items = next;
             hoveredIndex = -1;
             toolTip.SetToolTip(this, null);
-            if (!sameKeys) scrollBar.Value = 0;
             UpdateLayout();
         }
 
@@ -84,21 +78,10 @@ namespace AFMSDataViewer
 
         private void UpdateLayout()
         {
-            int availableWidth = Math.Max(1, ClientSize.Width - Inset * 2);
-            int minimumWidth = ScalePixels(120);
-            rowCount = items.Length == 0 ? 0 :
-                items.Length == 1 || items.Length * minimumWidth <= availableWidth ? 1 : 2;
-            columns = rowCount == 0 ? 1 : (items.Length + rowCount - 1) / rowCount;
-            itemWidth = minimumWidth;
-            int contentWidth = rowCount == 0 ? 0 : columns * itemWidth;
-            bool overflow = contentWidth > availableWidth;
-            scrollBar.Visible = overflow;
-            scrollBar.LargeChange = availableWidth;
-            scrollBar.SmallChange = minimumWidth;
-            scrollBar.Maximum = Math.Max(0, contentWidth - 1);
-            scrollBar.Value = Math.Min(scrollBar.Value, Math.Max(0, contentWidth - availableWidth));
-            int height = rowCount == 0 ? 0 : rowCount * RowHeight +
-                ScalePixels(rowCount == 1 ? 2 : 4) + (overflow ? scrollBar.Height : 0);
+            rowCount = items.Length == 0 ? 0 : 1;
+            int availableWidth = Math.Max(0, ClientSize.Width - Inset * 2);
+            itemWidth = items.Length == 0 ? 0 : Math.Max(1, availableWidth / items.Length);
+            int height = rowCount == 0 ? 0 : RowHeight + ScalePixels(2);
             if (preferredHeight != height)
             {
                 preferredHeight = height;
@@ -108,8 +91,8 @@ namespace AFMSDataViewer
         }
 
         private Rectangle GetItemBounds(int index) => new(
-            Inset + index % columns * itemWidth - scrollBar.Value,
-            ScalePixels(2) + index / columns * RowHeight, itemWidth, RowHeight);
+            Inset + index * itemWidth,
+            ScalePixels(2), itemWidth, RowHeight);
 
         private Rectangle GetMarkerBounds(int index)
         {
