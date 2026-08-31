@@ -8,7 +8,16 @@ namespace AFMSDataViewer
 {
     public class TrackingUi : AFMSPanel
     {
-        private float TIME_LAYOUT_WIDTH = 120F;
+        private const float TIME_LAYOUT_WIDTH = 120F;
+        private const string BACKGROUND_COLOR = "#99E0D2";
+        private const string BORDER_COLOR = "#99E0D2";
+        private const string TRACK_COLOR = "#0DAC7E";
+        private const string HANDLE_COLOR = "#0DAC7E";
+        private const float BORDER_THICKNESS = 1F;
+        private const int BORDER_RADIUS = 5;
+        private const int TRACK_HEIGHT = 2;
+        private const int HANDLE_SIZE = 12;
+
         private TableLayoutPanel _tpMain;
         private Panel _pnBar1;
         private Panel _pnBar2;
@@ -28,10 +37,14 @@ namespace AFMSDataViewer
             Dock = DockStyle.Fill;
             Padding = Padding.Empty;
             Margin = Padding.Empty;
-            BackColor = DllColorHelper.HexToColor("#EAFDF6");
+            BackColor = DllColorHelper.HexToColor(BACKGROUND_COLOR);
+            BorderColor = DllColorHelper.HexToColor(BORDER_COLOR);
+            BorderThickness = BORDER_THICKNESS;
+            BorderRadius = BORDER_RADIUS;
 
             _tpMain = new TableLayoutPanel();
             _tpMain.Dock = DockStyle.Fill;
+            _tpMain.BackColor = Color.Transparent;
             _tpMain.RowStyles.Clear();
             _tpMain.ColumnStyles.Clear();
             _tpMain.ColumnCount = 5;
@@ -50,8 +63,15 @@ namespace AFMSDataViewer
             _lbTimeStart = CreateLabel();
             _lbTimeFinish = CreateLabel();
 
-            CtlItem = new AFMSTrackBar();
-            CtlItem.Dock = DockStyle.Fill;
+            CtlItem = new AFMSTrackBar
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.Transparent,
+                TrackColor = DllColorHelper.HexToColor(TRACK_COLOR),
+                HandleColor = DllColorHelper.HexToColor(HANDLE_COLOR),
+                TrackHeight = TRACK_HEIGHT,
+                HandleSize = HANDLE_SIZE
+            };
             CtlItem.ValueChanged += (_, _) =>
             {
                 if (!_settingRange)
@@ -71,7 +91,7 @@ namespace AFMSDataViewer
         {
             Panel item = new Panel();
             item.Dock = DockStyle.Fill;
-            item.BackColor = DllColorHelper.GetCommonBorder();
+            item.BackColor = DllColorHelper.HexToColor(BORDER_COLOR);
 
             return item;
         }
@@ -80,6 +100,7 @@ namespace AFMSDataViewer
         {
             Label item = new Label();
             item.Dock = DockStyle.Fill;
+            item.BackColor = Color.Transparent;
             item.Text = DateTime.Now.ToString("yyyy-MM-dd HH:mm");
             item.TextAlign = ContentAlignment.MiddleCenter;
 
