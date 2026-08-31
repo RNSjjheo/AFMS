@@ -296,6 +296,7 @@ namespace AFMSDataViewer
 
             formsPlot.Dock = DockStyle.Fill;
             formsPlot.Margin = Padding.Empty;
+            formsPlot.UserInputProcessor.Disable();
             formsPlot.Plot.Font.Set(ChartFontName);
             formsPlot.Plot.FigureBackground.Color = ScottPlot.Color.FromHex("#FFFFFF");
             formsPlot.Plot.DataBackground.Color = ScottPlot.Color.FromHex("#FFFFFF");
