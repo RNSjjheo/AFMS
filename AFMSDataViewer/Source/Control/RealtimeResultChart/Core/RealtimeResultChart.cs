@@ -62,14 +62,14 @@ namespace AFMSDataViewer
             chartSection.Dock = DockStyle.Fill;
             chartSection.Margin = Padding.Empty;
             chartSection.BackColor = Color.White;
-            chartSection.BorderRadius = 8;
+            chartSection.SectionStyle = AFMSSectionStyle.FilledHeader;
+            chartSection.BorderRadius = 5;
             chartSection.BorderColor = Color.FromArgb(225, 229, 235);
             chartSection.BorderThickness = 1F;
             chartSection.HeaderText = TitleText;
             chartSection.HeaderBackColor = Color.FromArgb(245, 247, 250);
             chartSection.HeaderColor = Color.FromArgb(55, 62, 72);
             chartSection.HeaderLineColor = Color.FromArgb(225, 229, 235);
-            chartSection.SectionStyle = AFMSSectionStyle.FilledHeader;
             chartSection.Font = new Font(ChartFontName, 9F, System.Drawing.FontStyle.Bold);
 
             ConfigureHeaderButtons();
@@ -305,7 +305,7 @@ namespace AFMSDataViewer
             formsPlot.Plot.Font.Set(ChartFontName);
             formsPlot.Plot.FigureBackground.Color = ScottPlot.Color.FromHex("#FFFFFF");
             formsPlot.Plot.DataBackground.Color = ScottPlot.Color.FromHex("#FFFFFF");
-            formsPlot.Plot.Layout.Fixed(new PixelPadding(30, GRID_THICKNESS, 26, 5));
+            formsPlot.Plot.Layout.Fixed(new PixelPadding(30, GRID_THICKNESS, 26, 10));
             formsPlot.Plot.Grid.MajorLineColor = gridColor;
             formsPlot.Plot.Grid.MajorLineWidth = GRID_THICKNESS;
             formsPlot.Plot.DataBorder.Color = ScottPlot.Colors.Transparent;

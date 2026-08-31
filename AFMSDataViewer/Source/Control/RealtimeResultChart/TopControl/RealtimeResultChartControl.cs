@@ -7,7 +7,7 @@ namespace AFMSDataViewer
 {
     public class RealtimeResultChartControl : TableLayoutPanel
     {
-        public const int FIEXED_CONTROL_HEIGTH = 32;
+        public const int FIEXED_CONTROL_HEIGTH = 28;
         public Panel uiPnIcon;
         public AFMSComboBox uiComboMain;
         public AFMSComboBox uiComboSub;
@@ -34,13 +34,14 @@ namespace AFMSDataViewer
 
             uiPnIcon = new Panel();
             uiPnIcon.Dock = DockStyle.Fill;
-            uiPnIcon.Margin = new Padding(0, 0, 6, 0);
+            uiPnIcon.Margin = new Padding(0, 0, 2, 0);
+            uiPnIcon.Padding = Padding.Empty;
             uiPnIcon.BackgroundImage = GetChartIcon(chartType);
             uiPnIcon.BackgroundImageLayout = ImageLayout.Zoom;
 
             uiComboMain = new AFMSComboBox();
             uiComboMain.Dock = DockStyle.Fill;
-            uiComboMain.Margin = new Padding(0, 0, 6, 0);
+            uiComboMain.Margin = new Padding(4, 0, 6, 0);
             uiComboMain.Padding = new Padding(2);
             uiComboMain.PlaceholderText = GetMainPlaceholder(chartType);
             uiComboMain.BorderRadius = 5;

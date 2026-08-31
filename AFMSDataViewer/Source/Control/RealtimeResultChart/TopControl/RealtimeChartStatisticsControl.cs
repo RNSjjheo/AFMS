@@ -3,7 +3,7 @@ namespace AFMSDataViewer
     /// <summary>차트 하단에 최소, 평균, 최대 값을 한 줄로 표시합니다.</summary>
     public sealed class RealtimeChartStatisticsControl : TableLayoutPanel
     {
-        public const int FixedHeight = 32;
+        public const int FixedHeight = 30;
         private static readonly Color AccentColor = Color.FromArgb(37, 99, 235);
         private static readonly Color CaptionColor = Color.FromArgb(100, 116, 139);
         private static readonly Color ValueColor = Color.FromArgb(30, 41, 59);
