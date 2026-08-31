@@ -7,11 +7,11 @@ namespace AFMSDataViewer
 {
     public class RealtimeResultChartControl : TableLayoutPanel
     {
-        public const int FIEXED_CONTROL_HEIGTH = 35;
+        public const int FIEXED_CONTROL_HEIGTH = 32;
         public Panel uiPnIcon;
         public AFMSComboBox uiComboMain;
         public AFMSComboBox uiComboSub;
-        public Button uiButtonDetails;
+        public AFMSButton uiButtonDetails;
         private readonly bool supportsDetails;
         private readonly ToolTip statisticsTip = new();
 
@@ -19,7 +19,7 @@ namespace AFMSDataViewer
         {
             BackColor = Color.Transparent;
             Margin = Padding.Empty;
-            Padding = new Padding(6);
+            Padding = new Padding(0, 0, 0, 0);
             supportsDetails = chartType is ChartMainType.Velocity or ChartMainType.Discharge;
             RowStyles.Clear();
             ColumnStyles.Clear();
@@ -30,7 +30,7 @@ namespace AFMSDataViewer
             ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140F));
             ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 140F));
             ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 55F));
+            ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70F));
 
             uiPnIcon = new Panel();
             uiPnIcon.Dock = DockStyle.Fill;
@@ -57,13 +57,20 @@ namespace AFMSDataViewer
             Controls.Add(uiComboSub, 2, 0);
 
             (Color accent, Color background, Color border) = GetChartTheme(chartType);
-            uiButtonDetails = new Button
+            uiButtonDetails = new AFMSButton
             {
-                Text = "상세보기", AccessibleName = "상세보기",
-                Dock = DockStyle.Fill, Margin = new Padding(3, 0, 3, 0),
-                FlatStyle = FlatStyle.Flat, BackColor = background, ForeColor = accent,
-                Font = new Font("맑은 고딕", 9F), Cursor = Cursors.Hand,
-                Visible = supportsDetails
+                Text = "상세",
+                AccessibleName = "상세",
+                Dock = DockStyle.Fill,
+                Margin = new Padding(3, 0, 3, 0),
+                FlatStyle = FlatStyle.Flat,
+                BackColor = background,
+                ForeColor = accent,
+                Font = new Font("맑은 고딕", 9F),
+                Cursor = Cursors.Hand,
+                Visible = supportsDetails,
+                TextAlign = ContentAlignment.MiddleCenter,
+                BorderRadius = 5
             };
             uiButtonDetails.FlatAppearance.BorderColor = border;
             Controls.Add(uiButtonDetails, 4, 0);
@@ -98,7 +105,7 @@ namespace AFMSDataViewer
 
         private static Image GetChartIcon(ChartMainType chartType) 
         {
-            const int SIZE = FIEXED_CONTROL_HEIGTH - 2;
+            const int SIZE = FIEXED_CONTROL_HEIGTH - 0;
             const float CORNER_RADIUS = 5F;
 
             switch(chartType)
