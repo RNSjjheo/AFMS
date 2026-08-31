@@ -67,18 +67,21 @@ namespace AFMSDataViewer
             mainLayout.Dock = DockStyle.Fill;
             mainLayout.Margin = Padding.Empty;
             mainLayout.BackColor = Color.Transparent;
-            mainLayout.RowCount = 3;
+            mainLayout.RowCount = 4;
             mainLayout.ColumnCount = 1;
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, RealtimeResultChartControl.FIEXED_CONTROL_HEIGTH));
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, 0F));
             mainLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            mainLayout.RowStyles.Add(new RowStyle(SizeType.Absolute, RealtimeChartStatisticsControl.FixedHeight));
             mainLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 
             TopLayout = new RealtimeResultChartControl(chartType) { Dock = DockStyle.Fill };
+            StatisticsLayout = new RealtimeChartStatisticsControl();
             legendController = new RealtimeChartLegendController(chartType, mainLayout, 1);
             legendController.VisibilityChanged += (_, _) => DrawSeries();
             mainLayout.Controls.Add(TopLayout, 0, 0);
             mainLayout.Controls.Add(formsPlot, 0, 2);
+            mainLayout.Controls.Add(StatisticsLayout, 0, 3);
             chartSection.ContentLayout.Controls.Add(mainLayout);
             chartSection.Controls.Add(maximizeToggle);
             chartSection.Controls.Add(closeButton);
@@ -97,6 +100,7 @@ namespace AFMSDataViewer
         public DateTime RangeStart { get; private set; }
         public DateTime RangeEnd { get; private set; }
         public RealtimeResultChartControl TopLayout { get; }
+        public RealtimeChartStatisticsControl StatisticsLayout { get; }
         protected IReadOnlyList<RealtimeChartSeries> AvailableSeries => availableSeries;
         protected MeasurementDataHub? MeasurementDataHub => measurementDataHub;
         protected DateTime? TrackingTime => trackingTime;
@@ -126,8 +130,6 @@ namespace AFMSDataViewer
         {
             get
             {
-                return "";
-
                 switch (ChartType)
                 {
                     case ChartMainType.Velocity:
@@ -290,7 +292,9 @@ namespace AFMSDataViewer
             }
 
             UpdateStatistics(visible.Where(series => !series.SecondaryAxis)
-                .SelectMany(series => series.Points).Select(point => point.Value));
+                .SelectMany(series => series.Points)
+                .Where(point => !point.IsMissing)
+                .Select(point => point.Value));
         }
 
         private void ConfigurePlot()
@@ -497,9 +501,11 @@ namespace AFMSDataViewer
         private void UpdateStatistics(IEnumerable<double> values)
         {
             double[] data = values.Where(double.IsFinite).ToArray();
-            //TopLayout.uiValueMin.Text = data.Length == 0 ? "-" : $"{data.Min():0.0} {UnitText}≤";
-            //TopLayout.uiValueAvg.Text = data.Length == 0 ? "-" : $"{data.Average():0.0}{UnitText}";
-            //TopLayout.uiValueMax.Text = data.Length == 0 ? "-" : $"≤ {data.Max():0.0}{UnitText}";
+            string unit = string.IsNullOrWhiteSpace(UnitText) ? "" : $" {UnitText}";
+            StatisticsLayout.SetValues(
+                data.Length == 0 ? "-" : $"{data.Min():0.00}{unit}",
+                data.Length == 0 ? "-" : $"{data.Average():0.00}{unit}",
+                data.Length == 0 ? "-" : $"{data.Max():0.00}{unit}");
         }
 
         private Color GetThemeColor() => ChartType switch
