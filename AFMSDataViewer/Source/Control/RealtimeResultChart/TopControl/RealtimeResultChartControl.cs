@@ -62,7 +62,7 @@ namespace AFMSDataViewer
                 Text = "상세",
                 AccessibleName = "상세",
                 Dock = DockStyle.Fill,
-                Margin = new Padding(3, 0, 3, 0),
+                Margin = new Padding(3, 0, 0, 0),
                 BackColor = Color.White,
                 HoverBackColor = background,
                 PressedBackColor = background,

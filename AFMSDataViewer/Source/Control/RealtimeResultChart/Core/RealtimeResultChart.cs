@@ -13,6 +13,7 @@ namespace AFMSDataViewer
     {
         private const string ChartFontName = "맑은 고딕";
         private const float GRID_THICKNESS = 1F;
+        private const char TICK_LABEL_PADDING_CHARACTER = '\u00A0';
         private static readonly Color[] SeriesColors =
         {
             Color.FromArgb(19, 187, 130), Color.FromArgb(30, 190, 210),
@@ -300,6 +301,7 @@ namespace AFMSDataViewer
             formsPlot.Plot.DataBackground.Color = ScottPlot.Color.FromHex("#FFFFFF");
             formsPlot.Plot.Layout.Fixed(new PixelPadding(25, GRID_THICKNESS, 26, 5));
             formsPlot.Plot.Grid.MajorLineColor = gridColor;
+            formsPlot.Plot.Grid.MajorLineWidth = GRID_THICKNESS;
             formsPlot.Plot.DataBorder.Color = ScottPlot.Colors.Transparent;
 
             formsPlot.Plot.Axes.Top.FrameLineStyle.IsVisible = true;
@@ -404,12 +406,17 @@ namespace AFMSDataViewer
 
         private void ConfigureTimeTicks()
         {
+            const int tickCount = 4;
             TimeSpan duration = RangeEnd - RangeStart;
             ScottPlot.TickGenerators.NumericManual ticks = new();
-            for (int index = 0; index < 4; index++)
+            for (int index = 0; index < tickCount; index++)
             {
-                DateTime time = RangeStart.AddTicks((long)(duration.Ticks * (index / 3D)));
-                ticks.AddMajor(time.ToOADate(), duration <= TimeSpan.FromHours(24) ? $"{time:HH:mm}" : $"{time:MM-dd}");
+                DateTime time = RangeStart.AddTicks((long)(duration.Ticks * (index / (double)(tickCount - 1))));
+                string label = duration <= TimeSpan.FromHours(24) ? $"{time:HH:mm}" : $"{time:MM-dd}";
+
+                if (index == tickCount - 1)
+                    label += new string(TICK_LABEL_PADDING_CHARACTER, label.Length + 2);
+                ticks.AddMajor(time.ToOADate(), label);
             }
             formsPlot.Plot.Axes.Bottom.TickGenerator = ticks;
         }
