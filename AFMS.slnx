@@ -5,5 +5,6 @@
   <Project Path="AFMSDll/AFMSDll.csproj" Id="ed432cb2-91fc-469e-8287-c6d0bff9314f" />
   <Project Path="AFMSExtraLogger/AFMSExtraLogger.csproj" />
   <Project Path="AFMSExtraMonitor/AFMSExtraMonitor.csproj" Id="53a03e51-a16c-4532-9ce5-6c5082898317" />
+  <Project Path="AFMSSediService/AFMSSediService.csproj" Id="5a130e12-d60b-4380-9fd4-3270ef236f30" />
   <Project Path="AFMSSettings/AFMSSettings.csproj" Id="34d74f86-1d69-458f-9c45-66910c91b626" />
 </Solution>

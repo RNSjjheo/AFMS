@@ -147,11 +147,11 @@ namespace AFMSDll
             return 1;
         }
 
-        public List<string> CheckTables()
+        public List<string> CheckTables(bool isAFMS = true)
         {
             List<string> result = new List<string>();
 
-            List<_FBTableBase> tables = CreateTableDefinitions();
+            List<_FBTableBase> tables = isAFMS? CreateTableDefinitions() : CreateTableSediDefinitions();
             using FBDatabase db = CreateDatabase();
 
             foreach (_FBTableBase table in tables)
@@ -303,6 +303,25 @@ namespace AFMSDll
 
             return tables;
         }
+
+        private static List<_FBTableBase> CreateTableSediDefinitions()
+        {
+            List<_FBTableBase> tables = new List<_FBTableBase>();
+
+            tables.Add(new FbtRPOINT());
+            tables.Add(new FbtRHYDROMETER1());
+            tables.Add(new FbtRHYDROMETER1CELL());
+            tables.Add(new FbtRHYDROMETER2());
+            tables.Add(new FbtRHYDROMETER2CELL());
+            tables.Add(new FbtRSAND());
+            tables.Add(new FbtRSANDDETAIL());
+            tables.Add(new FbtRSANDPROFILE());
+            tables.Add(new FbtSETUP());
+
+
+            return tables;
+        }
+
 
         public static FbConnectionStringBuilder SetFBConnStrBuilder()
         {
