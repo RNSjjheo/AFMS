@@ -3,8 +3,12 @@
 **/*.csproj.user
 .vs/
 
+
 # Codex local build, rendering, and inspection artifacts
 .codex-*/
 
 # Local Codex-generated realtime chart and legend-check artifacts
 /tests/
+/temp/
+/HADCPSSM/
+/output/

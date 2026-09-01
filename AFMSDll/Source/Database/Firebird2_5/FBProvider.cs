@@ -318,7 +318,6 @@ namespace AFMSDll
             tables.Add(new FbtRSANDPROFILE());
             tables.Add(new FbtSETUP());
 
-
             return tables;
         }
 

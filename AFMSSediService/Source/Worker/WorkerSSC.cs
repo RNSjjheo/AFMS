@@ -13,9 +13,7 @@ namespace AFMSSediService
         private readonly SSCServiceOptions options;
         private readonly SscRepository repository = new SscRepository();
 
-        public WorkerSSC(
-            ILogger<WorkerSSC> logger,
-            IOptions<SSCServiceOptions> options)
+        public WorkerSSC(ILogger<WorkerSSC> logger, IOptions<SSCServiceOptions> options)
         {
             this.logger = logger;
             this.options = options.Value;
@@ -65,15 +63,9 @@ namespace AFMSSediService
             }
         }
 
-        private async Task<int> ProcessBatchAsync(
-            RSandProfileSnapshot profile,
-            SedFileWriter fileWriter,
-            CancellationToken cancellationToken)
+        private async Task<int> ProcessBatchAsync(RSandProfileSnapshot profile, SedFileWriter fileWriter, CancellationToken cancellationToken)
         {
-            IReadOnlyList<SscMeasurementKey> keys = repository.LoadPendingKeys(
-                options.CalculationStartTime,
-                options.BatchSize,
-                profile);
+            IReadOnlyList<SscMeasurementKey> keys = repository.LoadPendingKeys(options.CalculationStartTime, options.BatchSize, profile);
             int processed = 0;
 
             foreach (SscMeasurementKey key in keys)
@@ -87,15 +79,11 @@ namespace AFMSSediService
                     ProcessDevice(key, 2, profile.B);
 
                     SediSedimentRecord record = repository.LoadSedimentRecord(key, profile);
-                    string filePath = await fileWriter.WriteAsync(record, cancellationToken);
+                    string path = await fileWriter.WriteAsync(record, cancellationToken);
 
                     repository.MarkCompleted(key);
                     processed++;
-                    logger.LogInformation(
-                        "SSC 계산과 SED 저장을 완료했습니다. 측정={MeasureDate} {MeasureTime}, 파일={FilePath}",
-                        key.MeasureDate,
-                        key.MeasureTime,
-                        filePath);
+                    logger.LogInformation("SSC 계산과 SED 저장을 완료했습니다. 측정={MeasureDate} {MeasureTime}, 파일={FilePath}", key.MeasureDate, key.MeasureTime, path);
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
