@@ -30,8 +30,8 @@ namespace AFMSDischargeService
                 logger.LogInformation("DB 테이블 확인: {TableLog}", tableLog);
             }
 
-            bool timeslotTableExists = FBProvider.Instance.ExistTable(FbtAFMSDischargeTimeslot.TABLE_NAME);
-            bool resultTableExists = FBProvider.Instance.ExistTable(FbtAFMSDischargeResult.TABLE_NAME);
+            bool timeslotTableExists = FBProvider.Instance.ExistTable(FbtAFMSDischargeTimeslot.TABLE_NAME, tableLogs);
+            bool resultTableExists = FBProvider.Instance.ExistTable(FbtAFMSDischargeResult.TABLE_NAME, tableLogs);
 
             if (!timeslotTableExists || !resultTableExists)
             {

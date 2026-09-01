@@ -158,38 +158,25 @@ namespace AFMSDll
             {
                 string tablename = table.GetTableName();
 
-                result.Add($"{tablename} 테이블을 확인합니다.");
-
-                SetExampleReal(result, table);
-                SetExampleDefalut(result, db, table);
-                if (ExistTable(tablename))
-                {
-                    result.Add($"{tablename} 테이블이 존재합니다.");
-                    continue;
-                }
- 
-                result.Add($"{tablename} 테이블이 없습니다. 새로 생성합니다...");
+                if (ExistTable(tablename, result)) continue;
 
                 string crateTableSql = table.GetCreateTableSql();
+
                 if (crateTableSql == "")
                 {
-                    result.Add($"{tablename} 테이블은 CREATE SQL이 없어서 만들지 않습니다.");
+                    result.Add($"{tablename} 테이블은 생성 관리 예외 테이블입니다.");
                     continue;
+                }
+                else
+                {
+                    result.Add($"{tablename}을(를) 생성합니다...");
                 }
 
                 db.Execute(crateTableSql, out string errorMsg);
+                if (errorMsg != string.Empty) result.Add(errorMsg);
 
-                bool tableCreated = ExistTable(tablename);
+                ExistTable(tablename, result);
 
-                result.Add(tableCreated
-                    ? $"{tablename} 테이블 생성에 성공했습니다."
-                    : $"{tablename} 테이블 생성에 실패했습니다.");
-
-                if (errorMsg != string.Empty)
-                {
-                    result.Add(errorMsg);
-                }
-   
                 List<string>? defaultValueSql = table.GetDefaultInsertSql();
                 if (defaultValueSql == null) continue;
 
@@ -204,6 +191,8 @@ namespace AFMSDll
                 string log = table.CheckNewColumn(db);
                 if(log != "") result.Add(log);
             }
+
+
 
             Sync();
 
@@ -233,37 +222,7 @@ namespace AFMSDll
             return false;
         }
 
-        private void SetExampleReal(List<string> result, _FBTableBase table)
-        {
-
-            if (table.GetDefaultInsertSql() is List<string> exInserts)
-            {
-                foreach (string sql in exInserts)
-                {
-                    result.Add($"EX) " + sql);
-                }
-            }
-
-            if (table.GetExampleSql() is List<string> examples)
-            {
-                foreach (string sql in examples)
-                {
-                    result.Add($"EX) " + sql);
-                }
-            }
-        }
-
-        private void SetExampleDefalut(List<string> result, FBDatabase db, _FBTableBase table)
-        {
-            FBExample example = new FBExample(db, table.GetTableName());
-
-            result.Add("======INSERT======");
-            result.Add(example.SqlInsert);
-            result.Add("======UPDATE======");
-            result.Add(example.SqlUpdate);
-        }
-
-        public bool ExistTable(string tableName)
+        public bool ExistTable(string tableName, List<string> result)
         {
             string sql = @"SELECT COUNT(*) FROM RDB$RELATIONS";
             sql += $" WHERE TRIM(RDB$RELATION_NAME) = '{tableName}'";
@@ -276,9 +235,15 @@ namespace AFMSDll
             foreach (DataRow row in db.Results.Rows)
             {
                 int count = Convert.ToInt32(row[0].ToString());
-                return count > 0;
+
+                if (count > 0)
+                {
+                    result.Add($"{tableName} 테이블이 확인 완료");
+                    return true;
+                }
             }
 
+            result.Add($"{tableName} 테이블이 확인 실패");
             return false;
         }
 
