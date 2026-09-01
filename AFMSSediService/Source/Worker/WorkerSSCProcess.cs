@@ -56,10 +56,7 @@ namespace AFMSSediService
             return processed;
         }
 
-        private void ProcessDevice(
-            SscMeasurementKey key,
-            int deviceNumber,
-            RSandDeviceProfile profile)
+        private void ProcessDevice(SscMeasurementKey key, int deviceNumber, RSandDeviceProfile profile)
         {
             if (!profile.IsEnabled || repository.HasCalculation(key, deviceNumber)) return;
 

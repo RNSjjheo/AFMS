@@ -25,7 +25,6 @@ namespace AFMSSediService
 
             var builder = Host.CreateApplicationBuilder(args);
             builder.Services.Configure<SSCServiceOptions>(builder.Configuration.GetSection(SSCServiceOptions.SectionName));
-            builder.Services.Configure<RadsReplicationOptions>(builder.Configuration.GetSection(RadsReplicationOptions.SectionName));
             builder.Services.AddHostedService<WorkerSSCProcess>();
 
             var host = builder.Build();
