@@ -1,30 +1,28 @@
 ﻿using AFMSDll;
 using Microsoft.Extensions.Options;
 using System;
-using System.Collections.Generic;
 using System.Data;
-using System.Text;
 
 namespace AFMSSediService
 {
-    public class WorkerSSC : BackgroundService
+    internal abstract class WorkerSSC : BackgroundService
     {
-        private readonly ILogger<WorkerSSC> logger;
-        private readonly SSCServiceOptions options;
-        private readonly SscRepository repository = new SscRepository();
+        protected abstract Task<int> ProcessBatchAsync(RSandProfileSnapshot profile, SedFileWriter fileWriter, CancellationToken cancellationToken);
+        protected readonly ILogger Logger;
+        protected readonly SSCServiceOptions Options;
 
-        public WorkerSSC(ILogger<WorkerSSC> logger, IOptions<SSCServiceOptions> options)
+        protected WorkerSSC(ILogger logger, IOptions<SSCServiceOptions> options)
         {
-            this.logger = logger;
-            this.options = options.Value;
+            Logger = logger;
+            Options = options.Value;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             RSandProfileSnapshot profile = LoadLatestProfile();
-            SedFileWriter fileWriter = new SedFileWriter(options.DataDirectory);
+            SedFileWriter fileWriter = new SedFileWriter(Options.DataDirectory);
 
-            logger.LogInformation(
+            Logger.LogInformation(
                 "SSC 프로파일을 메모리에 로드했습니다. " +
                 "ProfileId={ProfileId}, " +
                 "A={ADeviceType}({ACellFrom}~{ACellTo}), " +
@@ -36,11 +34,11 @@ namespace AFMSSediService
                 profile.B.DeviceType,
                 profile.B.CellFrom,
                 profile.B.CellTo);
-            logger.LogInformation(
+            Logger.LogInformation(
                 "SSC 계산 시작시각={CalculationStartTime}, 배치크기={BatchSize}, Data폴더={DataDirectory}",
-                options.CalculationStartTime,
-                options.BatchSize,
-                options.DataDirectory);
+                Options.CalculationStartTime,
+                Options.BatchSize,
+                Options.DataDirectory);
 
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -48,7 +46,7 @@ namespace AFMSSediService
                 {
                     int processed = await ProcessBatchAsync(profile, fileWriter, stoppingToken);
                     if (processed > 0)
-                        logger.LogInformation("SSC 자료 {ProcessedCount}건을 처리했습니다.", processed);
+                        Logger.LogInformation("SSC 자료 {ProcessedCount}건을 처리했습니다.", processed);
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {
@@ -56,89 +54,14 @@ namespace AFMSSediService
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "SSC 처리 대상 조회 중 오류가 발생했습니다.");
+                    Logger.LogError(ex, "SSC 처리 대상 조회 중 오류가 발생했습니다.");
                 }
 
-                await Task.Delay(options.PollInterval, stoppingToken);
+                await Task.Delay(Options.PollInterval, stoppingToken);
             }
         }
 
-        private async Task<int> ProcessBatchAsync(RSandProfileSnapshot profile, SedFileWriter fileWriter, CancellationToken cancellationToken)
-        {
-            IReadOnlyList<SscMeasurementKey> keys = repository.LoadPendingKeys(options.CalculationStartTime, options.BatchSize, profile);
-            int processed = 0;
 
-            foreach (SscMeasurementKey key in keys)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-
-                try
-                {
-                    repository.MarkInProgress(key);
-                    ProcessDevice(key, 1, profile.A);
-                    ProcessDevice(key, 2, profile.B);
-
-                    SediSedimentRecord record = repository.LoadSedimentRecord(key, profile);
-                    string path = await fileWriter.WriteAsync(record, cancellationToken);
-
-                    repository.MarkCompleted(key);
-                    processed++;
-                    logger.LogInformation("SSC 계산과 SED 저장을 완료했습니다. 측정={MeasureDate} {MeasureTime}, 파일={FilePath}", key.MeasureDate, key.MeasureTime, path);
-                }
-                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-                {
-                    TryMarkPending(key);
-                    throw;
-                }
-                catch (Exception ex)
-                {
-                    TryMarkPending(key);
-                    logger.LogError(
-                        ex,
-                        "SSC 계산 또는 저장에 실패했습니다. 측정={MeasureDate} {MeasureTime}",
-                        key.MeasureDate,
-                        key.MeasureTime);
-                }
-            }
-
-            return processed;
-        }
-
-        private void ProcessDevice(
-            SscMeasurementKey key,
-            int deviceNumber,
-            RSandDeviceProfile profile)
-        {
-            if (!profile.IsEnabled || repository.HasCalculation(key, deviceNumber)) return;
-
-            ChannelMasterMeasurement source = repository.LoadChannelMaster(key, deviceNumber);
-            double discharge = repository.LoadDischarge(key);
-            SscCalculationResult result = SscCalculator.Calculate(source, profile, discharge);
-            repository.SaveCalculation(key, deviceNumber, result);
-
-            logger.LogInformation(
-                "SSC 계산 완료. 측정={MeasureDate} {MeasureTime}, 장비={DeviceNumber}, SSC={Ssc}",
-                key.MeasureDate,
-                key.MeasureTime,
-                deviceNumber,
-                result.Ssc);
-        }
-
-        private void TryMarkPending(SscMeasurementKey key)
-        {
-            try
-            {
-                repository.MarkPending(key);
-            }
-            catch (Exception ex)
-            {
-                logger.LogError(
-                    ex,
-                    "SSC 처리 상태 복원에 실패했습니다. 측정={MeasureDate} {MeasureTime}",
-                    key.MeasureDate,
-                    key.MeasureTime);
-            }
-        }
 
         private static RSandProfileSnapshot LoadLatestProfile()
         {
@@ -190,6 +113,7 @@ namespace AFMSSediService
         {
             RSandDeviceProfile profileA = CreateDeviceProfile(row, "A");
             RSandDeviceProfile profileB = CreateDeviceProfile(row, "B");
+
             return new RSandProfileSnapshot(
                 GetInt32(row, FbtRSANDPROFILE.COL_PROFILE_ID),
                 GetString(row, FbtRSANDPROFILE.COL_PROFILE_DATE),

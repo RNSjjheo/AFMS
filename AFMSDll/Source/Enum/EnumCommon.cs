@@ -31,6 +31,14 @@ namespace AFMSDll
         Unknown = 99
     }
 
+    public enum ChannelMasterType
+    { 
+        NONE = 0,
+        CM300,
+        CM600,
+        CM1200
+    }
+
     public enum HydroVideoType
     {
         NONE = 0,

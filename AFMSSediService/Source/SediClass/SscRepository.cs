@@ -11,20 +11,18 @@ namespace AFMSSediService
     {
         private const string ChannelMaster = "CHANNELMASTER";
 
-        public IReadOnlyList<SscMeasurementKey> LoadPendingKeys(
-            DateTime startTime,
-            int batchSize,
-            RSandProfileSnapshot profile)
+        public IReadOnlyList<SscMeasurementKey> LoadPendingKeys(DateTime startTime, int batchSize, RSandProfileSnapshot profile)
         {
             int count = Math.Clamp(batchSize, 1, 1000);
             string start = startTime.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture);
 
-            List<string> readyConditions = [];
+            List<string> readyConditions = new List<string>();
             if (profile.A.IsEnabled) readyConditions.Add("COALESCE(HYDROMETER1FLAG, 'N') = 'Y'");
             if (profile.B.IsEnabled) readyConditions.Add("COALESCE(HYDROMETER2FLAG, 'N') = 'Y'");
             if (readyConditions.Count == 0) return [];
 
-            List<string> missingCalculations = [];
+            List<string> missingCalculations = new List<string>();
+
             if (profile.A.IsEnabled)
                 missingCalculations.Add("COALESCE(TRIM(S.ADEVICETYPE), '') = ''");
             if (profile.B.IsEnabled)
@@ -61,9 +59,7 @@ namespace AFMSSediService
                    !string.IsNullOrWhiteSpace(GetString(table.Rows[0], $"{prefix}DEVICETYPE"));
         }
 
-        public ChannelMasterMeasurement LoadChannelMaster(
-            SscMeasurementKey key,
-            int deviceNumber)
+        public ChannelMasterMeasurement LoadChannelMaster(SscMeasurementKey key, int deviceNumber)
         {
             string tableName = deviceNumber == 1 ? "RHYDROMETER1" : "RHYDROMETER2";
             string cellTableName = deviceNumber == 1 ? "RHYDROMETER1CELL" : "RHYDROMETER2CELL";
@@ -124,10 +120,7 @@ namespace AFMSSediService
             return table.Rows.Count == 0 ? 0.0 : GetDouble(table.Rows[0], "AVGSTREAM");
         }
 
-        public void SaveCalculation(
-            SscMeasurementKey key,
-            int deviceNumber,
-            SscCalculationResult result)
+        public void SaveCalculation(SscMeasurementKey key, int deviceNumber, SscCalculationResult result)
         {
             string prefix = GetDevicePrefix(deviceNumber);
             string columns = "MEASUREDATE, MEASURETIME,";
@@ -163,9 +156,7 @@ namespace AFMSSediService
             }
         }
 
-        public SediSedimentRecord LoadSedimentRecord(
-            SscMeasurementKey key,
-            RSandProfileSnapshot profile)
+        public SediSedimentRecord LoadSedimentRecord(SscMeasurementKey key, RSandProfileSnapshot profile)
         {
             SediSedimentRecord record = new SediSedimentRecord
             {
@@ -187,11 +178,7 @@ namespace AFMSSediService
             return record;
         }
 
-        private bool AddAdvm(
-            SediSedimentRecord record,
-            SscMeasurementKey key,
-            int deviceNumber,
-            RSandDeviceProfile profile)
+        private bool AddAdvm(SediSedimentRecord record, SscMeasurementKey key, int deviceNumber, RSandDeviceProfile profile)
         {
             if (!profile.IsEnabled || !HasCalculation(key, deviceNumber)) return false;
 

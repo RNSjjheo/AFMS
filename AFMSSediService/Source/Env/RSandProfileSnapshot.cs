@@ -4,13 +4,7 @@ using System.Text;
 
 namespace AFMSSediService
 {
-    internal sealed record RSandProfileSnapshot(
-        int ProfileId,
-        string ProfileDate,
-        string ProfileTime,
-        string ProfileName,
-        RSandDeviceProfile A,
-        RSandDeviceProfile B);
+    internal sealed record RSandProfileSnapshot(int ProfileId, string ProfileDate, string ProfileTime, string ProfileName, RSandDeviceProfile A, RSandDeviceProfile B);
 
     internal sealed record RSandDeviceProfile(
         string SetupFlag,
