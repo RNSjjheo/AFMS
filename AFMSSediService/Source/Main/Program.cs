@@ -25,6 +25,7 @@ namespace AFMSSediService
 
             var builder = Host.CreateApplicationBuilder(args);
             builder.Services.Configure<SSCServiceOptions>(builder.Configuration.GetSection(SSCServiceOptions.SectionName));
+            builder.Services.AddHostedService<SediSlotWorker>();
             builder.Services.AddHostedService<WorkerSSCProcess>();
 
             var host = builder.Build();
