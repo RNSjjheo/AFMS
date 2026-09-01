@@ -57,6 +57,19 @@ namespace AFMSDataViewer
             }
         }
 
+        public void SetInitialRetention(TimeSpan retention)
+        {
+            ValidateRetention(retention);
+
+            lock (_syncRoot)
+            {
+                if (_slots.Count > 0)
+                    throw new InvalidOperationException("데이터가 로드된 후에는 초기 보관 기간을 변경할 수 없습니다.");
+
+                _retention = retention;
+            }
+        }
+
         public long Version
         {
             get

@@ -6,13 +6,8 @@ namespace AFMSDataViewer
 {
     public class ViewRealtime : TableLayoutPanel
     {
-        private sealed record QueryPeriodOption(RealtimeQueryPeriod Period, string Text)
-        {
-            public TimeSpan Duration => TimeSpan.FromHours((int)Period);
-            public override string ToString() => Text;
-        }
-
         private const int LAYOUT_ICON_SIZE = 16;
+        private MeasurementQueryRange _queryRange = new MeasurementQueryRange();
         public AFMSPanel uiPnHeader;
         public MaximizableTableLayoutPanel uiTpField;
         public AFMSComboBox uiRangeCombo;
@@ -29,9 +24,7 @@ namespace AFMSDataViewer
         private readonly MeasurementDataHub measurementDataHub;
         private readonly MeasurementRefreshService measurementRefreshService;
 
-        public ViewRealtime(
-            MeasurementDataHub measurementDataHub,
-            MeasurementRefreshService measurementRefreshService)
+        public ViewRealtime(MeasurementDataHub measurementDataHub, MeasurementRefreshService measurementRefreshService)
         {
             ArgumentNullException.ThrowIfNull(measurementDataHub);
             ArgumentNullException.ThrowIfNull(measurementRefreshService);
@@ -94,11 +87,13 @@ namespace AFMSDataViewer
                 BorderRadius = 5,
                 PlaceholderText = "조회 시간"
             };
-            QueryPeriodOption defaultPeriod = new(RealtimeQueryPeriod.Hours6, "최근 6시간");
-            uiRangeCombo.Items.Add(defaultPeriod);
-            uiRangeCombo.Items.Add(new QueryPeriodOption(RealtimeQueryPeriod.Hours12, "최근 12시간"));
-            uiRangeCombo.Items.Add(new QueryPeriodOption(RealtimeQueryPeriod.Hours24, "최근 24시간"));
-            uiRangeCombo.SelectedItem = defaultPeriod;
+
+            foreach (QueryPeriodOption option in _queryRange)
+            {
+                uiRangeCombo.Items.Add(option);
+            }
+            uiRangeCombo.SelectedItem = _queryRange[0];
+            measurementDataHub.SetInitialRetention(GetSelectedDuration());
             uiRangeCombo.SelectedIndexChanged += UiRangeCombo_SelectedIndexChanged;
 
             uiBtnTemp = new AFMSButtonGroup();
@@ -156,8 +151,7 @@ namespace AFMSDataViewer
         {
             DateTime start = selectedDateTime.Subtract(GetSelectedDuration());
 
-            DateTime trackingTime = start.AddTicks(GetSelectedDuration().Ticks * 3 / 4);
-            uiTracking?.SetRange(start, selectedDateTime, trackingTime);
+            uiTracking?.SetRange(start, selectedDateTime, selectedDateTime);
 
             uiChart1?.SetTimeRange(start, selectedDateTime);
             uiChart2?.SetTimeRange(start, selectedDateTime);
