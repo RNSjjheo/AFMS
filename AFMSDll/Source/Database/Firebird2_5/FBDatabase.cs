@@ -43,6 +43,12 @@ namespace AFMSDll
             return ExecuteCore(query.Sql, query.ReturnsRows, query.Row, query.Columns, out error);
         }
 
+        public void RunQuery(string query, out string error)
+        {
+            Execute(query, out error);
+        }
+
+
         public string RunQuery(string query)
         {
             Execute(query, out string error);
