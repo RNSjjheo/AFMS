@@ -6,6 +6,8 @@ namespace AFMSDischargeService
 {
     internal sealed class QSurfaceVelocityCalculator : QCalculatorBase
     {
+        private const double ChannelMasterVelocityScale = 0.001;
+
         private sealed class SurfaceVelocityCoefficient
         {
             public double MaxVi { get; init; }
@@ -478,7 +480,40 @@ namespace AFMSDischargeService
             Measurement.WaterLevel = waterLevel;
             Measurement.WaterLevelDate = Calculation.SlotDate;
             Measurement.WaterLevelTime = Calculation.SlotTime;
+            if (Measurement.Table is FbtRHYDROMETER)
+                return TryLoadChannelMasterVelocity(db, out loaded, out error);
             return TryLoadTransectMeasurements(db, out loaded, out error);
+        }
+
+        private bool TryLoadChannelMasterVelocity(FBDatabase db, out bool loaded, out string error)
+        {
+            loaded = false;
+            string date = Measurement.SourceDate.ToString("yyyyMMdd");
+            string time = Measurement.SourceTime.ToString("HHmmss");
+            string sql = $"SELECT FIRST 1 {FbtRHYDROMETER.COL_AVG_VELOCITY}";
+            sql += $" FROM {Measurement.TableName}";
+            sql += $" WHERE {FbtRHYDROMETER.COL_MEASURE_DATE} = '{date}'";
+            sql += $" AND {FbtRHYDROMETER.COL_MEASURE_TIME} = '{time}'";
+            sql += $" AND UPPER(TRIM({FbtRHYDROMETER.COL_HYDRO_KIND})) = 'CHANNELMASTER'";
+            sql += $" AND {FbtRHYDROMETER.COL_AVG_VELOCITY} IS NOT NULL";
+
+            DataTable table = db.Execute(sql, out error);
+            if (!string.IsNullOrEmpty(error)) return false;
+            if (table.Rows.Count == 0) return true;
+
+            double velocity = Convert.ToDouble(table.Rows[0][FbtRHYDROMETER.COL_AVG_VELOCITY]) * ChannelMasterVelocityScale;
+            if (!double.IsFinite(velocity))
+            {
+                error = $"ChannelMaster 평균 유속값이 올바르지 않습니다: {date} {time}";
+                return false;
+            }
+
+            foreach (Transect transect in CalculationTransects)
+                Measurement.Transects.Add(new QTransectMeasurement { No = transect.No, Velocity = velocity });
+
+            loaded = Measurement.Transects.Count > 0;
+            error = string.Empty;
+            return true;
         }
 
         private bool TryLoadTransectMeasurements(

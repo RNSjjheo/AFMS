@@ -276,9 +276,9 @@ namespace AFMSDischargeService
 
                 if (!calculator.TryConnectMeasurementTable(db, out string measurementTableError))
                 {
-                    throw new InvalidOperationException(
-                        $"측정 테이블 연결 실패 " +
-                        $"({calculator.Configuration.DeviceType} {calculator.Configuration.DeviceId}, {calculator.Configuration.Method}): {measurementTableError}");
+                    logger.LogWarning("유량 객체를 제외합니다: {DeviceType} {DeviceId}, {MethodName}, 측정 테이블 연결 실패: {Error}", calculator.Configuration.DeviceType,
+                        calculator.Configuration.DeviceId, GetMethodLogName(calculator.Configuration.Method), measurementTableError);
+                    continue;
                 }
 
                 bool hasMeasurementStart = calculator.TryLoadMeasurementStart(db, out string measurementStartError);
@@ -308,7 +308,8 @@ namespace AFMSDischargeService
                     : "없음";
 
                 logger.LogInformation(
-                    "유량 객체 시작값: {DeviceType} {DeviceId} ({DeviceName}), {MethodName}, 측정 테이블 {MeasurementTable}, 마지막 산정값 {LastCalculatedSource}, 유속 시작값 {MeasurementStart}, 슬롯 시작값 {SlotStart}",
+                    "유량 객체 시작값: {DeviceType} {DeviceId} ({DeviceName}), {MethodName}, 측정 테이블 {MeasurementTable}, " +
+                    "마지막 산정값 {LastCalculatedSource}, 유속 시작값 {MeasurementStart}, 슬롯 시작값 {SlotStart}",
                     calculator.Configuration.DeviceType,
                     calculator.Configuration.DeviceId,
                     calculator.Measurement.DeviceName,

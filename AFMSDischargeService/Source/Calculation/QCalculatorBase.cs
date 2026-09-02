@@ -336,6 +336,8 @@ namespace AFMSDischargeService
                 Measurement.Table = new FbtHYDROMETERMPDS();
             else if (string.Equals(Measurement.TableName, FbtHYDROMETERVIDEO.TABLE_NAME, StringComparison.OrdinalIgnoreCase))
                 Measurement.Table = new FbtHYDROMETERVIDEO();
+            else if (Configuration.Method == DischargeMethod.SurfaceVelo)
+                Measurement.Table = CreateChannelMasterTable(Measurement.TableName);
 
             if (Measurement.Table == null)
             {
@@ -381,7 +383,7 @@ namespace AFMSDischargeService
             if (resultTable.Rows.Count > 0 && resultTable.Rows[0][0] != DBNull.Value)
                 Measurement.LastCalculatedSourceTime = Convert.ToDateTime(resultTable.Rows[0][0]);
 
-            bool hasMeasurementId = Configuration.DeviceType == MeasurementDeviceType.VelocityMeter;
+            bool hasMeasurementId = Configuration.DeviceType == MeasurementDeviceType.VelocityMeter && Measurement.Table is not FbtRHYDROMETER;
             string sourceSql = "SELECT FIRST 1";
             if (hasMeasurementId) sourceSql += $" {FbtAFMSHydroMeter.COL_ID},";
             sourceSql += $" {FbtAFMSHydroMeter.COL_MEASURE_DATE},";
@@ -390,6 +392,8 @@ namespace AFMSDischargeService
             string calculationStart = calculationStartTime
                 .ToString("yyyyMMdd HHmmss", CultureInfo.InvariantCulture);
             sourceSql += $" WHERE {_FBTableBase.SQL_MEASURE_DATETIME} >= '{calculationStart}'";
+            if (Measurement.Table is FbtRHYDROMETER)
+                sourceSql += $" AND UPPER(TRIM({FbtRHYDROMETER.COL_HYDRO_KIND})) = 'CHANNELMASTER'";
             if (Measurement.LastCalculatedSourceTime.HasValue)
             {
                 string lastSourceDateTime = Measurement.LastCalculatedSourceTime.Value.ToString("yyyyMMdd HHmmss", CultureInfo.InvariantCulture);
@@ -442,6 +446,9 @@ namespace AFMSDischargeService
             if (Measurement.Table is FbtWATERLEVEL)
                 return TryCheckWaterLevelReceived(db, out received, out error);
 
+            if (Measurement.Table is FbtRHYDROMETER)
+                return TryCheckChannelMasterReceived(db, out received, out error);
+
             if (Measurement.SourceId < 0) return true;
 
             if (Measurement.Table is FbtHYDROMETERMPDS)
@@ -484,6 +491,9 @@ namespace AFMSDischargeService
 
             if (!Measurement.HasSource || Measurement.Table is FbtWATERLEVEL)
                 return true;
+
+            if (Measurement.Table is FbtRHYDROMETER)
+                return TryMoveToNextReceivedChannelMaster(db, out moved, out error);
 
             string expectedCountColumn;
             string measureOkColumn;
@@ -537,6 +547,86 @@ namespace AFMSDischargeService
             Measurement.SourceTime = parsedTime;
             moved = true;
             return true;
+        }
+
+        private bool TryCheckChannelMasterReceived(FBDatabase db, out bool received, out string error)
+        {
+            received = false;
+            if (!TryGetChannelMasterReadyFlag(out string readyFlagColumn))
+            {
+                error = $"ChannelMaster 수신 완료 플래그를 확인할 수 없는 측정 테이블입니다: {Measurement.TableName}";
+                return false;
+            }
+
+            string date = Measurement.SourceDate.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+            string time = Measurement.SourceTime.ToString("HHmmss", CultureInfo.InvariantCulture);
+            string sql = $"SELECT COUNT(*) FROM {FbtRPOINT.TABLE_NAME}";
+            sql += $" WHERE {FbtRPOINT.COL_MEASURE_DATE} = '{date}'";
+            sql += $" AND {FbtRPOINT.COL_MEASURE_TIME} = '{time}'";
+            sql += $" AND COALESCE({readyFlagColumn}, 'N') = 'Y'";
+
+            DataTable table = db.Execute(sql, out error);
+            received = string.IsNullOrEmpty(error) && table.Rows.Count > 0 && Convert.ToInt32(table.Rows[0][0]) > 0;
+            return string.IsNullOrEmpty(error);
+        }
+
+        private bool TryMoveToNextReceivedChannelMaster(FBDatabase db, out bool moved, out string error)
+        {
+            moved = false;
+            if (!TryGetChannelMasterReadyFlag(out string readyFlagColumn))
+            {
+                error = $"ChannelMaster 수신 완료 플래그를 확인할 수 없는 측정 테이블입니다: {Measurement.TableName}";
+                return false;
+            }
+
+            string currentDateTime = $"{Measurement.SourceDate:yyyyMMdd} {Measurement.SourceTime:HHmmss}";
+            string sql = $"SELECT FIRST 1 M.{_FBTableBase.COL_MEASURE_DATE}, M.{_FBTableBase.COL_MEASURE_TIME}";
+            sql += $" FROM {Measurement.TableName} M";
+            sql += $" INNER JOIN {FbtRPOINT.TABLE_NAME} P";
+            sql += $" ON P.{FbtRPOINT.COL_MEASURE_DATE} = M.{_FBTableBase.COL_MEASURE_DATE}";
+            sql += $" AND P.{FbtRPOINT.COL_MEASURE_TIME} = M.{_FBTableBase.COL_MEASURE_TIME}";
+            sql += $" WHERE (M.{_FBTableBase.COL_MEASURE_DATE} || ' ' || M.{_FBTableBase.COL_MEASURE_TIME}) > '{currentDateTime}'";
+            sql += $" AND UPPER(TRIM(M.{FbtRHYDROMETER.COL_HYDRO_KIND})) = 'CHANNELMASTER'";
+            sql += $" AND COALESCE(P.{readyFlagColumn}, 'N') = 'Y'";
+            sql += $" ORDER BY M.{_FBTableBase.COL_MEASURE_DATE}, M.{_FBTableBase.COL_MEASURE_TIME}";
+
+            DataTable table = db.Execute(sql, out error);
+            if (!string.IsNullOrEmpty(error) || table.Rows.Count == 0) return string.IsNullOrEmpty(error);
+
+            DataRow row = table.Rows[0];
+            string measureDate = Convert.ToString(row[_FBTableBase.COL_MEASURE_DATE]) ?? string.Empty;
+            string measureTime = Convert.ToString(row[_FBTableBase.COL_MEASURE_TIME]) ?? string.Empty;
+            if (!TryParseMeasureDateTime(measureDate, measureTime, out DateOnly parsedDate, out TimeOnly parsedTime))
+            {
+                error = $"다음 ChannelMaster 자료의 측정시각 형식이 올바르지 않습니다: {measureDate} {measureTime}";
+                return false;
+            }
+
+            Measurement.SourceId = -1;
+            Measurement.SourceDate = parsedDate;
+            Measurement.SourceTime = parsedTime;
+            moved = true;
+            return true;
+        }
+
+        private bool TryGetChannelMasterReadyFlag(out string readyFlagColumn)
+        {
+            readyFlagColumn = Measurement.Table switch
+            {
+                FbtRHYDROMETER1 => FbtRPOINT.COL_HYDROMETER1_FLAG,
+                FbtRHYDROMETER2 => FbtRPOINT.COL_HYDROMETER2_FLAG,
+                FbtRHYDROMETER3 => FbtRPOINT.COL_HYDROMETER3_FLAG,
+                _ => string.Empty
+            };
+            return !string.IsNullOrEmpty(readyFlagColumn);
+        }
+
+        private static FbtRHYDROMETER? CreateChannelMasterTable(string tableName)
+        {
+            if (string.Equals(tableName, FbtRHYDROMETER1.TABLE_NAME, StringComparison.OrdinalIgnoreCase)) return new FbtRHYDROMETER1();
+            if (string.Equals(tableName, FbtRHYDROMETER2.TABLE_NAME, StringComparison.OrdinalIgnoreCase)) return new FbtRHYDROMETER2();
+            if (string.Equals(tableName, FbtRHYDROMETER3.TABLE_NAME, StringComparison.OrdinalIgnoreCase)) return new FbtRHYDROMETER3();
+            return null;
         }
 
         private bool TryCheckWaterLevelReceived(FBDatabase db, out bool received, out string error)
