@@ -62,28 +62,28 @@ namespace AFMSSediService
         protected static DateTime? GetLatestSlotTime()
         {
             QueryBuilderSelect query = new();
-            query.Table = FbtAFMSSediTimeslot.TABLE_NAME;
+            query.Table = FbtAFMSSediSSCTimeslot.TABLE_NAME;
             query.First = 1;
-            query.Add(FbtAFMSSediTimeslot.COL_SLOT_TIME);
-            query.OrderByDesc(FbtAFMSSediTimeslot.COL_SLOT_TIME);
+            query.Add(FbtAFMSSediSSCTimeslot.COL_SLOT_TIME);
+            query.OrderByDesc(FbtAFMSSediSSCTimeslot.COL_SLOT_TIME);
 
             using FBDatabase db = FBProvider.Instance.CreateDatabase();
             DataTable table = db.Execute(query, out string error);
             if (!string.IsNullOrEmpty(error)) throw new InvalidOperationException(error);
-            if (table.Rows.Count == 0 || table.Rows[0][FbtAFMSSediTimeslot.COL_SLOT_TIME] == DBNull.Value) return null;
+            if (table.Rows.Count == 0 || table.Rows[0][FbtAFMSSediSSCTimeslot.COL_SLOT_TIME] == DBNull.Value) return null;
 
-            return Convert.ToDateTime(table.Rows[0][FbtAFMSSediTimeslot.COL_SLOT_TIME]);
+            return Convert.ToDateTime(table.Rows[0][FbtAFMSSediSSCTimeslot.COL_SLOT_TIME]);
         }
 
         protected static string InsertSlot(DateTime slotTime)
         {
             QueryBuilderInsert query = new();
-            query.Table = FbtAFMSSediTimeslot.TABLE_NAME;
-            query.AutoIncrement = FbtAFMSSediTimeslot.COL_ID;
-            query.Value(FbtAFMSSediTimeslot.COL_MEASURE_DATE, slotTime.ToString("yyyyMMdd"));
-            query.Value(FbtAFMSSediTimeslot.COL_MEASURE_TIME, slotTime.ToString("HHmmss"));
-            query.Value(FbtAFMSSediTimeslot.COL_SLOT_TIME, slotTime, typeof(DateTime));
-            query.Value(FbtAFMSSediTimeslot.COL_SEND_STATUS, SediTransmissionStatus.NOT_SEND.ToString());
+            query.Table = FbtAFMSSediSSCTimeslot.TABLE_NAME;
+            query.AutoIncrement = FbtAFMSSediSSCTimeslot.COL_ID;
+            query.Value(FbtAFMSSediSSCTimeslot.COL_MEASURE_DATE, slotTime.ToString("yyyyMMdd"));
+            query.Value(FbtAFMSSediSSCTimeslot.COL_MEASURE_TIME, slotTime.ToString("HHmmss"));
+            query.Value(FbtAFMSSediSSCTimeslot.COL_SLOT_TIME, slotTime, typeof(DateTime));
+            query.Value(FbtAFMSSediSSCTimeslot.COL_SEND_STATUS, SediTransmissionStatus.NOT_SEND.ToString());
 
             using FBDatabase db = FBProvider.Instance.CreateDatabase();
             db.Execute(query, out string error);

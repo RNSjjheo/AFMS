@@ -8,29 +8,17 @@ namespace AFMSDll
     {
         public const string TABLE_NAME = "RSAND";
 
-        public const string COL_A_DEVICE_TYPE = "ADEVICETYPE";
-        public const string COL_A_AVG_SCB = "AAVG_SCB";
-        public const string COL_A_A = "AA";
-        public const string COL_A_B = "AB";
-        public const string COL_A_SA = "ASA";
-        public const string COL_A_SB = "ASB";
-        public const string COL_A_SSC = "ASSC";
-        public const string COL_A_DISCHARGE1 = "ADISCHARGE1";
-        public const string COL_A_DISCHARGE2 = "ADISCHARGE2";
-        public const string COL_A_TOTAL_SAND1 = "ATOTALSAND1";
-        public const string COL_A_TOTAL_SAND2 = "ATOTALSAND2";
-
-        public const string COL_B_DEVICE_TYPE = "BDEVICETYPE";
-        public const string COL_B_AVG_SCB = "BAVG_SCB";
-        public const string COL_B_A = "BA";
-        public const string COL_B_B = "BB";
-        public const string COL_B_SA = "BSA";
-        public const string COL_B_SB = "BSB";
-        public const string COL_B_SSC = "BSSC";
-        public const string COL_B_DISCHARGE1 = "BDISCHARGE1";
-        public const string COL_B_DISCHARGE2 = "BDISCHARGE2";
-        public const string COL_B_TOTAL_SAND1 = "BTOTALSAND1";
-        public const string COL_B_TOTAL_SAND2 = "BTOTALSAND2";
+        public const string COL_DEVICE_TYPE = "DEVICETYPE";
+        public const string COL_AVG_SCB = "AVG_SCB";
+        public const string COL_A = "A";
+        public const string COL_B = "B";
+        public const string COL_SA = "SA";
+        public const string COL_SB = "SB";
+        public const string COL_SSC = "SSC";
+        public const string COL_DISCHARGE1 = "DISCHARGE1";
+        public const string COL_DISCHARGE2 = "DISCHARGE2";
+        public const string COL_TOTAL_SAND1 = "TOTALSAND1";
+        public const string COL_TOTAL_SAND2 = "TOTALSAND2";
 
         public override string GetTableName()
         {
@@ -44,29 +32,17 @@ namespace AFMSDll
             sql.AppendLine($"{COL_MEASURE_DATE} CHAR(8) NOT NULL,");
             sql.AppendLine($"{COL_MEASURE_TIME} CHAR(6) NOT NULL,");
 
-            sql.AppendLine($"{COL_A_DEVICE_TYPE} VARCHAR(20),");
-            sql.AppendLine($"{COL_A_AVG_SCB} DOUBLE PRECISION,");
-            sql.AppendLine($"{COL_A_A} DOUBLE PRECISION,");
-            sql.AppendLine($"{COL_A_B} DOUBLE PRECISION,");
-            sql.AppendLine($"{COL_A_SA} DOUBLE PRECISION,");
-            sql.AppendLine($"{COL_A_SB} DOUBLE PRECISION,");
-            sql.AppendLine($"{COL_A_SSC} DOUBLE PRECISION,");
-            sql.AppendLine($"{COL_A_DISCHARGE1} DOUBLE PRECISION,");
-            sql.AppendLine($"{COL_A_DISCHARGE2} DOUBLE PRECISION,");
-            sql.AppendLine($"{COL_A_TOTAL_SAND1} DOUBLE PRECISION,");
-            sql.AppendLine($"{COL_A_TOTAL_SAND2} DOUBLE PRECISION,");
-
-            sql.AppendLine($"{COL_B_DEVICE_TYPE} VARCHAR(20),");
-            sql.AppendLine($"{COL_B_AVG_SCB} DOUBLE PRECISION,");
-            sql.AppendLine($"{COL_B_A} DOUBLE PRECISION,");
-            sql.AppendLine($"{COL_B_B} DOUBLE PRECISION,");
-            sql.AppendLine($"{COL_B_SA} DOUBLE PRECISION,");
-            sql.AppendLine($"{COL_B_SB} DOUBLE PRECISION,");
-            sql.AppendLine($"{COL_B_SSC} DOUBLE PRECISION,");
-            sql.AppendLine($"{COL_B_DISCHARGE1} DOUBLE PRECISION,");
-            sql.AppendLine($"{COL_B_DISCHARGE2} DOUBLE PRECISION,");
-            sql.AppendLine($"{COL_B_TOTAL_SAND1} DOUBLE PRECISION,");
-            sql.AppendLine($"{COL_B_TOTAL_SAND2} DOUBLE PRECISION,");
+            sql.AppendLine($"{COL_DEVICE_TYPE} VARCHAR(20),");
+            sql.AppendLine($"{COL_AVG_SCB} DOUBLE PRECISION,");
+            sql.AppendLine($"{COL_A} DOUBLE PRECISION,");
+            sql.AppendLine($"{COL_B} DOUBLE PRECISION,");
+            sql.AppendLine($"{COL_SA} DOUBLE PRECISION,");
+            sql.AppendLine($"{COL_SB} DOUBLE PRECISION,");
+            sql.AppendLine($"{COL_SSC} DOUBLE PRECISION,");
+            sql.AppendLine($"{COL_DISCHARGE1} DOUBLE PRECISION,");
+            sql.AppendLine($"{COL_DISCHARGE2} DOUBLE PRECISION,");
+            sql.AppendLine($"{COL_TOTAL_SAND1} DOUBLE PRECISION,");
+            sql.AppendLine($"{COL_TOTAL_SAND2} DOUBLE PRECISION,");
 
             sql.AppendLine($"CONSTRAINT PK_{TABLE_NAME} PRIMARY KEY ({COL_MEASURE_DATE}, {COL_MEASURE_TIME})");
             sql.Append(')');

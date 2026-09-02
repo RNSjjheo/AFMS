@@ -30,10 +30,10 @@ namespace AFMSSediService
             stoppingToken.ThrowIfCancellationRequested();
 
             List<string> tableLogs = [];
-            if (!FBProvider.Instance.ExistTable(FbtAFMSSediTimeslot.TABLE_NAME, tableLogs))
+            if (!FBProvider.Instance.ExistTable(FbtAFMSSediSSCTimeslot.TABLE_NAME, tableLogs))
             {
                 throw new InvalidOperationException(
-                    $"{FbtAFMSSediTimeslot.TABLE_NAME} 테이블을 준비하지 못해 서비스를 시작할 수 없습니다.");
+                    $"{FbtAFMSSediSSCTimeslot.TABLE_NAME} 테이블을 준비하지 못해 서비스를 시작할 수 없습니다.");
             }
 
             CreateMissingSlots(stoppingToken);

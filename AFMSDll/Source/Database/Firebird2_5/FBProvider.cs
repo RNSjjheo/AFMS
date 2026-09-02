@@ -278,11 +278,13 @@ namespace AFMSDll
             tables.Add(new FbtRHYDROMETER1CELL());
             tables.Add(new FbtRHYDROMETER2());
             tables.Add(new FbtRHYDROMETER2CELL());
-            tables.Add(new FbtRSAND());
-            tables.Add(new FbtRSANDDETAIL());
-            tables.Add(new FbtRSANDPROFILE());
-            tables.Add(new FbtAFMSSediTimeslot());
-            tables.Add(new FbtAFMSSSCResult());
+            tables.Add(new FbtRHYDROMETER3());
+            tables.Add(new FbtRHYDROMETER3CELL());
+            //tables.Add(new FbtRSAND());
+            //tables.Add(new FbtRSANDDETAIL());
+            tables.Add(new FbtAFMSSediSSCProfile());
+            tables.Add(new FbtAFMSSediSSCTimeslot());
+            tables.Add(new FbtAFMSSediSSCResult());
             tables.Add(new FbtAFMSSediResult());
             tables.Add(new FbtSETUP());
 
