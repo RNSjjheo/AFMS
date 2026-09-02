@@ -170,8 +170,14 @@ namespace AFMSSettings
 
         private void TransectInput(DataRow row)
         {
-            int hydroId = Convert.ToInt32(row[COL_HYDRO_ID]);
-            int transectCount = Convert.ToInt32(row[COL_TRANSECT_CNT]);
+            int hydroId = row[COL_HYDRO_ID].ToInt();
+            int transectCount = row[COL_TRANSECT_CNT].ToInt();
+
+            if (hydroId <= 0)
+            {
+                MessageBox.Show("유속계 식별자가 올바르지 않습니다.", "측선 입력", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
 
             if (transectCount <= 0)
             {

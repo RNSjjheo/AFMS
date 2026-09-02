@@ -25,22 +25,10 @@ namespace AFMSSediService
             ChannelMasterSource source = ChannelMasterSource.FromProfile(profile.Device);
             SedFileWriter fileWriter = new SedFileWriter(Options.DataDirectory);
 
-            Logger.LogInformation(
-                "SSC 프로파일을 메모리에 로드했습니다. " +
-                "ProfileId={ProfileId}, " +
-                "Device={DeviceType}, HydroTable={HydroTableName}({CellFrom}~{CellTo}), " +
-                "Source={HeaderTable}/{CellTable}",
-                profile.ProfileId,
-                profile.Device.DeviceType,
-                profile.Device.HydroTableName,
-                profile.Device.CellFrom,
-                profile.Device.CellTo,
-                source.HeaderTable,
-                source.CellTable);
-            Logger.LogInformation(
-                "SSC 계산 시작시각={CalculationStartTime}, 배치크기={BatchSize}, Data폴더={DataDirectory}",
-                Options.CalculationStartTime,
-                Options.BatchSize,
+            Logger.LogInformation("SSC 프로파일을 메모리에 로드했습니다. ProfileId={ProfileId}, Device={DeviceType}, " +
+                "HydroTable={HydroTableName}({CellFrom}~{CellTo}), Source={HeaderTable}/{CellTable}", profile.ProfileId, profile.Device.DeviceType,
+                profile.Device.HydroTableName, profile.Device.CellFrom, profile.Device.CellTo, source.HeaderTable, source.CellTable);
+            Logger.LogInformation("SSC 계산 시작시각={CalculationStartTime}, 배치크기={BatchSize}, Data폴더={DataDirectory}", Options.CalculationStartTime, Options.BatchSize,
                 Options.DataDirectory);
 
             while (!stoppingToken.IsCancellationRequested)
@@ -87,19 +75,16 @@ namespace AFMSSediService
             db.RunQuery(sql, out string error);
 
             if (!string.IsNullOrEmpty(error))
-                throw new InvalidOperationException(
-                    $"{FbtAFMSSediSSCProfile.TABLE_NAME} 조회에 실패했습니다.\n{error}");
+                throw new InvalidOperationException($"{FbtAFMSSediSSCProfile.TABLE_NAME} 조회에 실패했습니다.\n{error}");
             if (db.Results.Rows.Count == 0)
             {
                 InsertDefaultProfile(db);
                 db.RunQuery(sql, out error);
 
                 if (!string.IsNullOrEmpty(error))
-                    throw new InvalidOperationException(
-                        $"기본 SSC 연산 프로파일 저장 후 조회에 실패했습니다.\n{error}");
+                    throw new InvalidOperationException($"기본 SSC 연산 프로파일 저장 후 조회에 실패했습니다.\n{error}");
                 if (db.Results.Rows.Count == 0)
-                    throw new InvalidOperationException(
-                        $"{FbtAFMSSediSSCProfile.TABLE_NAME} 기본 프로파일을 조회할 수 없습니다.");
+                    throw new InvalidOperationException($"{FbtAFMSSediSSCProfile.TABLE_NAME} 기본 프로파일을 조회할 수 없습니다.");
             }
 
             return CreateSnapshot(db.Results.Rows[0]);
@@ -127,8 +112,7 @@ namespace AFMSSediService
 
             db.Execute(query, out string error);
             if (!string.IsNullOrEmpty(error))
-                throw new InvalidOperationException(
-                    $"{FbtAFMSSediSSCProfile.TABLE_NAME} 기본 프로파일 저장에 실패했습니다.\n{error}");
+                throw new InvalidOperationException($"{FbtAFMSSediSSCProfile.TABLE_NAME} 기본 프로파일 저장에 실패했습니다.\n{error}");
         }
 
         private static SSCProfileSnapshot CreateSnapshot(DataRow row)
@@ -162,8 +146,7 @@ namespace AFMSSediService
                 return Enum.Parse<HydroMetherTableType>(value);
             }
 
-            throw new InvalidOperationException(
-                $"{FbtAFMSSediSSCProfile.TABLE_NAME}.{FbtAFMSSediSSCProfile.COL_HYDRO_TABLE_NAME} 값이 올바르지 않습니다. " +
+            throw new InvalidOperationException($"{FbtAFMSSediSSCProfile.TABLE_NAME}.{FbtAFMSSediSSCProfile.COL_HYDRO_TABLE_NAME} 값이 올바르지 않습니다. " +
                 $"현재 값='{value}', 허용 값={string.Join(", ", allowedValues)}");
         }
 
