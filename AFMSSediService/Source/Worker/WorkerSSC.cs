@@ -72,24 +72,16 @@ namespace AFMSSediService
             sql += $" {FbtRSANDPROFILE.COL_PROFILE_NAME},";
             sql += $" {FbtRSANDPROFILE.COL_A_SETUP_FLAG},";
             sql += $" {FbtRSANDPROFILE.COL_A_DEVICE_TYPE},";
-            sql += $" {FbtRSANDPROFILE.COL_A_VALID_CELL_TYPE},";
             sql += $" {FbtRSANDPROFILE.COL_A_CELL_FROM},";
             sql += $" {FbtRSANDPROFILE.COL_A_CELL_TO},";
-            sql += $" {FbtRSANDPROFILE.COL_A_DB_FROM},";
-            sql += $" {FbtRSANDPROFILE.COL_A_DB_TO},";
-            sql += $" {FbtRSANDPROFILE.COL_A_REGRESSION},";
             sql += $" {FbtRSANDPROFILE.COL_A_K_VALUE},";
             sql += $" {FbtRSANDPROFILE.COL_A_BEAM_ANGLE},";
             sql += $" {FbtRSANDPROFILE.COL_A_SSC_A},";
             sql += $" {FbtRSANDPROFILE.COL_A_SSC_B},";
             sql += $" {FbtRSANDPROFILE.COL_B_SETUP_FLAG},";
             sql += $" {FbtRSANDPROFILE.COL_B_DEVICE_TYPE},";
-            sql += $" {FbtRSANDPROFILE.COL_B_VALID_CELL_TYPE},";
             sql += $" {FbtRSANDPROFILE.COL_B_CELL_FROM},";
             sql += $" {FbtRSANDPROFILE.COL_B_CELL_TO},";
-            sql += $" {FbtRSANDPROFILE.COL_B_DB_FROM},";
-            sql += $" {FbtRSANDPROFILE.COL_B_DB_TO},";
-            sql += $" {FbtRSANDPROFILE.COL_B_REGRESSION},";
             sql += $" {FbtRSANDPROFILE.COL_B_K_VALUE},";
             sql += $" {FbtRSANDPROFILE.COL_B_BEAM_ANGLE},";
             sql += $" {FbtRSANDPROFILE.COL_B_SSC_A},";
@@ -129,12 +121,8 @@ namespace AFMSSediService
             return new RSandDeviceProfile(
                 GetString(row, isA ? FbtRSANDPROFILE.COL_A_SETUP_FLAG : FbtRSANDPROFILE.COL_B_SETUP_FLAG),
                 GetString(row, isA ? FbtRSANDPROFILE.COL_A_DEVICE_TYPE : FbtRSANDPROFILE.COL_B_DEVICE_TYPE),
-                GetString(row, isA ? FbtRSANDPROFILE.COL_A_VALID_CELL_TYPE : FbtRSANDPROFILE.COL_B_VALID_CELL_TYPE),
                 GetInt32(row, isA ? FbtRSANDPROFILE.COL_A_CELL_FROM : FbtRSANDPROFILE.COL_B_CELL_FROM),
                 GetInt32(row, isA ? FbtRSANDPROFILE.COL_A_CELL_TO : FbtRSANDPROFILE.COL_B_CELL_TO),
-                GetDouble(row, isA ? FbtRSANDPROFILE.COL_A_DB_FROM : FbtRSANDPROFILE.COL_B_DB_FROM),
-                GetDouble(row, isA ? FbtRSANDPROFILE.COL_A_DB_TO : FbtRSANDPROFILE.COL_B_DB_TO),
-                GetDouble(row, isA ? FbtRSANDPROFILE.COL_A_REGRESSION : FbtRSANDPROFILE.COL_B_REGRESSION),
                 GetDouble(row, isA ? FbtRSANDPROFILE.COL_A_K_VALUE : FbtRSANDPROFILE.COL_B_K_VALUE),
                 GetDouble(row, isA ? FbtRSANDPROFILE.COL_A_BEAM_ANGLE : FbtRSANDPROFILE.COL_B_BEAM_ANGLE),
                 GetDouble(row, isA ? FbtRSANDPROFILE.COL_A_SSC_A : FbtRSANDPROFILE.COL_B_SSC_A),

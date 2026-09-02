@@ -9,12 +9,8 @@ namespace AFMSSediService
     internal sealed record RSandDeviceProfile(
         string SetupFlag,
         string DeviceType,
-        string ValidCellType,
         int CellFrom,
         int CellTo,
-        double DbFrom,
-        double DbTo,
-        double Regression,
         double KValue,
         double BeamAngle,
         double SscA,

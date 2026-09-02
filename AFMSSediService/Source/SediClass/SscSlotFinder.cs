@@ -11,16 +11,17 @@ namespace AFMSSediService
         private readonly ILogger<WorkerSSCProcess> logger;
         private int? lastLoggedSlotId;
         private string? lastLoggedSlotState;
-        private DateTime? lastLoggedSlotAt;
+        private DateTime lastLoggedSlotAt;
 
         public SscCalculationSlot? SelectedSlot { get; private set; }
 
         public SscSlotFinder(ILogger<WorkerSSCProcess> logger)
         {
             this.logger = logger;
+            lastLoggedSlotAt = DateTime.Now.AddDays(-1);
         }
 
-        public void FindOldestUnprocessedSlot()
+        public void UpdateSelectedSlot()
         {
             if (SelectedSlot != null)
             {
@@ -31,7 +32,13 @@ namespace AFMSSediService
                     return;
                 }
             }
+            PrintSelectSlot();
+            FindOldestUnprocessedSlot();
+            FindOldestVelocityMeasuredSlot();
+        }
 
+        private void FindOldestUnprocessedSlot()
+        {
             string sql = "SELECT FIRST 1";
             sql += $" T.{FbtAFMSSediTimeslot.COL_ID},";
             sql += $" T.{FbtAFMSSediTimeslot.COL_MEASURE_DATE},";
@@ -62,16 +69,8 @@ namespace AFMSSediService
                 Convert.ToDateTime(row[FbtAFMSSediTimeslot.COL_SLOT_TIME]));
         }
 
-        public void FindOldestVelocityMeasuredSlot(RSandProfileSnapshot profile)
+        private void FindOldestVelocityMeasuredSlot(RSandProfileSnapshot profile)
         {
-            SscCalculationSlot? startSlot = SelectedSlot;
-            SelectedSlot = null;
-            if (startSlot == null)
-            {
-                ResetSlotLogState();
-                return;
-            }
-
             List<string> velocityConditions = new List<string>();
             if (profile.A.IsEnabled)
                 velocityConditions.Add($"COALESCE(P.{FbtRPOINT.COL_HYDROMETER1_FLAG}, 'N') = 'Y'");
@@ -107,6 +106,7 @@ namespace AFMSSediService
             string error = db.RunQuery(sql);
             if (!string.IsNullOrEmpty(error))
                 throw new InvalidOperationException($"유속 측정 완료 슬롯 조회에 실패했습니다.\n{error}");
+
             if (db.Results.Rows.Count == 0)
             {
                 LogWatchedSlot(startSlot, "유속 데이터 대기");
@@ -120,30 +120,39 @@ namespace AFMSSediService
                 Convert.ToString(row[FbtAFMSSediTimeslot.COL_MEASURE_TIME])?.Trim() ?? string.Empty,
                 Convert.ToDateTime(row[FbtAFMSSediTimeslot.COL_SLOT_TIME]));
 
-            LogWatchedSlot(SelectedSlot, "SSC 처리 대상");
         }
 
-        private void LogWatchedSlot(SscCalculationSlot slot, string slotState)
+        private void PrintSelectSlot()
         {
-            DateTime now = DateTime.Now;
-            bool slotChanged = lastLoggedSlotId != slot.Id || lastLoggedSlotState != slotState;
-            bool logIntervalElapsed = !lastLoggedSlotAt.HasValue ||
-                now - lastLoggedSlotAt.Value >= SlotLogInterval;
+            TimeSpan diff = DateTime.Now - lastLoggedSlotAt;
 
-            if (!slotChanged && !logIntervalElapsed) return;
+            if (diff.TotalMinutes < 10) return;
+            lastLoggedSlotAt = DateTime.Now;
 
-            logger.LogInformation(
-                "현재 바라보는 SSC 슬롯입니다. 상태={SlotState}, SlotId={SlotId}, SlotTime={SlotTime:yyyy-MM-dd HH:mm:ss}, 측정={MeasureDate} {MeasureTime}",
-                slotState,
-                slot.Id,
-                slot.SlotTime,
-                slot.MeasureDate,
-                slot.MeasureTime);
+            string log = "현재 바라보는 SSC 슬롯 정보: ";
 
-            lastLoggedSlotId = slot.Id;
-            lastLoggedSlotState = slotState;
-            lastLoggedSlotAt = now;
+            if (SelectedSlot != null)
+            {
+                log += $"SlotId: {SelectedSlot.Id} | ";
+                log += $"SlotTime: {SelectedSlot.SlotTime.ToString("yyyy-MM-dd HH:mm")} | ";
+            }
+            else
+            {
+                log = "알수없음 ";
+            }
+
+            logger.LogInformation(log);
         }
+
+        public bool SlotDiscovered()
+        {
+            if (SelectedSlot == null) return false;
+
+            PrintSelectSlot(SelectedSlot, "SSC 처리 대상");
+
+            return true;
+        }
+
 
         private void ResetSlotLogState()
         {

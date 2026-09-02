@@ -15,8 +15,8 @@ namespace AFMSSediService
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            _SlotFinder.FindOldestUnprocessedSlot();
-            _SlotFinder.FindOldestVelocityMeasuredSlot(profile);
+            _SlotFinder.UpdateSelectedSlot();
+            if (!_SlotFinder.SlotDiscovered()) return Task.FromResult(0);
 
             return Task.FromResult(0);
         }
