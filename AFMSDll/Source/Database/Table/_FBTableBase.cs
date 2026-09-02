@@ -55,5 +55,16 @@ namespace AFMSDll
             string sql = $"ALTER TABLE {tableName} ADD {columnName} {columnType}";
             return db.RunQuery(sql);
         }
+
+        protected static string GetEnumCheckClause<TEnum>(string columnName)
+            where TEnum : struct, Enum
+        {
+            if (string.IsNullOrWhiteSpace(columnName))
+                throw new ArgumentException("CHECK 제약조건 컬럼명이 없습니다.", nameof(columnName));
+
+            string values = string.Join(", ", Enum.GetNames<TEnum>().Select(value => $"'{value.Replace("'", "''")}'"));
+
+            return $"CHECK ({columnName} IN ({values}))";
+        }
     }
 }

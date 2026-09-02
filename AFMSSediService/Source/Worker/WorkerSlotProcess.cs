@@ -41,6 +41,7 @@ namespace AFMSSediService
                     throw new InvalidOperationException($"{nextSlot:yyyy-MM-dd HH:mm:ss} SEDI 슬롯 생성 실패: {error}");
                 }
 
+                Logger.LogInformation("SEDI 슬롯을 생성했습니다. 슬롯={SlotTime:yyyy-MM-dd HH:mm:ss}", nextSlot);
                 createdCount++;
                 nextSlot = nextSlot.Add(SlotInterval);
             }
@@ -82,6 +83,9 @@ namespace AFMSSediService
             query.Value(FbtAFMSSediTimeslot.COL_MEASURE_DATE, slotTime.ToString("yyyyMMdd"));
             query.Value(FbtAFMSSediTimeslot.COL_MEASURE_TIME, slotTime.ToString("HHmmss"));
             query.Value(FbtAFMSSediTimeslot.COL_SLOT_TIME, slotTime, typeof(DateTime));
+            query.Value(
+                FbtAFMSSediTimeslot.COL_SEND_STATUS,
+                SediTransmissionStatus.NOT_SEND.ToString());
 
             using FBDatabase db = FBProvider.Instance.CreateDatabase();
             db.Execute(query, out string error);
