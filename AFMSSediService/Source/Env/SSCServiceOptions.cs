@@ -11,6 +11,6 @@ namespace AFMSSediService
         public DateTime CalculationStartTime { get; set; } = new(2026, 8, 25, 0, 0, 0, DateTimeKind.Local);
         public string DataDirectory { get; set; } = "Data";
         public int BatchSize { get; set; } = 100;
-        public TimeSpan PollInterval { get; set; } = TimeSpan.FromSeconds(10);
+        public TimeSpan PollInterval { get; set; } = TimeSpan.FromMicroseconds(10);
     }
 }

@@ -12,6 +12,11 @@ namespace AFMSSediService
             _SlotFinder = new SscSlotFinder(logger);
         }
 
+        protected override void InitializeProcessing(SSCProfileSnapshot profile, ChannelMasterSource source)
+        {
+            _SlotFinder.InitializeStart(source);
+        }
+
         protected override Task<int> ProcessBatchAsync(SSCProfileSnapshot profile, ChannelMasterSource source, SedFileWriter fileWriter, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();

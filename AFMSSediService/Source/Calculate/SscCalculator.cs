@@ -6,6 +6,9 @@ namespace AFMSSediService
 {
     internal static class SscCalculator
     {
+        private const int InvalidVelocity = -32768;
+        internal const double InvalidSsc = -32768.0;
+
         public static SscCalculationResult Calculate(
             ChannelMasterMeasurement source,
             SSCDeviceProfile profile,
@@ -27,20 +30,22 @@ namespace AFMSSediService
             if (Math.Abs(beamCosine) < 1e-12)
                 throw new InvalidOperationException("빔 각도로 셀 거리를 계산할 수 없습니다.");
 
+            List<ChannelMasterCell> orderedCells = source.Cells.OrderBy(item => item.Number).ToList();
             List<WorkingCell> working = [];
-            for (int index = 0; index < source.Cells.Count; index++)
+            for (int index = 0; index < orderedCells.Count; index++)
             {
-                ChannelMasterCell cell = source.Cells[index];
-                int cellNumber = index + 1;
-                if (cellNumber < profile.CellFrom || cellNumber > profile.CellTo) continue;
+                ChannelMasterCell cell = orderedCells[index];
+                ChannelMasterCell? previousCell = index > 0 ? orderedCells[index - 1] : null;
+                if (cell.Number < profile.CellFrom || cell.Number > profile.CellTo) continue;
+                if (!IsValidCell(cell, previousCell)) continue;
 
                 double mb = profile.KValue * ((cell.Echo1 + cell.Echo2) / 2.0);
-                double range = (blankDistance + index * cellSize + cellSize / 2.0) / beamCosine;
-                working.Add(new WorkingCell(cell.Number, mb, range));
+                double range = (blankDistance + (cell.Number - 1) * cellSize + cellSize / 2.0) / beamCosine;
+                working.Add(new WorkingCell(cell, mb, range));
             }
 
             if (working.Count < 2)
-                throw new InvalidOperationException("SSC 회귀 계산에는 유효 셀이 2개 이상 필요합니다.");
+                return CreateInvalidResult(profile, discharge);
 
             int frequencyKhz = GetFrequencyKhz(profile.DeviceType);
             double rayleighDistance = GetRayleighDistance(profile.DeviceType);
@@ -94,9 +99,9 @@ namespace AFMSSediService
             double totalSand1 = ssc * discharge * 0.0864;
             List<SscCellCalculation> cells = working.Select(cell =>
             {
-                ChannelMasterCell sourceCell = source.Cells.First(item => item.Number == cell.CellNumber);
+                ChannelMasterCell sourceCell = cell.Source;
                 return new SscCellCalculation(
-                    cell.CellNumber,
+                    sourceCell.Number,
                     sourceCell.Echo1,
                     sourceCell.Echo2,
                     (sourceCell.Echo1 + sourceCell.Echo2) / 2.0,
@@ -126,6 +131,16 @@ namespace AFMSSediService
                 cells);
         }
 
+        private static SscCalculationResult CreateInvalidResult(SSCDeviceProfile profile, double discharge) =>
+            new(profile.DeviceType, 0.0, 0.0, 0.0, profile.SscA, profile.SscB, InvalidSsc, discharge, 0.0, 0.0, 0.0, []);
+
+        private static bool IsValidCell(ChannelMasterCell cell, ChannelMasterCell? previousCell)
+        {
+            if (cell.VelocityEastWest == InvalidVelocity || cell.VelocityNorthSouth == InvalidVelocity) return false;
+            if (previousCell == null) return true;
+            return cell.Echo1 <= previousCell.Echo1 && cell.Echo2 <= previousCell.Echo2;
+        }
+
         private static int GetFrequencyKhz(string deviceType) =>
             deviceType.ToUpperInvariant() switch
             {
@@ -144,9 +159,9 @@ namespace AFMSSediService
                 _ => 0.0
             };
 
-        private sealed class WorkingCell(int cellNumber, double mb, double range)
+        private sealed class WorkingCell(ChannelMasterCell source, double mb, double range)
         {
-            public int CellNumber { get; } = cellNumber;
+            public ChannelMasterCell Source { get; } = source;
             public double Mb { get; } = mb;
             public double Range { get; } = range;
             public double SpreadingCoefficient { get; set; }

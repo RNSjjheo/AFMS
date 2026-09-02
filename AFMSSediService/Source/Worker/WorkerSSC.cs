@@ -10,6 +10,10 @@ namespace AFMSSediService
     internal abstract class WorkerSSC : BackgroundService
     {
         protected abstract Task<int> ProcessBatchAsync(SSCProfileSnapshot profile, ChannelMasterSource source, SedFileWriter fileWriter, CancellationToken cancellationToken);
+        protected virtual void InitializeProcessing(SSCProfileSnapshot profile, ChannelMasterSource source)
+        {
+        }
+
         protected readonly ILogger Logger;
         protected readonly SSCServiceOptions Options;
 
@@ -24,6 +28,7 @@ namespace AFMSSediService
             SSCProfileSnapshot profile = LoadLatestProfile();
             ChannelMasterSource source = ChannelMasterSource.FromProfile(profile.Device);
             SedFileWriter fileWriter = new SedFileWriter(Options.DataDirectory);
+            InitializeProcessing(profile, source);
 
             Logger.LogInformation("SSC 프로파일을 메모리에 로드했습니다. ProfileId={ProfileId}, Device={DeviceType}, " +
                 "HydroTable={HydroTableName}({CellFrom}~{CellTo}), Source={HeaderTable}/{CellTable}", profile.ProfileId, profile.Device.DeviceType,

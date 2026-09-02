@@ -7,6 +7,7 @@ namespace AFMSDischargeService
     internal sealed class QSurfaceVelocityCalculator : QCalculatorBase
     {
         private const double ChannelMasterVelocityScale = 0.001;
+        private const double ChannelMasterVelocityError = -32768.0;
 
         private sealed class SurfaceVelocityCoefficient
         {
@@ -509,6 +510,7 @@ namespace AFMSDischargeService
             if (table.Rows.Count == 0) return true;
 
             double velocitySum = 0.0;
+            int validVelocityCount = 0;
             foreach (DataRow row in table.Rows)
             {
                 if (row[FbtRHYDROMETERCELL.COL_VALUE01] == DBNull.Value)
@@ -517,7 +519,10 @@ namespace AFMSDischargeService
                     return false;
                 }
 
-                double cellVelocity = Convert.ToDouble(row[FbtRHYDROMETERCELL.COL_VALUE01]) * ChannelMasterVelocityScale;
+                double rawCellVelocity = Convert.ToDouble(row[FbtRHYDROMETERCELL.COL_VALUE01]);
+                if (rawCellVelocity == ChannelMasterVelocityError) continue;
+
+                double cellVelocity = rawCellVelocity * ChannelMasterVelocityScale;
                 if (!double.IsFinite(cellVelocity))
                 {
                     error = $"ChannelMaster 셀 유속값이 올바르지 않습니다: {date} {time}, 셀 {row[FbtRHYDROMETERCELL.COL_CELL_NO]}";
@@ -525,9 +530,16 @@ namespace AFMSDischargeService
                 }
 
                 velocitySum += cellVelocity;
+                validVelocityCount++;
             }
 
-            double velocity = velocitySum / table.Rows.Count;
+            if (validVelocityCount == 0)
+            {
+                error = string.Empty;
+                return true;
+            }
+
+            double velocity = velocitySum / validVelocityCount;
             foreach (Transect transect in CalculationTransects)
                 Measurement.Transects.Add(new QTransectMeasurement { No = transect.No, Velocity = velocity });
 
