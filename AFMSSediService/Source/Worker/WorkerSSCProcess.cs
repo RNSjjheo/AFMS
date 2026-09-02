@@ -4,18 +4,20 @@ namespace AFMSSediService
 {
     internal sealed class WorkerSSCProcess : WorkerSSC
     {
-        private readonly SscRepository repository = new SscRepository();
+        private readonly SscSlotFinder _SlotFinder;
         private int? lastLoggedSlotId;
 
         public WorkerSSCProcess(ILogger<WorkerSSCProcess> logger, IOptions<SSCServiceOptions> options) : base(logger, options)
         {
+            _SlotFinder = new SscSlotFinder();
         }
 
         protected override Task<int> ProcessBatchAsync(RSandProfileSnapshot profile, SedFileWriter fileWriter, CancellationToken cancellationToken)
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            SscCalculationSlot? slot = repository.LoadNextPendingSlot();
+            SscCalculationSlot? slot = _SlotFinder.FindOldestUnprocessedSlot();
+
             if (slot != null && lastLoggedSlotId != slot.Id)
             {
                 Logger.LogInformation(
