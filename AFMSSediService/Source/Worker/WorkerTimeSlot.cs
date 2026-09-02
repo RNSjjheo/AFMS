@@ -4,20 +4,14 @@ using System.Data;
 
 namespace AFMSSediService
 {
-    internal sealed class SediSlotWorker(
-        ILogger<SediSlotWorker> logger,
-        IHostApplicationLifetime applicationLifetime,
-        IOptions<SSCServiceOptions> options) : BackgroundService
+    internal sealed class WorkerTimeSlot(ILogger<WorkerTimeSlot> logger, IHostApplicationLifetime applicationLifetime, IOptions<SSCServiceOptions> options) : BackgroundService
     {
         private static readonly TimeSpan SlotInterval = TimeSpan.FromMinutes(10);
         private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(10);
 
         public override async Task StartAsync(CancellationToken cancellationToken)
         {
-            using CancellationTokenSource startupCancellation =
-                CancellationTokenSource.CreateLinkedTokenSource(
-                    cancellationToken,
-                    applicationLifetime.ApplicationStopping);
+            using CancellationTokenSource startupCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, applicationLifetime.ApplicationStopping);
             CancellationToken stoppingToken = startupCancellation.Token;
 
             stoppingToken.ThrowIfCancellationRequested();
