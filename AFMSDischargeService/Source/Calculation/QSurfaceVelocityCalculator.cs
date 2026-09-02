@@ -490,24 +490,44 @@ namespace AFMSDischargeService
             loaded = false;
             string date = Measurement.SourceDate.ToString("yyyyMMdd");
             string time = Measurement.SourceTime.ToString("HHmmss");
-            string sql = $"SELECT FIRST 1 {FbtRHYDROMETER.COL_AVG_VELOCITY}";
-            sql += $" FROM {Measurement.TableName}";
-            sql += $" WHERE {FbtRHYDROMETER.COL_MEASURE_DATE} = '{date}'";
-            sql += $" AND {FbtRHYDROMETER.COL_MEASURE_TIME} = '{time}'";
-            sql += $" AND UPPER(TRIM({FbtRHYDROMETER.COL_HYDRO_KIND})) = 'CHANNELMASTER'";
-            sql += $" AND {FbtRHYDROMETER.COL_AVG_VELOCITY} IS NOT NULL";
+            string cellTableName = GetChannelMasterCellTableName();
+            if (string.IsNullOrEmpty(cellTableName))
+            {
+                error = $"ChannelMaster 셀 테이블을 확인할 수 없습니다: {Measurement.TableName}";
+                return false;
+            }
+
+            string sql = $"SELECT {FbtRHYDROMETERCELL.COL_CELL_NO}, {FbtRHYDROMETERCELL.COL_VALUE01}";
+            sql += $" FROM {cellTableName}";
+            sql += $" WHERE {FbtRHYDROMETERCELL.COL_MEASURE_DATE} = '{date}'";
+            sql += $" AND {FbtRHYDROMETERCELL.COL_MEASURE_TIME} = '{time}'";
+            sql += $" AND {FbtRHYDROMETERCELL.COL_CELL_NO} BETWEEN {CellRangeMin} AND {CellRangeMax}";
+            sql += $" ORDER BY {FbtRHYDROMETERCELL.COL_CELL_NO}";
 
             DataTable table = db.Execute(sql, out error);
             if (!string.IsNullOrEmpty(error)) return false;
             if (table.Rows.Count == 0) return true;
 
-            double velocity = Convert.ToDouble(table.Rows[0][FbtRHYDROMETER.COL_AVG_VELOCITY]) * ChannelMasterVelocityScale;
-            if (!double.IsFinite(velocity))
+            double velocitySum = 0.0;
+            foreach (DataRow row in table.Rows)
             {
-                error = $"ChannelMaster 평균 유속값이 올바르지 않습니다: {date} {time}";
-                return false;
+                if (row[FbtRHYDROMETERCELL.COL_VALUE01] == DBNull.Value)
+                {
+                    error = $"ChannelMaster 셀 유속값이 없습니다: {date} {time}, 셀 {row[FbtRHYDROMETERCELL.COL_CELL_NO]}";
+                    return false;
+                }
+
+                double cellVelocity = Convert.ToDouble(row[FbtRHYDROMETERCELL.COL_VALUE01]) * ChannelMasterVelocityScale;
+                if (!double.IsFinite(cellVelocity))
+                {
+                    error = $"ChannelMaster 셀 유속값이 올바르지 않습니다: {date} {time}, 셀 {row[FbtRHYDROMETERCELL.COL_CELL_NO]}";
+                    return false;
+                }
+
+                velocitySum += cellVelocity;
             }
 
+            double velocity = velocitySum / table.Rows.Count;
             foreach (Transect transect in CalculationTransects)
                 Measurement.Transects.Add(new QTransectMeasurement { No = transect.No, Velocity = velocity });
 
@@ -515,6 +535,14 @@ namespace AFMSDischargeService
             error = string.Empty;
             return true;
         }
+
+        private string GetChannelMasterCellTableName() => Measurement.Table switch
+        {
+            FbtRHYDROMETER1 => FbtRHYDROMETER1CELL.TABLE_NAME,
+            FbtRHYDROMETER2 => FbtRHYDROMETER2CELL.TABLE_NAME,
+            FbtRHYDROMETER3 => FbtRHYDROMETER3CELL.TABLE_NAME,
+            _ => string.Empty
+        };
 
         private bool TryLoadTransectMeasurements(
             FBDatabase db,

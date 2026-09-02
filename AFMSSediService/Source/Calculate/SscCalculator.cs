@@ -61,7 +61,9 @@ namespace AFMSSediService
                 double waterAbsorptionLoss = 2.0 * waterAbsorption * cell.Range;
 
                 cell.SpreadingCoefficient = spreadingCoefficient;
+                cell.SpreadingLoss = spreadingLoss;
                 cell.WaterAbsorption = waterAbsorption;
+                cell.WaterAbsorptionLoss = waterAbsorptionLoss;
                 cell.WaterCorrectedBackscatter = cell.Mb + spreadingLoss + waterAbsorptionLoss;
             }
 
@@ -90,15 +92,24 @@ namespace AFMSSediService
                 throw new InvalidOperationException("계산된 SSC 값이 유효하지 않습니다.");
 
             double totalSand1 = ssc * discharge * 0.0864;
-            List<SscCellCalculation> cells = working.Select(cell => new SscCellCalculation(
-                cell.CellNumber,
-                cell.Mb,
-                cell.Range,
-                cell.SpreadingCoefficient,
-                cell.WaterAbsorption,
-                cell.SedimentAttenuation,
-                cell.WaterCorrectedBackscatter,
-                cell.SedimentCorrectedBackscatter)).ToList();
+            List<SscCellCalculation> cells = working.Select(cell =>
+            {
+                ChannelMasterCell sourceCell = source.Cells.First(item => item.Number == cell.CellNumber);
+                return new SscCellCalculation(
+                    cell.CellNumber,
+                    sourceCell.Echo1,
+                    sourceCell.Echo2,
+                    (sourceCell.Echo1 + sourceCell.Echo2) / 2.0,
+                    cell.Mb,
+                    cell.Range,
+                    cell.SpreadingCoefficient,
+                    cell.SpreadingLoss,
+                    cell.WaterAbsorption,
+                    cell.WaterAbsorptionLoss,
+                    cell.SedimentAttenuation,
+                    cell.WaterCorrectedBackscatter,
+                    cell.SedimentCorrectedBackscatter);
+            }).ToList();
 
             return new SscCalculationResult(
                 profile.DeviceType,
@@ -139,7 +150,9 @@ namespace AFMSSediService
             public double Mb { get; } = mb;
             public double Range { get; } = range;
             public double SpreadingCoefficient { get; set; }
+            public double SpreadingLoss { get; set; }
             public double WaterAbsorption { get; set; }
+            public double WaterAbsorptionLoss { get; set; }
             public double SedimentAttenuation { get; set; }
             public double WaterCorrectedBackscatter { get; set; }
             public double SedimentCorrectedBackscatter { get; set; }

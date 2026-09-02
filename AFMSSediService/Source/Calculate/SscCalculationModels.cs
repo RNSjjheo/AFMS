@@ -37,10 +37,15 @@ namespace AFMSSediService
 
     internal sealed record SscCellCalculation(
         int CellNumber,
+        int Echo1,
+        int Echo2,
+        double AverageEcho,
         double Mb,
         double Range,
         double SpreadingCoefficient,
+        double SpreadingLoss,
         double WaterAbsorption,
+        double WaterAbsorptionLoss,
         double SedimentAttenuation,
         double WaterCorrectedBackscatter,
         double SedimentCorrectedBackscatter);

@@ -22,6 +22,7 @@ namespace AFMSSediService
             ChannelMasterMeasurement measurement = repository.LoadChannelMaster(slot, source);
             double discharge = repository.LoadDischarge(slot);
             SscCalculationResult result = SscCalculator.Calculate(measurement, profile.Device, discharge);
+            Logger.LogInformation("{CalculationDetail}", SscCalculationLogFormatter.Format(slot, source, measurement, profile.Device, result));
             repository.Save(slot, result);
 
             Logger.LogInformation(
