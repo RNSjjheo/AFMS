@@ -39,7 +39,6 @@ namespace AFMSSediService
                 .ToList();
 
             return new ChannelMasterMeasurement(
-                source.DeviceNumber,
                 new SscMeasurementKey(slot.MeasureDate, slot.MeasureTime),
                 GetDouble(row, "VALUE19") * 0.01,
                 GetDouble(row, "VALUE26") * 0.0001,

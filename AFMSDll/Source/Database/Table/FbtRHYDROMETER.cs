@@ -4,6 +4,13 @@ using System.Text;
 
 namespace AFMSDll
 {
+    public enum HydroMetherTableType
+    {
+        RHYDROMETER1 = 0,
+        RHYDROMETER2,
+        RHYDROMETER3
+    }
+
     public abstract class FbtRHYDROMETER : _FBTableBase
     {
         public const string COL_HYDRO_KIND = "HYDROKIND";

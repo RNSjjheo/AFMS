@@ -30,7 +30,7 @@ namespace AFMSDll
             sql += "\n" + $"{COL_SEND_STATUS} VARCHAR(16) DEFAULT '{SediTransmissionStatus.NOT_SEND}' NOT NULL,";
             sql += "\n" + $"CONSTRAINT PK_AFMS_SEDI_SSC_TIMESLOT PRIMARY KEY({COL_ID}),";
             sql += "\n" + $"CONSTRAINT UQ_AFMS_SEDI_SSC_TIMESLOT_TIME UNIQUE({COL_SLOT_TIME}),";
-            sql += "\n" + $"CONSTRAINT CK_SEDI_SEND_STATUS {GetEnumCheckClause<SediTransmissionStatus>(COL_SEND_STATUS)}";
+            sql += "\n" + $"{GetEnumCheckClause<SediTransmissionStatus>(COL_SEND_STATUS)}";
             sql += "\n" + ")";
 
             return sql;
@@ -40,11 +40,7 @@ namespace AFMSDll
         {
             if (HasColumn(db, COL_SEND_STATUS)) return string.Empty;
 
-            string columnType = "";
-            columnType += $"VARCHAR(16) DEFAULT '{SediTransmissionStatus.NOT_SEND}' NOT NULL ";
-            columnType += GetEnumCheckClause<SediTransmissionStatus>(COL_SEND_STATUS);
-
-            return AddColumn(db, COL_SEND_STATUS, columnType);
+            return string.Empty;
         }
     }
 }

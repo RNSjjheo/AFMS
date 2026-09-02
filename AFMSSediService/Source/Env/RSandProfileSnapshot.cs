@@ -8,19 +8,15 @@ namespace AFMSSediService
         int ProfileId,
         string ProfileDate,
         string ProfileTime,
-        string ProfileName,
-        RSandDeviceProfile Device);
+        SSCDeviceProfile Device);
 
-    internal sealed record RSandDeviceProfile(
+    internal sealed record SSCDeviceProfile(
         string DeviceType,
+        AFMSDll.HydroMetherTableType HydroTableName,
         int CellFrom,
         int CellTo,
         double KValue,
         double BeamAngle,
         double SscA,
-        double SscB)
-    {
-        public bool IsEnabled =>
-            !string.Equals(DeviceType, "NONE", StringComparison.OrdinalIgnoreCase);
-    }
+        double SscB);
 }

@@ -64,7 +64,7 @@ namespace AFMSDll
 
             string values = string.Join(", ", Enum.GetNames<TEnum>().Select(value => $"'{value.Replace("'", "''")}'"));
 
-            return $"CHECK ({columnName} IN ({values}))";
+            return $"CONSTRAINT CK_{columnName} CHECK ({columnName} IN ({values}))";
         }
     }
 }

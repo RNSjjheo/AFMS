@@ -21,7 +21,6 @@ namespace AFMSSediService
             FBProvider.Instance.Initialize(FBProvider.SetFBConnStrBuilder());
 
             InitializeDatabase();
-            InitializeProfile();
 
             var builder = Host.CreateApplicationBuilder(args);
             builder.Logging.ClearProviders();
@@ -42,12 +41,5 @@ namespace AFMSSediService
             }
         }
 
-        private static void InitializeProfile()
-        {
-            bool defaultProfileInserted = SSCProfileInitializer.EnsureDefaultProfile();
-            Log.Info(defaultProfileInserted
-                ? "RSANDPROFILE 기본 프로파일을 생성했습니다."
-                : "RSANDPROFILE 데이터가 존재하여 기본 프로파일 생성을 건너뜁니다.");
-        }
     }
 }

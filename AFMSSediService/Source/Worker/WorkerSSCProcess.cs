@@ -13,7 +13,7 @@ namespace AFMSSediService
         }
 
         protected override Task<int> ProcessBatchAsync(
-            RSandProfileSnapshot profile,
+            SSCProfileSnapshot profile,
             ChannelMasterSource source,
             SedFileWriter fileWriter,
             CancellationToken cancellationToken)

@@ -23,7 +23,6 @@ namespace AFMSSediService
         int Echo2);
 
     internal sealed record ChannelMasterMeasurement(
-        int DeviceNumber,
         SscMeasurementKey Key,
         double Temperature,
         double Depth,

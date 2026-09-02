@@ -8,14 +8,11 @@ namespace AFMSSediService
     {
         public static SscCalculationResult Calculate(
             ChannelMasterMeasurement source,
-            RSandDeviceProfile profile,
+            SSCDeviceProfile profile,
             double discharge)
         {
             ArgumentNullException.ThrowIfNull(source);
             ArgumentNullException.ThrowIfNull(profile);
-
-            if (!profile.IsEnabled)
-                throw new InvalidOperationException("비활성 SSC 프로파일은 계산할 수 없습니다.");
 
             if (source.Cells.Count == 0)
                 throw new InvalidOperationException("ChannelMaster 셀 데이터가 없습니다.");
