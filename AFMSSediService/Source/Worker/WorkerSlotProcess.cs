@@ -83,9 +83,7 @@ namespace AFMSSediService
             query.Value(FbtAFMSSediTimeslot.COL_MEASURE_DATE, slotTime.ToString("yyyyMMdd"));
             query.Value(FbtAFMSSediTimeslot.COL_MEASURE_TIME, slotTime.ToString("HHmmss"));
             query.Value(FbtAFMSSediTimeslot.COL_SLOT_TIME, slotTime, typeof(DateTime));
-            query.Value(
-                FbtAFMSSediTimeslot.COL_SEND_STATUS,
-                SediTransmissionStatus.NOT_SEND.ToString());
+            query.Value(FbtAFMSSediTimeslot.COL_SEND_STATUS, SediTransmissionStatus.NOT_SEND.ToString());
 
             using FBDatabase db = FBProvider.Instance.CreateDatabase();
             db.Execute(query, out string error);

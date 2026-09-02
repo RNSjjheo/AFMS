@@ -282,6 +282,8 @@ namespace AFMSDll
             tables.Add(new FbtRSANDDETAIL());
             tables.Add(new FbtRSANDPROFILE());
             tables.Add(new FbtAFMSSediTimeslot());
+            tables.Add(new FbtAFMSSSCResult());
+            tables.Add(new FbtAFMSSediResult());
             tables.Add(new FbtSETUP());
 
             return tables;
