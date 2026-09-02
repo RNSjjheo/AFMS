@@ -4,6 +4,12 @@ using System.Text;
 
 namespace AFMSSediService
 {
+    internal sealed record SscCalculationSlot(
+        int Id,
+        string MeasureDate,
+        string MeasureTime,
+        DateTime SlotTime);
+
     internal sealed record SscMeasurementKey(string MeasureDate, string MeasureTime)
     {
         public string Timestamp => MeasureDate + MeasureTime;

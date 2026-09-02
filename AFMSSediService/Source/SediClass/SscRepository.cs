@@ -11,6 +11,30 @@ namespace AFMSSediService
     {
         private const string ChannelMaster = "CHANNELMASTER";
 
+        public SscCalculationSlot? LoadNextPendingSlot()
+        {
+            string sql = "SELECT FIRST 1";
+            sql += $" T.{FbtAFMSSediTimeslot.COL_ID},";
+            sql += $" T.{FbtAFMSSediTimeslot.COL_MEASURE_DATE},";
+            sql += $" T.{FbtAFMSSediTimeslot.COL_MEASURE_TIME},";
+            sql += $" T.{FbtAFMSSediTimeslot.COL_SLOT_TIME}";
+            sql += $" FROM {FbtAFMSSediTimeslot.TABLE_NAME} T";
+            sql += $" LEFT JOIN {FbtAFMSSSCResult.TABLE_NAME} R";
+            sql += $" ON R.{FbtAFMSSSCResult.COL_SLOT_ID} = T.{FbtAFMSSediTimeslot.COL_ID}";
+            sql += $" WHERE R.{FbtAFMSSSCResult.COL_ID} IS NULL";
+            sql += $" ORDER BY T.{FbtAFMSSediTimeslot.COL_SLOT_TIME}";
+
+            using DataTable table = Query(sql);
+            if (table.Rows.Count == 0) return null;
+
+            DataRow row = table.Rows[0];
+            return new SscCalculationSlot(
+                GetInt32(row, FbtAFMSSediTimeslot.COL_ID),
+                GetString(row, FbtAFMSSediTimeslot.COL_MEASURE_DATE),
+                GetString(row, FbtAFMSSediTimeslot.COL_MEASURE_TIME),
+                Convert.ToDateTime(row[FbtAFMSSediTimeslot.COL_SLOT_TIME]));
+        }
+
         public IReadOnlyList<SscMeasurementKey> LoadPendingKeys(DateTime startTime, int batchSize, RSandProfileSnapshot profile)
         {
             int count = Math.Clamp(batchSize, 1, 1000);
