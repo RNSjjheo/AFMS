@@ -24,8 +24,10 @@ namespace AFMSSediService
             InitializeProfile();
 
             var builder = Host.CreateApplicationBuilder(args);
+            builder.Logging.ClearProviders();
+            builder.Logging.AddProvider(new AFMSLogLoggerProvider());
             builder.Services.Configure<SSCServiceOptions>(builder.Configuration.GetSection(SSCServiceOptions.SectionName));
-            builder.Services.AddHostedService<WorkerTimeSlot>();
+            builder.Services.AddHostedService<WorkerSlotProcess>();
             builder.Services.AddHostedService<WorkerSSCProcess>();
 
             var host = builder.Build();
