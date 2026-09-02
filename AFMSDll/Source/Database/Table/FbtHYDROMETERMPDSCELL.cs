@@ -59,5 +59,10 @@ namespace AFMSDll
         {
             return TABLE_NAME;
         }
+
+        public override string CheckNewIndexes(FBDatabase db)
+        {
+            return EnsureIndex(db, "IDX_MPDSCELL_PARENT_NO", COL_MPDS_ID, COL_DEV_NO);
+        }
     }
 }

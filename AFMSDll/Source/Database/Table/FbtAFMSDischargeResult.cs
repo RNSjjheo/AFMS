@@ -98,5 +98,10 @@ namespace AFMSDll
 
             return string.Empty;
         }
+
+        public override string CheckNewIndexes(FBDatabase db)
+        {
+            return EnsureIndex(db, "IDX_AFMS_DIS_RESULT_SOURCE", COL_SOURCE_DEVICE_TYPE, COL_SOURCE_DEVICE_ID, COL_DISCHARGE_METHOD, COL_SOURCE_TIME);
+        }
     }
 }

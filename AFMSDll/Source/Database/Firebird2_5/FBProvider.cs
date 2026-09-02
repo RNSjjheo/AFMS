@@ -192,6 +192,20 @@ namespace AFMSDll
                 if(log != "") result.Add(log);
             }
 
+            List<_FBTableBase> indexTables = new List<_FBTableBase>(tables);
+            if (isAFMS)
+            {
+                indexTables.Add(new FbtRHYDROMETER1());
+                indexTables.Add(new FbtRHYDROMETER2());
+                indexTables.Add(new FbtRHYDROMETER3());
+            }
+
+            foreach (_FBTableBase table in indexTables)
+            {
+                string log = table.CheckNewIndexes(db);
+                if (log != "") result.Add(log);
+            }
+
 
 
             Sync();

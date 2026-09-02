@@ -35,6 +35,11 @@ namespace AFMSDll
             return sql;
         }
 
+        public override string CheckNewIndexes(FBDatabase db)
+        {
+            return EnsureIndex(db, "IDX_VIDEOCELL_PARENT_NO", COL_VIDEO_ID, COL_CELL_NO);
+        }
+
 
     }
 }

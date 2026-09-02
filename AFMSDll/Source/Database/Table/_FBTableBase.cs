@@ -18,6 +18,11 @@ namespace AFMSDll
             return "";
         }
 
+        public virtual string CheckNewIndexes(FBDatabase db)
+        {
+            return "";
+        }
+
         public virtual List<string>? GetDefaultInsertSql()
         {
             return null;
@@ -54,6 +59,24 @@ namespace AFMSDll
 
             string sql = $"ALTER TABLE {tableName} ADD {columnName} {columnType}";
             return db.RunQuery(sql);
+        }
+
+        protected string EnsureIndex(FBDatabase db, string indexName, params string[] columns)
+        {
+            if (db == null) throw new ArgumentNullException(nameof(db));
+            if (string.IsNullOrWhiteSpace(indexName)) throw new ArgumentException("인덱스명이 없습니다.", nameof(indexName));
+            if (columns == null || columns.Length == 0 || columns.Any(string.IsNullOrWhiteSpace))
+                throw new ArgumentException("인덱스 컬럼이 없습니다.", nameof(columns));
+
+            string escapedIndexName = indexName.Replace("'", "''");
+            string sql = "SELECT COUNT(*) FROM RDB$INDICES";
+            sql += $" WHERE UPPER(TRIM(RDB$INDEX_NAME)) = UPPER('{escapedIndexName}')";
+            string error = db.RunQuery(sql);
+            if (!string.IsNullOrEmpty(error)) return error;
+            if (db.Results.Rows.Count > 0 && Convert.ToInt32(db.Results.Rows[0][0]) > 0) return string.Empty;
+
+            sql = $"CREATE INDEX {indexName} ON {GetTableName()} ({string.Join(", ", columns)})";
+            return db.RunNonQuery(sql);
         }
 
         protected static string GetEnumCheckClause<TEnum>(string columnName)

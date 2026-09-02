@@ -126,17 +126,13 @@ namespace AFMSDischargeService
                 return false;
             }
 
-            if (!TryLoadMeasurementStart(db, out error))
+            ClearStartSlot();
+            if (!TryMoveToNextReceivedMeasurement(db, out bool moved, out error))
             {
-                if (!string.IsNullOrEmpty(error))
-                {
-                    LogFailure("다음 원시자료 조회 실패", error);
-                    return false;
-                }
-
-                ClearStartSlot();
-                return true;
+                LogFailure("다음 수신 완료 자료 조회 실패", error);
+                return false;
             }
+            if (!moved) return true;
 
             TryLoadStartSlot(db, out error);
             if (!string.IsNullOrEmpty(error))
@@ -389,17 +385,22 @@ namespace AFMSDischargeService
             sourceSql += $" {FbtAFMSHydroMeter.COL_MEASURE_DATE},";
             sourceSql += $" {FbtAFMSHydroMeter.COL_MEASURE_TIME}";
             sourceSql += $" FROM {Measurement.TableName}";
-            string calculationStart = calculationStartTime
-                .ToString("yyyyMMdd HHmmss", CultureInfo.InvariantCulture);
-            sourceSql += $" WHERE {_FBTableBase.SQL_MEASURE_DATETIME} >= '{calculationStart}'";
+            string calculationStartDate = calculationStartTime.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+            string calculationStartTimeText = calculationStartTime.ToString("HHmmss", CultureInfo.InvariantCulture);
+            sourceSql += $" WHERE ({FbtAFMSHydroMeter.COL_MEASURE_DATE} > '{calculationStartDate}'";
+            sourceSql += $" OR ({FbtAFMSHydroMeter.COL_MEASURE_DATE} = '{calculationStartDate}'";
+            sourceSql += $" AND {FbtAFMSHydroMeter.COL_MEASURE_TIME} >= '{calculationStartTimeText}'))";
             if (Measurement.Table is FbtRHYDROMETER)
                 sourceSql += $" AND UPPER(TRIM({FbtRHYDROMETER.COL_HYDRO_KIND})) = 'CHANNELMASTER'";
             if (Measurement.LastCalculatedSourceTime.HasValue)
             {
-                string lastSourceDateTime = Measurement.LastCalculatedSourceTime.Value.ToString("yyyyMMdd HHmmss", CultureInfo.InvariantCulture);
-                sourceSql += $" AND {_FBTableBase.SQL_MEASURE_DATETIME} > '{lastSourceDateTime}'";
+                string lastSourceDate = Measurement.LastCalculatedSourceTime.Value.ToString("yyyyMMdd", CultureInfo.InvariantCulture);
+                string lastSourceTime = Measurement.LastCalculatedSourceTime.Value.ToString("HHmmss", CultureInfo.InvariantCulture);
+                sourceSql += $" AND ({FbtAFMSHydroMeter.COL_MEASURE_DATE} > '{lastSourceDate}'";
+                sourceSql += $" OR ({FbtAFMSHydroMeter.COL_MEASURE_DATE} = '{lastSourceDate}'";
+                sourceSql += $" AND {FbtAFMSHydroMeter.COL_MEASURE_TIME} > '{lastSourceTime}'))";
             }
-            sourceSql += $" ORDER BY {_FBTableBase.SQL_MEASURE_DATETIME}";
+            sourceSql += $" ORDER BY {FbtAFMSHydroMeter.COL_MEASURE_DATE}, {FbtAFMSHydroMeter.COL_MEASURE_TIME}";
             if (hasMeasurementId) sourceSql += $", {FbtAFMSHydroMeter.COL_ID}";
 
             DataTable sourceTable = db.Execute(sourceSql, out error);
@@ -489,8 +490,9 @@ namespace AFMSDischargeService
             moved = false;
             error = string.Empty;
 
-            if (!Measurement.HasSource || Measurement.Table is FbtWATERLEVEL)
-                return true;
+            if (!Measurement.HasSource) return true;
+            if (Measurement.Table is FbtWATERLEVEL)
+                return TryMoveToNextWaterLevel(db, out moved, out error);
 
             if (Measurement.Table is FbtRHYDROMETER)
                 return TryMoveToNextReceivedChannelMaster(db, out moved, out error);
@@ -520,11 +522,12 @@ namespace AFMSDischargeService
                 return false;
             }
 
-            string currentDateTime = $"{Measurement.SourceDate:yyyyMMdd} {Measurement.SourceTime:HHmmss}";
             string sql = $"SELECT FIRST 1 M.{_FBTableBase.COL_ID},";
             sql += $" M.{_FBTableBase.COL_MEASURE_DATE}, M.{_FBTableBase.COL_MEASURE_TIME}";
             sql += $" FROM {Measurement.TableName} M";
-            sql += $" WHERE (M.{_FBTableBase.COL_MEASURE_DATE} || ' ' || M.{_FBTableBase.COL_MEASURE_TIME}) > '{currentDateTime}'";
+            sql += $" WHERE (M.{_FBTableBase.COL_MEASURE_DATE} > '{Measurement.SourceDate:yyyyMMdd}'";
+            sql += $" OR (M.{_FBTableBase.COL_MEASURE_DATE} = '{Measurement.SourceDate:yyyyMMdd}'";
+            sql += $" AND M.{_FBTableBase.COL_MEASURE_TIME} > '{Measurement.SourceTime:HHmmss}'))";
             sql += $" AND (M.{measureOkColumn} IS NULL OR M.{measureOkColumn} = 1)";
             sql += $" AND (SELECT COUNT(*) FROM {cellTableName} C";
             sql += $" WHERE C.{parentIdColumn} = M.{_FBTableBase.COL_ID}) >= COALESCE(M.{expectedCountColumn}, 0)";
@@ -543,6 +546,35 @@ namespace AFMSDischargeService
             }
 
             Measurement.SourceId = Convert.ToInt32(row[_FBTableBase.COL_ID]);
+            Measurement.SourceDate = parsedDate;
+            Measurement.SourceTime = parsedTime;
+            moved = true;
+            return true;
+        }
+
+        private bool TryMoveToNextWaterLevel(FBDatabase db, out bool moved, out string error)
+        {
+            moved = false;
+            string sql = $"SELECT FIRST 1 {_FBTableBase.COL_MEASURE_DATE}, {_FBTableBase.COL_MEASURE_TIME}";
+            sql += $" FROM {Measurement.TableName}";
+            sql += $" WHERE ({_FBTableBase.COL_MEASURE_DATE} > '{Measurement.SourceDate:yyyyMMdd}'";
+            sql += $" OR ({_FBTableBase.COL_MEASURE_DATE} = '{Measurement.SourceDate:yyyyMMdd}'";
+            sql += $" AND {_FBTableBase.COL_MEASURE_TIME} > '{Measurement.SourceTime:HHmmss}'))";
+            sql += $" ORDER BY {_FBTableBase.COL_MEASURE_DATE}, {_FBTableBase.COL_MEASURE_TIME}";
+
+            DataTable table = db.Execute(sql, out error);
+            if (!string.IsNullOrEmpty(error) || table.Rows.Count == 0) return string.IsNullOrEmpty(error);
+
+            DataRow row = table.Rows[0];
+            string measureDate = Convert.ToString(row[_FBTableBase.COL_MEASURE_DATE]) ?? string.Empty;
+            string measureTime = Convert.ToString(row[_FBTableBase.COL_MEASURE_TIME]) ?? string.Empty;
+            if (!TryParseMeasureDateTime(measureDate, measureTime, out DateOnly parsedDate, out TimeOnly parsedTime))
+            {
+                error = $"다음 수위 자료의 측정시각 형식이 올바르지 않습니다: {measureDate} {measureTime}";
+                return false;
+            }
+
+            Measurement.SourceId = -1;
             Measurement.SourceDate = parsedDate;
             Measurement.SourceTime = parsedTime;
             moved = true;
@@ -579,13 +611,14 @@ namespace AFMSDischargeService
                 return false;
             }
 
-            string currentDateTime = $"{Measurement.SourceDate:yyyyMMdd} {Measurement.SourceTime:HHmmss}";
             string sql = $"SELECT FIRST 1 M.{_FBTableBase.COL_MEASURE_DATE}, M.{_FBTableBase.COL_MEASURE_TIME}";
             sql += $" FROM {Measurement.TableName} M";
             sql += $" INNER JOIN {FbtRPOINT.TABLE_NAME} P";
             sql += $" ON P.{FbtRPOINT.COL_MEASURE_DATE} = M.{_FBTableBase.COL_MEASURE_DATE}";
             sql += $" AND P.{FbtRPOINT.COL_MEASURE_TIME} = M.{_FBTableBase.COL_MEASURE_TIME}";
-            sql += $" WHERE (M.{_FBTableBase.COL_MEASURE_DATE} || ' ' || M.{_FBTableBase.COL_MEASURE_TIME}) > '{currentDateTime}'";
+            sql += $" WHERE (M.{_FBTableBase.COL_MEASURE_DATE} > '{Measurement.SourceDate:yyyyMMdd}'";
+            sql += $" OR (M.{_FBTableBase.COL_MEASURE_DATE} = '{Measurement.SourceDate:yyyyMMdd}'";
+            sql += $" AND M.{_FBTableBase.COL_MEASURE_TIME} > '{Measurement.SourceTime:HHmmss}'))";
             sql += $" AND UPPER(TRIM(M.{FbtRHYDROMETER.COL_HYDRO_KIND})) = 'CHANNELMASTER'";
             sql += $" AND COALESCE(P.{readyFlagColumn}, 'N') = 'Y'";
             sql += $" ORDER BY M.{_FBTableBase.COL_MEASURE_DATE}, M.{_FBTableBase.COL_MEASURE_TIME}";
@@ -708,13 +741,12 @@ namespace AFMSDischargeService
             sql += $" AND R.{FbtAFMSDischargeResult.COL_SOURCE_DEVICE_TYPE} = '{Configuration.DeviceType}'";
             sql += $" AND R.{FbtAFMSDischargeResult.COL_SOURCE_DEVICE_ID} = {Configuration.DeviceId}";
             sql += $" AND R.{FbtAFMSDischargeResult.COL_DISCHARGE_METHOD} = '{Configuration.Method}')";
-            string calculationStart = calculationStartTime
-                .ToString("yyyyMMdd HHmmss", CultureInfo.InvariantCulture);
-            sql += $" AND (S.{FbtAFMSDischargeTimeslot.COL_MEASURE_DATE} || ' ' || S.{FbtAFMSDischargeTimeslot.COL_MEASURE_TIME}) >= '{calculationStart}'";
+            string calculationStart = calculationStartTime.ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture);
+            sql += $" AND S.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} >= '{calculationStart}'";
             if (Measurement.HasSource)
             {
-                string measurementStart = $"{Measurement.SourceDate:yyyyMMdd} {Measurement.SourceTime:HHmmss}";
-                sql += $" AND (S.{FbtAFMSDischargeTimeslot.COL_MEASURE_DATE} || ' ' || S.{FbtAFMSDischargeTimeslot.COL_MEASURE_TIME}) >= '{measurementStart}'";
+                string measurementStart = $"{Measurement.SourceDate:yyyy-MM-dd} {Measurement.SourceTime:HH:mm:ss}";
+                sql += $" AND S.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME} >= '{measurementStart}'";
             }
             sql += $" ORDER BY S.{FbtAFMSDischargeTimeslot.COL_SLOT_TIME}";
 

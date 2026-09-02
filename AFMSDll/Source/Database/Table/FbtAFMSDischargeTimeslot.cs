@@ -53,5 +53,10 @@ namespace AFMSDll
 
             return string.Empty;
         }
+
+        public override string CheckNewIndexes(FBDatabase db)
+        {
+            return EnsureIndex(db, "IDX_AFMS_DIS_SLOT_SECTION", COL_CROSS_SECTION_ID, COL_SLOT_TIME);
+        }
     }
 }

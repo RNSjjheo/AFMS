@@ -64,5 +64,10 @@ namespace AFMSDll
 
             return "";
         }
+
+        public override string CheckNewIndexes(FBDatabase db)
+        {
+            return EnsureIndex(db, "IDX_MPDS_MEASURE_TIME", COL_MEASURE_DATE, COL_MEASURE_TIME, COL_ID);
+        }
     }
 }

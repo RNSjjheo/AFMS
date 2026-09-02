@@ -9,7 +9,7 @@ namespace AFMSDischargeService
         IOptions<DischargeServiceOptions> options) : BackgroundService
     {
         private static readonly TimeSpan PollInterval = TimeSpan.FromSeconds(10);
-        private static readonly TimeSpan BacklogDelay = TimeSpan.FromMilliseconds(20);
+        private static readonly TimeSpan BacklogDelay = TimeSpan.FromMilliseconds(10);
         private readonly List<QCalculatorBase> calculators = new();
         private readonly HashSet<string> loggedReadyMeasurements = new();
 
@@ -48,8 +48,10 @@ namespace AFMSDischargeService
                         stoppingToken.ThrowIfCancellationRequested();
                         if (!calculator.IsImplemented) continue;
                         if (!calculator.PrepareNextCalculation(db)) continue;
+
                         completedSourceKey = DischargeLogFormatter.GetSourceKey(calculator.Measurement);
                         completedSlotKey = DischargeLogFormatter.GetSlotKey(calculator.Calculation);
+
                         LogReadyMeasurement(calculator);
                         if (!calculator.CalculateAndMoveNext(db)) continue;
                         calculationCompleted = true;

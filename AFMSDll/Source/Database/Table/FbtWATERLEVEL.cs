@@ -20,5 +20,10 @@ namespace AFMSDll
         {
             return TABLE_NAME;
         }
+
+        public override string CheckNewIndexes(FBDatabase db)
+        {
+            return EnsureIndex(db, "IDX_RWATERLEVEL_TIME", COL_MEASURE_DATE, COL_MEASURE_TIME);
+        }
     }
 }

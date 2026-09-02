@@ -94,5 +94,11 @@ namespace AFMSDll
 
             return sql.ToString();
         }
+
+        public override string CheckNewIndexes(FBDatabase db)
+        {
+            string tableSuffix = GetTableName()[^1..];
+            return EnsureIndex(db, $"IDX_RHYDRO{tableSuffix}_TIME_KIND", COL_MEASURE_DATE, COL_MEASURE_TIME, COL_HYDRO_KIND);
+        }
     }
 }
