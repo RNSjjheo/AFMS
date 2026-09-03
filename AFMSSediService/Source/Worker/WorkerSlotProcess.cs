@@ -35,11 +35,7 @@ namespace AFMSSediService
             {
                 stoppingToken.ThrowIfCancellationRequested();
 
-                string error = InsertSlot(nextSlot);
-                if (!string.IsNullOrEmpty(error))
-                {
-                    throw new InvalidOperationException($"{nextSlot:yyyy-MM-dd HH:mm:ss} SEDI 슬롯 생성 실패: {error}");
-                }
+                InsertSlot(nextSlot);
 
                 Logger.LogInformation("SEDI 슬롯을 생성했습니다. 슬롯={SlotTime:yyyy-MM-dd HH:mm:ss}", nextSlot);
                 createdCount++;
@@ -75,7 +71,7 @@ namespace AFMSSediService
             return Convert.ToDateTime(table.Rows[0][FbtAFMSSediSSCTimeslot.COL_SLOT_TIME]);
         }
 
-        protected static string InsertSlot(DateTime slotTime)
+        protected static void InsertSlot(DateTime slotTime)
         {
             QueryBuilderInsert query = new();
             query.Table = FbtAFMSSediSSCTimeslot.TABLE_NAME;
@@ -88,7 +84,9 @@ namespace AFMSSediService
             using FBDatabase db = FBProvider.Instance.CreateDatabase();
             db.Execute(query, out string error);
 
-            return error;
+            if (string.IsNullOrEmpty(error)) return;
+
+            throw ExInvalid.SlotProcessCanotCreateSlot(slotTime, error);
         }
     }
 }
