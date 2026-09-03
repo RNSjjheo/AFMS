@@ -5,13 +5,13 @@ namespace AFMSSediService
 {
     internal sealed class SscSlotFinder
     {
-        private readonly ILogger<WorkerSSCProcess> logger;
+        private readonly ILogger Logger;
         private int? lastLoggedSlotId;
         private int? startSlotId;
 
-        public SscSlotFinder(ILogger<WorkerSSCProcess> logger)
+        public SscSlotFinder(ILogger logger)
         {
-            this.logger = logger;
+            Logger = logger;
         }
 
         public void InitializeStart(ChannelMasterSource source)
@@ -20,7 +20,7 @@ namespace AFMSSediService
             if (slot == null) return;
 
             startSlotId = slot.Id;
-            logger.LogInformation(
+            Logger.LogInformation(
                 "SSC 계산 시작 슬롯을 확정했습니다. SlotId={SlotId}, SlotTime={SlotTime:yyyy-MM-dd HH:mm:ss}, Source={Source}",
                 slot.Id,
                 slot.SlotTime,
@@ -33,7 +33,7 @@ namespace AFMSSediService
             SscCalculationSlot? slot = startSlotId.HasValue ? QueryNext(source, startSlotId.Value) : null;
             if (slot != null && lastLoggedSlotId != slot.Id)
             {
-                logger.LogInformation(
+                Logger.LogInformation(
                     "SSC 처리 대상 슬롯을 확인했습니다. SlotId={SlotId}, SlotTime={SlotTime:yyyy-MM-dd HH:mm:ss}, Source={Source}",
                     slot.Id,
                     slot.SlotTime,

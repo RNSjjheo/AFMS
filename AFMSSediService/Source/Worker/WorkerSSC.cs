@@ -4,45 +4,43 @@ using System;
 using System.Configuration;
 using System.Data;
 using System.Globalization;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace AFMSSediService
 {
     internal abstract class WorkerSSC : BackgroundService
     {
         protected abstract Task<int> ProcessBatchAsync(SSCProfileSnapshot profile, ChannelMasterSource source, SedFileWriter fileWriter, CancellationToken cancellationToken);
-        protected virtual void InitializeProcessing(SSCProfileSnapshot profile, ChannelMasterSource source)
-        {
-        }
 
         protected readonly ILogger Logger;
         protected readonly SSCServiceOptions Options;
-
+        protected readonly SscSlotFinder _SlotFinder;
+        private SedFileWriter FileWriter;
+        private SSCProfileSnapshot Profile;
+        private ChannelMasterSource CM;
         protected WorkerSSC(ILogger logger, IOptions<SSCServiceOptions> options)
         {
             Logger = logger;
             Options = options.Value;
+            FileWriter = new SedFileWriter(Options.DataDirectory);
+            Profile = LoadLatestProfile();
+            CM = ChannelMasterSource.FromProfile(Profile.Device);
+
+            _SlotFinder = new SscSlotFinder(logger);
+            _SlotFinder.InitializeStart(CM);
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            SSCProfileSnapshot profile = LoadLatestProfile();
-            ChannelMasterSource source = ChannelMasterSource.FromProfile(profile.Device);
-            SedFileWriter fileWriter = new SedFileWriter(Options.DataDirectory);
-            InitializeProcessing(profile, source);
-
-            Logger.LogInformation("SSC 프로파일을 메모리에 로드했습니다. ProfileId={ProfileId}, Device={DeviceType}, " +
-                "HydroTable={HydroTableName}({CellFrom}~{CellTo}), Source={HeaderTable}/{CellTable}", profile.ProfileId, profile.Device.DeviceType,
-                profile.Device.HydroTableName, profile.Device.CellFrom, profile.Device.CellTo, source.HeaderTable, source.CellTable);
-            Logger.LogInformation("SSC 계산 시작시각={CalculationStartTime}, 배치크기={BatchSize}, Data폴더={DataDirectory}", Options.CalculationStartTime, Options.BatchSize,
-                Options.DataDirectory);
+            InformationLogging();
 
             while (!stoppingToken.IsCancellationRequested)
             {
                 try
                 {
-                    int processed = await ProcessBatchAsync(profile, source, fileWriter, stoppingToken);
-                    if (processed > 0)
-                        Logger.LogInformation("SSC 자료 {ProcessedCount}건을 처리했습니다.", processed);
+                    int processed = await ProcessBatchAsync(Profile, CM, FileWriter, stoppingToken);
+
+                    if (processed > 0) Logger.LogInformation("SSC 자료 {ProcessedCount}건을 처리했습니다.", processed);
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {
@@ -57,7 +55,13 @@ namespace AFMSSediService
             }
         }
 
-
+        private void InformationLogging()
+        {
+            Logger.LogInformation($"[SSC] SSC 프로파일을 메모리에 로드했습니다");
+            Logger.LogInformation($"[SSC] ProfileId={Profile.ProfileId}, Device={Profile.Device.DeviceType}, HydroTable={Profile.Device.HydroTableName}");
+            Logger.LogInformation($"[SSC] ({Profile.Device.CellFrom}~{Profile.Device.CellTo}), Source={CM.HeaderTable}/{CM.CellTable}");
+            Logger.LogInformation($"[SSC] 계산 시작시각={Options.CalculationStartTime}, 배치크기={Options.BatchSize}, Data폴더={Options.DataDirectory}");
+        }
 
         private static SSCProfileSnapshot LoadLatestProfile()
         {

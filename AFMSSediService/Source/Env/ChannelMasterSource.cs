@@ -9,9 +9,9 @@ namespace AFMSSediService
 
             return profile.HydroTableName switch
             {
-                HydroMetherTableType.RHYDROMETER1 => new ChannelMasterSource("RHYDROMETER1", "RHYDROMETER1CELL", FbtRPOINT.COL_HYDROMETER1_FLAG),
-                HydroMetherTableType.RHYDROMETER2 => new ChannelMasterSource("RHYDROMETER2", "RHYDROMETER2CELL", FbtRPOINT.COL_HYDROMETER2_FLAG),
-                HydroMetherTableType.RHYDROMETER3 => new ChannelMasterSource("RHYDROMETER3", "RHYDROMETER3CELL", FbtRPOINT.COL_HYDROMETER3_FLAG),
+                HydroMetherTableType.RHYDROMETER1 => new ChannelMasterSource(FbtRHYDROMETER1.TABLE_NAME, FbtRHYDROMETER1CELL.TABLE_NAME, FbtRPOINT.COL_HYDROMETER1_FLAG),
+                HydroMetherTableType.RHYDROMETER2 => new ChannelMasterSource(FbtRHYDROMETER2.TABLE_NAME, FbtRHYDROMETER2CELL.TABLE_NAME, FbtRPOINT.COL_HYDROMETER2_FLAG),
+                HydroMetherTableType.RHYDROMETER3 => new ChannelMasterSource(FbtRHYDROMETER3.TABLE_NAME, FbtRHYDROMETER3CELL.TABLE_NAME, FbtRPOINT.COL_HYDROMETER3_FLAG),
                 _ => throw new InvalidOperationException($"지원하지 않는 유속계 테이블입니다. 현재 값={profile.HydroTableName}")
             };
         }
