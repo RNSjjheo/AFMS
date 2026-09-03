@@ -6,9 +6,7 @@ namespace AFMSSediService
 {
     internal sealed class SscRepository
     {
-        public ChannelMasterMeasurement LoadChannelMaster(
-            SscCalculationSlot slot,
-            ChannelMasterSource source)
+        public ChannelMasterMeasurement LoadChannelMaster(SscCalculationSlot slot, ChannelMasterSource source)
         {
             string where = KeyWhere(slot);
             string headerSql = "SELECT FIRST 1 VALUE02, VALUE03, VALUE04, VALUE05,";
