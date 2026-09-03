@@ -30,11 +30,7 @@ namespace AFMSSediService
             Logger.LogInformation("{CalculationDetail}", SscCalculationLogFormatter.Format(slot, source, measurement, profile.Device, result));
             repository.Save(slot, result);
 
-            Logger.LogInformation(
-                "SSC 계산을 완료했습니다. SlotId={SlotId}, Source={Source}, SSC={Ssc}",
-                slot.Id,
-                source.HeaderTable,
-                result.Ssc);
+            Logger.LogInformation("SSC 계산을 완료했습니다. SlotId={SlotId}, Source={Source}, SSC={Ssc}", slot.Id, source.HeaderTable, result.Ssc);
 
             return Task.FromResult(1);
         }
