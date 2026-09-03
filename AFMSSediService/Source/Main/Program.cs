@@ -13,7 +13,7 @@ namespace AFMSSediService
             AFMSLog.Initialize(Environment.UserInteractive, PROCESS_NAME);
             AFMSLogBanner.WriteStartup(PROCESS_NAME, "AFMS SSC SERVICE");
 
-            string programPath = Environment.ProcessPath ?? throw ExInvalid.Throw(InvalidType.ProgromPathUnknown);
+            string programPath = Environment.ProcessPath ?? throw ExInvalid.ProgramPathUnknown();
 
             ServiceInstallResult installResult = WindowsServiceManager.EnsureInstalled(programPath, PROCESS_NAME);
             Log.Info(installResult.Status);
