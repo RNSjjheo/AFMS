@@ -33,6 +33,13 @@ namespace AFMSSediService
             text.AppendLine($"Measurement: CellSize={measurement.CellSizeCm} cm ({Number(cellSize)} m), BlankDistance={measurement.Frequency} cm ({Number(blankDistance)} m)");
             text.AppendLine($"Measurement: Pitch={Number(measurement.Pitch)} deg, Roll={Number(measurement.Roll)} deg, PingCount={measurement.PingCount}");
             text.AppendLine($"Geometry: BeamAngleRadians={Number(beamAngleRadians)}, cos(BeamAngle)={Number(beamCosine)}");
+            text.AppendLine($"Valid cell average velocity={Number(result.AverageVelocity)} m/s");
+            if (result.Ssc == SscCalculator.InvalidSsc)
+            {
+                text.AppendLine($"Calculation: 유효 셀이 2개 미만이므로 SSC={Number(SscCalculator.InvalidSsc)}로 기록합니다.");
+                return text.ToString().TrimEnd();
+            }
+
             text.AppendLine("Cell calculation: Mb=KValue*((Echo1+Echo2)/2), Range=(BlankDistance+Index*CellSize+CellSize/2)/cos(BeamAngle)");
             text.AppendLine("Cell calculation: WCB=Mb+SpreadingLoss+WaterAbsorptionLoss, SCB=WCB+2*Range*SedimentAttenuation");
             text.AppendLine("Cell | Echo1 | Echo2 | AvgEcho | Mb | Range(m) | SpreadCoeff | SpreadLoss | WaterAbs | WaterAbsLoss | SedimentAtt | WCB | SCB");

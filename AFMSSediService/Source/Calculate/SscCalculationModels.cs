@@ -52,6 +52,7 @@ namespace AFMSSediService
 
     internal sealed record SscCalculationResult(
         string DeviceType,
+        double AverageVelocity,
         double AverageScb,
         double RegressionSlope,
         double RegressionIntercept,

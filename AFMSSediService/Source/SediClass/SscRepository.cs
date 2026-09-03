@@ -81,11 +81,11 @@ namespace AFMSSediService
             int sscId = FBProvider.Instance.GetNextID(FbtAFMSSediSSCResult.TABLE_NAME);
             string sscSql = $"UPDATE OR INSERT INTO {FbtAFMSSediSSCResult.TABLE_NAME} (";
             sscSql += $"{FbtAFMSSediSSCResult.COL_ID}, {FbtAFMSSediSSCResult.COL_SLOT_ID}, ";
-            sscSql += $"{FbtAFMSSediSSCResult.COL_DEVICE_TYPE}, {FbtAFMSSediSSCResult.COL_AVG_SCB}, ";
+            sscSql += $"{FbtAFMSSediSSCResult.COL_DEVICE_TYPE}, {FbtAFMSSediSSCResult.COL_AVG_VELOCITY}, {FbtAFMSSediSSCResult.COL_AVG_SCB}, ";
             sscSql += $"{FbtAFMSSediSSCResult.COL_REGRESSION_SLOPE}, {FbtAFMSSediSSCResult.COL_REGRESSION_INTERCEPT}, ";
             sscSql += $"{FbtAFMSSediSSCResult.COL_SSC_SLOPE}, {FbtAFMSSediSSCResult.COL_SSC_INTERCEPT}, ";
             sscSql += $"{FbtAFMSSediSSCResult.COL_SSC}, {FbtAFMSSediSSCResult.COL_CALCULATED_AT}) VALUES (";
-            sscSql += $"{sscId}, {slot.Id}, '{Escape(result.DeviceType)}', {Number(result.AverageScb)}, ";
+            sscSql += $"{sscId}, {slot.Id}, '{Escape(result.DeviceType)}', {Number(result.AverageVelocity)}, {Number(result.AverageScb)}, ";
             sscSql += $"{Number(result.RegressionSlope)}, {Number(result.RegressionIntercept)}, ";
             sscSql += $"{Number(result.SscSlope)}, {Number(result.SscIntercept)}, ";
             sscSql += $"{Number(result.Ssc)}, CURRENT_TIMESTAMP) ";

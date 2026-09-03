@@ -7,6 +7,7 @@ namespace AFMSDll
         public const string COL_SLOT_ID = "SLOT_ID";
 
         public const string COL_DEVICE_TYPE = "DEVICE_TYPE";
+        public const string COL_AVG_VELOCITY = "AVG_VELOCITY";
         public const string COL_AVG_SCB = "AVG_SCB";
         public const string COL_REGRESSION_SLOPE = "REGRESSION_SLOPE";
         public const string COL_REGRESSION_INTERCEPT = "REGRESSION_INTERCEPT";
@@ -28,6 +29,7 @@ namespace AFMSDll
             sql += "\n" + $"{COL_SLOT_ID} INTEGER NOT NULL,";
 
             sql += "\n" + $"{COL_DEVICE_TYPE} VARCHAR(20),";
+            sql += "\n" + $"{COL_AVG_VELOCITY} DOUBLE PRECISION,";
             sql += "\n" + $"{COL_AVG_SCB} DOUBLE PRECISION,";
             sql += "\n" + $"{COL_REGRESSION_SLOPE} DOUBLE PRECISION,";
             sql += "\n" + $"{COL_REGRESSION_INTERCEPT} DOUBLE PRECISION,";
@@ -41,6 +43,12 @@ namespace AFMSDll
             sql += "\n" + ")";
 
             return sql;
+        }
+
+        public override string CheckNewColumn(FBDatabase db)
+        {
+            if (HasColumn(db, COL_AVG_VELOCITY)) return string.Empty;
+            return AddColumn(db, COL_AVG_VELOCITY, "DOUBLE PRECISION");
         }
     }
 }

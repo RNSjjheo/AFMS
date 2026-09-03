@@ -7,6 +7,7 @@ namespace AFMSSediService
     internal static class SscCalculator
     {
         private const int InvalidVelocity = -32768;
+        private const double VelocityScale = 0.001;
         internal const double InvalidSsc = -32768.0;
 
         public static SscCalculationResult Calculate(
@@ -37,15 +38,19 @@ namespace AFMSSediService
                 ChannelMasterCell cell = orderedCells[index];
                 ChannelMasterCell? previousCell = index > 0 ? orderedCells[index - 1] : null;
                 if (cell.Number < profile.CellFrom || cell.Number > profile.CellTo) continue;
-                if (!IsValidCell(cell, previousCell)) continue;
+                if (HasInvalidSignal(cell, previousCell)) break;
+                if (HasInvalidVelocity(cell)) continue;
 
                 double mb = profile.KValue * ((cell.Echo1 + cell.Echo2) / 2.0);
                 double range = (blankDistance + (cell.Number - 1) * cellSize + cellSize / 2.0) / beamCosine;
                 working.Add(new WorkingCell(cell, mb, range));
             }
 
+            double averageVelocity = working.Count > 0
+                ? working.Average(cell => cell.Source.VelocityEastWest) * VelocityScale
+                : InvalidVelocity;
             if (working.Count < 2)
-                return CreateInvalidResult(profile, discharge);
+                return CreateInvalidResult(profile, discharge, averageVelocity);
 
             int frequencyKhz = GetFrequencyKhz(profile.DeviceType);
             double rayleighDistance = GetRayleighDistance(profile.DeviceType);
@@ -118,6 +123,7 @@ namespace AFMSSediService
 
             return new SscCalculationResult(
                 profile.DeviceType,
+                averageVelocity,
                 averageScb,
                 regressionSlope,
                 regressionIntercept,
@@ -131,15 +137,14 @@ namespace AFMSSediService
                 cells);
         }
 
-        private static SscCalculationResult CreateInvalidResult(SSCDeviceProfile profile, double discharge) =>
-            new(profile.DeviceType, 0.0, 0.0, 0.0, profile.SscA, profile.SscB, InvalidSsc, discharge, 0.0, 0.0, 0.0, []);
+        private static SscCalculationResult CreateInvalidResult(SSCDeviceProfile profile, double discharge, double averageVelocity) =>
+            new(profile.DeviceType, averageVelocity, 0.0, 0.0, 0.0, profile.SscA, profile.SscB, InvalidSsc, discharge, 0.0, 0.0, 0.0, []);
 
-        private static bool IsValidCell(ChannelMasterCell cell, ChannelMasterCell? previousCell)
-        {
-            if (cell.VelocityEastWest == InvalidVelocity || cell.VelocityNorthSouth == InvalidVelocity) return false;
-            if (previousCell == null) return true;
-            return cell.Echo1 <= previousCell.Echo1 && cell.Echo2 <= previousCell.Echo2;
-        }
+        private static bool HasInvalidVelocity(ChannelMasterCell cell) =>
+            cell.VelocityEastWest == InvalidVelocity || cell.VelocityNorthSouth == InvalidVelocity;
+
+        private static bool HasInvalidSignal(ChannelMasterCell cell, ChannelMasterCell? previousCell) =>
+            previousCell != null && (cell.Echo1 > previousCell.Echo1 || cell.Echo2 > previousCell.Echo2);
 
         private static int GetFrequencyKhz(string deviceType) =>
             deviceType.ToUpperInvariant() switch
