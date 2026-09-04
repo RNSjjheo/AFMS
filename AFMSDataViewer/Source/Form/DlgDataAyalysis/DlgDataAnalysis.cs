@@ -28,28 +28,20 @@ namespace AFMSDataViewer
         private readonly TableLayoutPanel uiTpMain;
         private readonly Tracking uiTracking;
 
-        public DlgDataAnalysis(
-            ChartMainType sourceChartType,
-            RealtimeChartSeries selectedSeries,
-            RealtimeChartPoint selectedPoint,
-            int? transectNo = null,
-            MeasurementDataHub? measurementDataHub = null,
-            VelocityMeasurement? velocityMeasurement = null,
-            double? minimumVelocity = null,
-            double? maximumVelocity = null,
-            Tracking? linkedTracking = null)
+        public DlgDataAnalysis(ChartMainType chart, RealtimeChartSeries series, RealtimeChartPoint point, int? tranNo = null, MeasurementDataHub? hub = null,
+            VelocityMeasurement? velocityMeasurement = null, double? min= null, double? max= null, Tracking? linkedTracking = null)
         {
-            SourceChartType = sourceChartType;
-            SelectedSeries = selectedSeries;
-            SelectedPoint = selectedPoint;
-            TransectNo = transectNo;
-            this.measurementDataHub = measurementDataHub;
+            SourceChartType = chart;
+            SelectedSeries = series;
+            SelectedPoint = point;
+            TransectNo = tranNo;
+            this.measurementDataHub = hub;
             this.velocityMeasurement = velocityMeasurement;
-            this.minimumVelocity = minimumVelocity;
-            this.maximumVelocity = maximumVelocity;
+            this.minimumVelocity = min;
+            this.maximumVelocity = max;
             this.linkedTracking = linkedTracking;
 
-            Text = $"데이터 분석 - {selectedSeries.Name} ({selectedPoint.Time:yyyy-MM-dd HH:mm})";
+            Text = $"데이터 분석 - {series.Name} ({point.Time:yyyy-MM-dd HH:mm})";
             StartPosition = FormStartPosition.CenterParent;
             Size = new Size(1000, 700);
             MinimumSize = new Size(760, 520);
