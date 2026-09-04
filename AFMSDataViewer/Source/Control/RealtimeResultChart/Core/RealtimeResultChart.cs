@@ -218,6 +218,12 @@ namespace AFMSDataViewer
             ? GetThemeColor()
             : SeriesColors[(seriesIndex - 1) % SeriesColors.Length];
 
+        protected (double Minimum, double Maximum) GetYAxisRange()
+        {
+            AxisLimits limits = formsPlot.Plot.Axes.GetLimits();
+            return (limits.Bottom, limits.Top);
+        }
+
         protected void ShowDataError(string message)
         {
             availableSeries.Clear();

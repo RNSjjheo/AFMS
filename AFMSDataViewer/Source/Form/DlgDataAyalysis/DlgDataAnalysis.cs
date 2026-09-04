@@ -28,6 +28,8 @@ namespace AFMSDataViewer
         };
         private readonly MeasurementDataHub? measurementDataHub;
         private readonly Tracking? linkedTracking;
+        private readonly double? minimumVelocity;
+        private readonly double? maximumVelocity;
         private VelocityMeasurement? velocityMeasurement;
         private bool syncingTracking;
 
@@ -45,6 +47,8 @@ namespace AFMSDataViewer
             int? transectNo = null,
             MeasurementDataHub? measurementDataHub = null,
             VelocityMeasurement? velocityMeasurement = null,
+            double? minimumVelocity = null,
+            double? maximumVelocity = null,
             Tracking? linkedTracking = null)
         {
             SourceChartType = sourceChartType;
@@ -53,6 +57,8 @@ namespace AFMSDataViewer
             TransectNo = transectNo;
             this.measurementDataHub = measurementDataHub;
             this.velocityMeasurement = velocityMeasurement;
+            this.minimumVelocity = minimumVelocity;
+            this.maximumVelocity = maximumVelocity;
             this.linkedTracking = linkedTracking;
 
             Text = $"데이터 분석 - {selectedSeries.Name} ({selectedPoint.Time:yyyy-MM-dd HH:mm})";
@@ -369,6 +375,8 @@ namespace AFMSDataViewer
                 plot.Plot.Axes.Bottom.Label.Text = context.Transects.Count > 0 ? "좌안 기준 거리 (m)" : "측선";
                 plot.Plot.Axes.Left.Label.Text = "유속 (m/s)";
                 plot.Plot.Axes.AutoScale();
+                if (minimumVelocity.HasValue && maximumVelocity.HasValue && minimumVelocity.Value < maximumVelocity.Value)
+                    plot.Plot.Axes.SetLimitsY(minimumVelocity.Value, maximumVelocity.Value);
             }
             plot.Refresh();
 
