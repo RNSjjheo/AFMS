@@ -24,11 +24,14 @@ namespace AFMSDataViewer
         private Label _lbTimeStart;
         private Label _lbTimeFinish;
         private DateTime _rangeStart;
+        private DateTime _rangeEnd;
         private bool _settingRange;
         public AFMSTrackBar CtlItem;
 
         public event EventHandler<TrackingTimeChangedEventArgs>? SelectedTimeChanged;
 
+        public DateTime RangeStart => _rangeStart;
+        public DateTime RangeEnd => _rangeEnd;
         public DateTime SelectedTime =>
             _rangeStart + TimeSpan.FromTicks(MeasurementDataHub.SlotInterval.Ticks * CtlItem.Value);
 
@@ -115,6 +118,7 @@ namespace AFMSDataViewer
             _lbTimeStart.Text = start.ToString("yyyy-MM-dd HH:mm");
             _lbTimeFinish.Text = end.ToString("yyyy-MM-dd HH:mm");
             _rangeStart = start;
+            _rangeEnd = end;
 
             int maximum = (int)Math.Min(int.MaxValue,
                 Math.Max(0, (end - start).Ticks / MeasurementDataHub.SlotInterval.Ticks));
@@ -140,6 +144,25 @@ namespace AFMSDataViewer
 
             RaiseSelectedTimeChanged();
 
+        }
+
+        public void SetSelectedTime(DateTime selectedTime)
+        {
+            if (_rangeStart > _rangeEnd)
+                throw new InvalidOperationException("트래킹 시간 범위가 설정되지 않았습니다.");
+
+            int maximum = (int)Math.Min(int.MaxValue,
+                Math.Max(0, (_rangeEnd - _rangeStart).Ticks / MeasurementDataHub.SlotInterval.Ticks));
+            int value = (int)Math.Clamp(
+                (selectedTime - _rangeStart).Ticks / MeasurementDataHub.SlotInterval.Ticks,
+                0L,
+                maximum);
+
+            _settingRange = true;
+            try { CtlItem.Value = value; }
+            finally { _settingRange = false; }
+
+            RaiseSelectedTimeChanged();
         }
 
         private void RaiseSelectedTimeChanged() =>

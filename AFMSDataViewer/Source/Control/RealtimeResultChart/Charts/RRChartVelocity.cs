@@ -146,9 +146,11 @@ namespace AFMSDataViewer
                 selectedValue is { IsValid: true } ? selectedValue.Velocity : 0D,
                 selectedValue is not { IsValid: true });
 
-            using DlgDataAnalysis dialog = new(
-                ChartType, series, point, transect, MeasurementDataHub, measurement);
-            dialog.ShowDialog(FindForm());
+            Form? owner = FindForm();
+            Tracking? mainTracking = (owner as FormMain)?._ViewRealtime.uiTracking;
+            DlgDataAnalysis dialog = new(
+                ChartType, series, point, transect, MeasurementDataHub, measurement, mainTracking);
+            dialog.Show(owner);
         }
     }
 }

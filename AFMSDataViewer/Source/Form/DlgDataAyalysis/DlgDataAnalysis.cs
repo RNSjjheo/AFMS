@@ -27,12 +27,16 @@ namespace AFMSDataViewer
             SizeMode = TabSizeMode.Fixed
         };
         private readonly MeasurementDataHub? measurementDataHub;
-        private readonly VelocityMeasurement? velocityMeasurement;
+        private readonly Tracking? linkedTracking;
+        private VelocityMeasurement? velocityMeasurement;
+        private bool syncingTracking;
 
         public ChartMainType SourceChartType { get; }
         public RealtimeChartSeries SelectedSeries { get; }
-        public RealtimeChartPoint SelectedPoint { get; }
+        public RealtimeChartPoint SelectedPoint { get; private set; }
         public int? TransectNo { get; }
+        private readonly TableLayoutPanel uiTpMain;
+        private readonly Tracking uiTracking;
 
         public DlgDataAnalysis(
             ChartMainType sourceChartType,
@@ -40,7 +44,8 @@ namespace AFMSDataViewer
             RealtimeChartPoint selectedPoint,
             int? transectNo = null,
             MeasurementDataHub? measurementDataHub = null,
-            VelocityMeasurement? velocityMeasurement = null)
+            VelocityMeasurement? velocityMeasurement = null,
+            Tracking? linkedTracking = null)
         {
             SourceChartType = sourceChartType;
             SelectedSeries = selectedSeries;
@@ -48,6 +53,7 @@ namespace AFMSDataViewer
             TransectNo = transectNo;
             this.measurementDataHub = measurementDataHub;
             this.velocityMeasurement = velocityMeasurement;
+            this.linkedTracking = linkedTracking;
 
             Text = $"데이터 분석 - {selectedSeries.Name} ({selectedPoint.Time:yyyy-MM-dd HH:mm})";
             StartPosition = FormStartPosition.CenterParent;
@@ -56,8 +62,25 @@ namespace AFMSDataViewer
             ShowMinimizeButton = false;
             ShowInfoButton = false;
             ShowInTaskbar = false;
-            Controls.Add(analysisTabs);
+
+            uiTpMain = new TableLayoutPanel();
+            uiTpMain.Dock = DockStyle.Fill;
+            uiTpMain.RowStyles.Clear();
+            uiTpMain.ColumnStyles.Clear();
+            uiTpMain.RowCount = 2;
+            uiTpMain.ColumnCount = 1;
+            uiTpMain.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            uiTpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 50F));
+            uiTpMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+
+            uiTracking = new Tracking();
+            uiTracking.Dock = DockStyle.Fill;
+
+            uiTpMain.Controls.Add(analysisTabs, 0, 0);
+            uiTpMain.Controls.Add(uiTracking, 0, 1);
+            Controls.Add(uiTpMain);
             ConfigureAnalysisTabs();
+            InitializeTracking();
         }
 
         private void ConfigureAnalysisTabs()
@@ -80,6 +103,90 @@ namespace AFMSDataViewer
 
             throw new ArgumentOutOfRangeException(nameof(SourceChartType), SourceChartType,
                 "유속 또는 유량 차트에서만 데이터 분석을 실행할 수 있습니다.");
+        }
+
+        private void InitializeTracking()
+        {
+            uiTracking.SelectedTimeChanged += UiTracking_SelectedTimeChanged;
+            if (linkedTracking == null)
+            {
+                uiTracking.SetRange(SelectedPoint.Time, SelectedPoint.Time, SelectedPoint.Time);
+                return;
+            }
+
+            linkedTracking.SelectedTimeChanged += LinkedTracking_SelectedTimeChanged;
+            SyncFromLinkedTracking(linkedTracking.SelectedTime);
+        }
+
+        private void UiTracking_SelectedTimeChanged(object? sender, TrackingTimeChangedEventArgs e)
+        {
+            if (syncingTracking) return;
+
+            if (linkedTracking != null)
+            {
+                syncingTracking = true;
+                try { linkedTracking.SetSelectedTime(e.Time); }
+                finally { syncingTracking = false; }
+            }
+
+            RefreshAnalysis(e.Time);
+        }
+
+        private void LinkedTracking_SelectedTimeChanged(object? sender, TrackingTimeChangedEventArgs e)
+        {
+            if (syncingTracking || IsDisposed) return;
+            SyncFromLinkedTracking(e.Time);
+        }
+
+        private void SyncFromLinkedTracking(DateTime selectedTime)
+        {
+            if (linkedTracking == null) return;
+
+            syncingTracking = true;
+            try { uiTracking.SetRange(linkedTracking.RangeStart, linkedTracking.RangeEnd, selectedTime); }
+            finally { syncingTracking = false; }
+
+            RefreshAnalysis(selectedTime);
+        }
+
+        private void RefreshAnalysis(DateTime selectedTime)
+        {
+            DateTime slotTime = MeasurementDataHub.AlignToSlot(selectedTime);
+            RealtimeChartPoint? point = SelectedSeries.Points
+                .Where(item => MeasurementDataHub.AlignToSlot(item.Time) == slotTime)
+                .MinBy(item => Math.Abs((item.Time - selectedTime).Ticks));
+
+            if (SourceChartType == ChartMainType.Velocity && measurementDataHub != null && velocityMeasurement != null)
+            {
+                VelocityMeasurement? measurement = measurementDataHub.GetVelocitySlots(slotTime, slotTime)
+                    .SelectMany(slot => slot.Measurements)
+                    .FirstOrDefault(item => item.SourceType == velocityMeasurement.SourceType && item.DeviceKey == velocityMeasurement.DeviceKey);
+                if (measurement == null) return;
+
+                velocityMeasurement = measurement;
+                VelocityTransectMeasurement? selectedValue = measurement.Transects.FirstOrDefault(item => item.TransectNo == TransectNo);
+                point = new RealtimeChartPoint(
+                    measurement.Time,
+                    selectedValue is { IsValid: true } ? selectedValue.Velocity : 0D,
+                    selectedValue is not { IsValid: true });
+            }
+
+            if (point != null) SelectedPoint = point;
+            Text = $"데이터 분석 - {SelectedSeries.Name} ({slotTime:yyyy-MM-dd HH:mm})";
+            RebuildAnalysisTabs();
+        }
+
+        private void RebuildAnalysisTabs()
+        {
+            analysisTabs.SuspendLayout();
+            try
+            {
+                TabPage[] pages = analysisTabs.TabPages.Cast<TabPage>().ToArray();
+                analysisTabs.TabPages.Clear();
+                foreach (TabPage page in pages) page.Dispose();
+                ConfigureAnalysisTabs();
+            }
+            finally { analysisTabs.ResumeLayout(true); }
         }
 
         private TabPage CreateVelocityPage()
@@ -334,6 +441,16 @@ namespace AFMSDataViewer
             string transects = context.Transects.Count > 0 ? $"측선 {context.Transects.Count}개" : "측선 정보 없음";
             string result = $"{level}   |   {section}   |   {transects}";
             return string.IsNullOrWhiteSpace(context.Message) ? result : $"{result}   |   {context.Message}";
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                uiTracking.SelectedTimeChanged -= UiTracking_SelectedTimeChanged;
+                if (linkedTracking != null) linkedTracking.SelectedTimeChanged -= LinkedTracking_SelectedTimeChanged;
+            }
+            base.Dispose(disposing);
         }
 
         private static double GetTransectPosition(TransectCollection transects, int transectNo) =>

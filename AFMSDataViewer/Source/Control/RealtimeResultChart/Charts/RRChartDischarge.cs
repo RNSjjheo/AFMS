@@ -95,8 +95,10 @@ namespace AFMSDataViewer
             if (series == null) return;
             RealtimeChartPoint point = series.Points.MaxBy(point => point.Time)!;
 
-            using DlgDataAnalysis dialog = new(ChartType, series, point, null);
-            dialog.ShowDialog(FindForm());
+            Form? owner = FindForm();
+            Tracking? mainTracking = (owner as FormMain)?._ViewRealtime.uiTracking;
+            DlgDataAnalysis dialog = new(ChartType, series, point, linkedTracking: mainTracking);
+            dialog.Show(owner);
         }
 
         private static string GetDeviceText(string type, int id, string? meterType)
