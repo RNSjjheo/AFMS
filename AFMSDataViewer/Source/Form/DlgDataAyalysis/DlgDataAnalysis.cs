@@ -85,20 +85,26 @@ namespace AFMSDataViewer
 
         private void ConfigureAnalysisTabs()
         {
+            analysisTabs.TabPages.AddRange(CreateAnalysisPages());
+        }
+
+        private TabPage[] CreateAnalysisPages()
+        {
             if (SourceChartType == ChartMainType.Velocity && velocityMeasurement != null)
             {
                 SectionContext section = LoadSectionContext();
-                analysisTabs.TabPages.Add(CreateVelocityPage());
-                analysisTabs.TabPages.Add(CreateTimeDistributionPage(section));
-                analysisTabs.TabPages.Add(CreateCrossSectionPage(section));
-                analysisTabs.TabPages.Add(CreateMainFlowPage(section));
-                return;
+                return
+                [
+                    CreateVelocityPage(),
+                    CreateTimeDistributionPage(section),
+                    CreateCrossSectionPage(section),
+                    CreateMainFlowPage(section)
+                ];
             }
 
             if (SourceChartType == ChartMainType.Discharge)
             {
-                analysisTabs.TabPages.Add(new TabPage("유량 분석"));
-                return;
+                return [new TabPage("유량 분석")];
             }
 
             throw new ArgumentOutOfRangeException(nameof(SourceChartType), SourceChartType,
@@ -178,15 +184,44 @@ namespace AFMSDataViewer
 
         private void RebuildAnalysisTabs()
         {
-            analysisTabs.SuspendLayout();
+            TabPage[] updatedPages = CreateAnalysisPages();
+            bool sameTabs = updatedPages.Length == analysisTabs.TabPages.Count &&
+                updatedPages.Select((page, index) => page.Text == analysisTabs.TabPages[index].Text).All(matches => matches);
+
+            if (!sameTabs)
+            {
+                int selectedIndex = analysisTabs.SelectedIndex;
+                TabPage[] oldPages = analysisTabs.TabPages.Cast<TabPage>().ToArray();
+                analysisTabs.TabPages.Clear();
+                analysisTabs.TabPages.AddRange(updatedPages);
+                foreach (TabPage page in oldPages) page.Dispose();
+                if (selectedIndex >= 0 && selectedIndex < analysisTabs.TabPages.Count)
+                    analysisTabs.SelectedIndex = selectedIndex;
+                return;
+            }
+
+            for (int index = 0; index < updatedPages.Length; index++)
+                ReplacePageContents(analysisTabs.TabPages[index], updatedPages[index]);
+        }
+
+        private static void ReplacePageContents(TabPage currentPage, TabPage updatedPage)
+        {
+            Control[] oldControls = currentPage.Controls.Cast<Control>().ToArray();
+            Control[] updatedControls = updatedPage.Controls.Cast<Control>().ToArray();
+
+            currentPage.SuspendLayout();
             try
             {
-                TabPage[] pages = analysisTabs.TabPages.Cast<TabPage>().ToArray();
-                analysisTabs.TabPages.Clear();
-                foreach (TabPage page in pages) page.Dispose();
-                ConfigureAnalysisTabs();
+                updatedPage.Controls.Clear();
+                currentPage.Controls.Clear();
+                foreach (Control control in oldControls) control.Dispose();
+                currentPage.Controls.AddRange(updatedControls);
             }
-            finally { analysisTabs.ResumeLayout(true); }
+            finally
+            {
+                currentPage.ResumeLayout(true);
+                updatedPage.Dispose();
+            }
         }
 
         private TabPage CreateVelocityPage()
