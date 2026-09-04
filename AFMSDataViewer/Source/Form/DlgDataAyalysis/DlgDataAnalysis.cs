@@ -160,8 +160,10 @@ namespace AFMSDataViewer
                 .Where(item => MeasurementDataHub.AlignToSlot(item.Time) == slotTime)
                 .MinBy(item => Math.Abs((item.Time - selectedTime).Ticks));
 
-            if (SourceChartType == ChartMainType.Velocity && measurementDataHub != null && velocityMeasurement != null)
-            {
+            if (SourceChartType != ChartMainType.Velocity) return;
+            if (measurementDataHub == null) return;
+            if (velocityMeasurement == null) return;
+
                 VelocityMeasurement? measurement = measurementDataHub.GetVelocitySlots(slotTime, slotTime)
                     .SelectMany(slot => slot.Measurements)
                     .FirstOrDefault(item => item.SourceType == velocityMeasurement.SourceType && item.DeviceKey == velocityMeasurement.DeviceKey);
@@ -173,9 +175,9 @@ namespace AFMSDataViewer
                     measurement.Time,
                     selectedValue is { IsValid: true } ? selectedValue.Velocity : 0D,
                     selectedValue is not { IsValid: true });
-            }
 
             if (point != null) SelectedPoint = point;
+
             Text = $"데이터 분석 - {SelectedSeries.Name} ({slotTime:yyyy-MM-dd HH:mm})";
             RebuildAnalysisTabs();
         }
