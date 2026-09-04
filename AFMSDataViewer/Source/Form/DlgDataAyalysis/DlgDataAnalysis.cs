@@ -13,19 +13,7 @@ namespace AFMSDataViewer
             double? WaterLevel,
             string Message);
 
-        private readonly AFMSTabControl analysisTabs = new()
-        {
-            Dock = DockStyle.Fill,
-            DrawMode = TabDrawMode.OwnerDrawFixed,
-            Font = new Font("Segoe UI", 9F),
-            ItemSize = new Size(120, 40),
-            Padding = new Point(12, 5),
-            TabHeight = 40,
-            TabSizingMode = AFMSTabSizingMode.Equal,
-            EqualTabWidth = 120,
-            BorderRadius = 5,
-            SizeMode = TabSizeMode.Fixed
-        };
+        private readonly AFMSTabControl uiTabs;
         private readonly MeasurementDataHub? measurementDataHub;
         private readonly Tracking? linkedTracking;
         private readonly double? minimumVelocity;
@@ -82,7 +70,19 @@ namespace AFMSDataViewer
             uiTracking = new Tracking();
             uiTracking.Dock = DockStyle.Fill;
 
-            uiTpMain.Controls.Add(analysisTabs, 0, 0);
+            uiTabs = new AFMSTabControl();
+            uiTabs.Dock = DockStyle.Fill;
+            uiTabs.DrawMode = TabDrawMode.OwnerDrawFixed;
+            uiTabs.Font = new Font("Segoe UI", 9F);
+            uiTabs.ItemSize = new Size(120, 40);
+            uiTabs.Padding = new Point(12, 5);
+            uiTabs.TabHeight = 40;
+            uiTabs.TabSizingMode = AFMSTabSizingMode.Equal;
+            uiTabs.EqualTabWidth = 120;
+            uiTabs.BorderRadius = 5;
+            uiTabs.SizeMode = TabSizeMode.Fixed;
+
+            uiTpMain.Controls.Add(uiTabs, 0, 0);
             uiTpMain.Controls.Add(uiTracking, 0, 1);
             Controls.Add(uiTpMain);
             ConfigureAnalysisTabs();
@@ -91,7 +91,7 @@ namespace AFMSDataViewer
 
         private void ConfigureAnalysisTabs()
         {
-            analysisTabs.TabPages.AddRange(CreateAnalysisPages());
+            uiTabs.TabPages.AddRange(CreateAnalysisPages());
         }
 
         private TabPage[] CreateAnalysisPages()
@@ -191,23 +191,23 @@ namespace AFMSDataViewer
         private void RebuildAnalysisTabs()
         {
             TabPage[] updatedPages = CreateAnalysisPages();
-            bool sameTabs = updatedPages.Length == analysisTabs.TabPages.Count &&
-                updatedPages.Select((page, index) => page.Text == analysisTabs.TabPages[index].Text).All(matches => matches);
+            bool sameTabs = updatedPages.Length == uiTabs.TabPages.Count &&
+                updatedPages.Select((page, index) => page.Text == uiTabs.TabPages[index].Text).All(matches => matches);
 
             if (!sameTabs)
             {
-                int selectedIndex = analysisTabs.SelectedIndex;
-                TabPage[] oldPages = analysisTabs.TabPages.Cast<TabPage>().ToArray();
-                analysisTabs.TabPages.Clear();
-                analysisTabs.TabPages.AddRange(updatedPages);
+                int selectedIndex = uiTabs.SelectedIndex;
+                TabPage[] oldPages = uiTabs.TabPages.Cast<TabPage>().ToArray();
+                uiTabs.TabPages.Clear();
+                uiTabs.TabPages.AddRange(updatedPages);
                 foreach (TabPage page in oldPages) page.Dispose();
-                if (selectedIndex >= 0 && selectedIndex < analysisTabs.TabPages.Count)
-                    analysisTabs.SelectedIndex = selectedIndex;
+                if (selectedIndex >= 0 && selectedIndex < uiTabs.TabPages.Count)
+                    uiTabs.SelectedIndex = selectedIndex;
                 return;
             }
 
             for (int index = 0; index < updatedPages.Length; index++)
-                ReplacePageContents(analysisTabs.TabPages[index], updatedPages[index]);
+                ReplacePageContents(uiTabs.TabPages[index], updatedPages[index]);
         }
 
         private static void ReplacePageContents(TabPage currentPage, TabPage updatedPage)
