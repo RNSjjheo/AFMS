@@ -4,23 +4,29 @@ namespace AFMSLoggerMonitors
 {
     public partial class FormMain : AFMSForm
     {
-        private AFMSTabBar uiTabControl;
-        private TableLayoutPanel uiTpMain;
+        private AFMSTabControl uiTabCtl;
+        private TabLogger uiLoggerVideo;
         public FormMain()
         {
             InitializeComponent();
             this.Text = "Total Logger Monitoring";
-            ClientSize = new Size(800, 450);
 
-            uiTpMain = new TableLayoutPanel();
-            uiTpMain.Dock = DockStyle.Fill;
-            uiTpMain.RowStyles.Clear();
-            uiTpMain.ColumnStyles.Clear();
-            uiTpMain.RowCount = 2;
-            uiTpMain.ColumnCount = 1;
-            uiTpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
-            uiTpMain.RowStyles.Add(new RowStyle(SizeType.Percent,100F));
-            uiTpMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            this.Width = 800;
+            this.Height = 600;
+
+            uiTabCtl = new AFMSTabControl();
+            uiTabCtl.Dock = DockStyle.Fill;
+            uiTabCtl.TabHeight = 40;
+            uiTabCtl.TabSizingMode = AFMSTabSizingMode.Equal;
+            uiTabCtl.EqualTabWidth = 120;
+            uiTabCtl.BorderRadius = 5;
+            uiTabCtl.SizeMode = TabSizeMode.Fixed;
+
+            uiLoggerVideo = new TabLogger(LoggerKind.VideoHydrosem);
+
+            uiTabCtl.TabPages.Add(uiLoggerVideo);
+
+            Controls.Add(uiTabCtl);
         }
 
         private void Form1_Load(object sender, EventArgs e)

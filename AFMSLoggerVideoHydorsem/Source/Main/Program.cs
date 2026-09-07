@@ -10,7 +10,7 @@ namespace AFMSLoggerVideoHydorsem
 {
     public class Program
     {
-        private const string ProcessName = "AFMSLoggerVideoHydorsem";
+        public const string ProcessName = "AFMSLoggerVideoHydorsem";
         private const int DefaultMonitoringPort = 8004;
         private static readonly ILog Log = LogManager.GetLogger("SYS");
 

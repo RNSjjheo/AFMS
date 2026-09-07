@@ -94,8 +94,8 @@ namespace AFMSLoggerMonitors
             Screen screen = Screen.FromPoint(Cursor.Position);
             Rectangle workingArea = screen.WorkingArea;
 
-            _frmMain.Width = 600;
-            _frmMain.Height = 800;
+            _frmMain.Width = 900;
+            _frmMain.Height = 600;
             _frmMain.Location = new Point(
                 workingArea.Right - _frmMain.Width - margin,
                 workingArea.Bottom - _frmMain.Height - margin);
