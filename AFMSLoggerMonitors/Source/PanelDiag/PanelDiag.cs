@@ -31,8 +31,6 @@ namespace AFMSLoggerMonitors
             uiTpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, TabCommon.TITILE_HIGTH));
             uiTpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, TabCommon.TITILE_MARGIN));
             uiTpMain.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            //uiTpMain.RowStyles.Add(new RowStyle(SizeType.Percent, 1F));
-            //uiTpMain.RowStyles.Add(new RowStyle(SizeType.Percent, 30F));
 
             uiLbTitle = TabCommon.CreateTitleLabel("운영 정보");
             uiLbVersion = TabCommon.CreateLabel("v0.9.0.1", 9F, FontStyle.Regular, TabCommon.DescriptionColor);
