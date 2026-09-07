@@ -30,7 +30,7 @@ namespace AFMSLoggerVideoHydorsem
 
         public void Regist()
         {
-            string path = DiagnosticsOwner.Instance.WebPath;
+            string path = Configuration.Instance.WebPath;
 
             restApi.MapPost($"/{path}", async (HttpRequest request, IRequestTaskQueue queue) =>
             {
@@ -65,12 +65,12 @@ namespace AFMSLoggerVideoHydorsem
 
             if (!queue.TryQueue(item))
             {
-                TcpBrocastBuffer.WriteLog("API", $"[{item.Key}] Response 503, Path={item.Path}, Method={item.Method} RequestId={item.Id},  Queue is full.");
+                Log.Warn($"[{item.Key}] Response 503, Path={item.Path}, Method={item.Method} RequestId={item.Id}, Queue is full.");
                 return Results.StatusCode(StatusCodes.Status503ServiceUnavailable);
             }
             else
             {
-                TcpBrocastBuffer.WriteLog("API", $"[{item.Key}] Response 200, Path={item.Path}, Method={item.Method}, RequestId={item.Id}, Queued successfully.");
+                Log.Info($"[{item.Key}] Response 200, Path={item.Path}, Method={item.Method}, RequestId={item.Id}, Queued successfully.");
                 return Results.Text("success");
             }
         }

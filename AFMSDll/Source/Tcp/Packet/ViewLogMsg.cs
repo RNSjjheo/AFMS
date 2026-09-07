@@ -1,16 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
 namespace AFMSDll
 {
-    public class ViewLogMsg: _PacketBase
+    public sealed class ViewLogMsg : _PacketBase
     {
-        public string LogHost;
-        public string LogMsg;
         public ViewLogMsg()
         {
             JsonType = JsonPacketType.ViewerLogMsg;
         }
+
+        public string LogHost { get; set; } = string.Empty;
+        public string LogLevel { get; set; } = string.Empty;
+        public string LogMsg { get; set; } = string.Empty;
+        public DateTime LogTime { get; set; }
     }
 }

@@ -1,4 +1,3 @@
-using System.Net;
 using AFMSDll;
 using log4net;
 using Microsoft.AspNetCore.Builder;
@@ -32,22 +31,24 @@ namespace AFMSLoggerVideoHydorsem
                     Args = args,
                     ContentRootPath = AppContext.BaseDirectory
                 });
-                builder.WebHost.UseUrls($"http://0.0.0.0:{DiagnosticsOwner.Instance.WebPort}");
+                builder.WebHost.UseUrls($"http://0.0.0.0:{Configuration.Instance.WebPort}");
                 builder.Services.AddWindowsService(options => options.ServiceName = "AFMS Logger Video Hydorsem");
 
                 int monitoringPort = builder.Configuration.GetValue("MonitoringPort", DefaultMonitoringPort);
-                builder.Services.AddSingleton(_ => new TcpPacketServer(IPAddress.Any, monitoringPort));
                 builder.Services.AddSingleton<IRequestTaskQueue, RequestTaskQueue>();
-                builder.Services.AddSingleton<TcpMessageDispatcher>();
+                builder.Services.AddTcpLogging(options =>
+                {
+                    options.Port = monitoringPort;
+                    options.ServiceName = ProcessName;
+                });
                 builder.Services.AddHostedService<RequestTaskWorker>();
-                builder.Services.AddHostedService<TcpServerWorker>();
-                builder.Services.AddHostedService<DiagnosticsWorker>();
 
                 WebApplication app = builder.Build();
                 new RestApiManager(app).Regist();
 
+                await app.StartAsync();
                 WriteStartupLogs(monitoringPort, databaseLogs);
-                await app.RunAsync();
+                await app.WaitForShutdownAsync();
                 Log.Info($"{ProcessName} 정상 종료");
                 return 0;
             }
@@ -64,14 +65,14 @@ namespace AFMSLoggerVideoHydorsem
 
         private static void WriteStartupLogs(int monitoringPort, IEnumerable<string> databaseLogs)
         {
-            TcpBrocastBuffer.WriteLog("SYS", "===========================================================");
-            TcpBrocastBuffer.WriteLog("SYS", $"= {ProcessName}");
-            TcpBrocastBuffer.WriteLog("SYS", $"= 버전: {AFMSBuild.GetVersion()}");
-            TcpBrocastBuffer.WriteLog("SYS", $"= 빌드: {AFMSBuild.GetBuildDate()}");
-            TcpBrocastBuffer.WriteLog("SYS", $"= 영상 수신: {DiagnosticsOwner.Instance.WebPort}/{DiagnosticsOwner.Instance.WebPath}");
-            TcpBrocastBuffer.WriteLog("SYS", $"= 모니터링 포트: {monitoringPort}");
-            TcpBrocastBuffer.WriteLog("SYS", "===========================================================");
-            foreach (string message in databaseLogs) TcpBrocastBuffer.WriteLog("SYS", message);
+            Log.Info("===========================================================");
+            Log.Info($"= {ProcessName}");
+            Log.Info($"= 버전: {AFMSBuild.GetVersion()}");
+            Log.Info($"= 빌드: {AFMSBuild.GetBuildDate()}");
+            Log.Info($"= 영상 수신: {Configuration.Instance.WebPort}/{Configuration.Instance.WebPath}");
+            Log.Info($"= 모니터링 포트: {monitoringPort}");
+            Log.Info("===========================================================");
+            foreach (string message in databaseLogs) Log.Info(message);
         }
     }
 }

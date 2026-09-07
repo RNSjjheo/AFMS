@@ -12,11 +12,13 @@ namespace AFMSLoggerVideoHydorsem
     {
         private static readonly ILog Log = LogManager.GetLogger("API");
         private readonly IRequestTaskQueue _queue;
+        private readonly TcpLoggingDiagnostics diagnostics;
         private const int WorkerCount = 4;
 
-        public RequestTaskWorker(IRequestTaskQueue queue)
+        public RequestTaskWorker(IRequestTaskQueue queue, TcpLoggingDiagnostics diagnostics)
         {
             _queue = queue;
+            this.diagnostics = diagnostics;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -58,7 +60,7 @@ namespace AFMSLoggerVideoHydorsem
         private async Task ProcessAsync(int workerNo, RequestWorkItem item, CancellationToken cancellationToken)
         {
             // Converting은 MeasureVideo?를 반환하므로 nullable로 받고 검사
-            MeasureVideo? data = VideoParser.Converting(item.Message, DiagnosticsOwner.Instance.SiteCode, out string errorMsg);
+            MeasureVideo? data = VideoParser.Converting(item.Message, Configuration.Instance.SiteCode, out string errorMsg);
 
             if (data is null)
             {
@@ -72,20 +74,12 @@ namespace AFMSLoggerVideoHydorsem
             bool result = VideoDbWriter.Insert(data);
             if (!result)
             {
-                TcpBrocastBuffer.WriteLog("API", $"[{item.Key}] 영상유속계 데이터를 DB에 기록하지 못했습니다.");
+                Log.Error($"[{item.Key}] 영상유속계 데이터를 DB에 기록하지 못했습니다.");
                 return;
             }
 
-            DiagnosticsOwner.Instance.VideoMeasDate = data.Datetime.ToString("yyyy-MM-dd");
-            DiagnosticsOwner.Instance.VideoMeasTime = data.Datetime.ToString("HH:mm:ss");
-            DiagnosticsOwner.Instance.VideoMeasVelo = data.Velocity;
-            DiagnosticsOwner.Instance.VideoMeasCellLen = data.CellLength;
-            DiagnosticsOwner.Instance.VideoMeasCellCnt = data.CellCount;
-            DiagnosticsOwner.Instance.VideoMeasCert= data.VeloUncertainty;
-
-            DiagnosticsOwner.Instance.UpdateCurrentProcessMemoryMB();
-
-            TcpBrocastBuffer.WriteLog("API", $"[{item.Key}] Index: {data.Id}, V: {data.Velocity.ToString("0.000")}, Level: {data.WaterLevel.ToString("0.00")}");
+            diagnostics.ReportMeasurement(data.Datetime);
+            Log.Info($"[{item.Key}] Index: {data.Id}, V: {data.Velocity:0.000}, Level: {data.WaterLevel:0.00}");
 
 
             foreach (var cell in data.Cells)
@@ -96,7 +90,7 @@ namespace AFMSLoggerVideoHydorsem
                 msgcell += $"Y: {cell.PosY.ToString("0.00")}, ";
                 msgcell += $"U: {cell.Uncertainty.ToString("0.00")}";
 
-                TcpBrocastBuffer.WriteLog("API", msgcell);
+                Log.Info(msgcell);
             }
 
             await Task.Delay(1000, cancellationToken);

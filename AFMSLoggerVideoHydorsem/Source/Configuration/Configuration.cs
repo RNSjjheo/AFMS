@@ -16,15 +16,15 @@ namespace AFMSLoggerVideoHydorsem
             }
         }
 
+        public string SiteCode { get; private set; } = "unknown";
+        public int WebPort { get; private set; }
+        public string WebPath { get; private set; } = "upload";
+
         public void Setup()
         {
-            DiagnosticsOwner.Instance.SiteCode = SetSiteCode();
-            DiagnosticsOwner.Instance.LoggerVersion = AFMSBuild.GetVersion();
-            DiagnosticsOwner.Instance.LoggerBuild = AFMSBuild.GetBuildDate();
-            DiagnosticsOwner.Instance.ClientId = "ALL";
-            DiagnosticsOwner.Instance.WebPort = SetWebPort();
-            DiagnosticsOwner.Instance.WebPath = SetWebVisionPath();
-            DiagnosticsOwner.Instance.StartTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            SiteCode = SetSiteCode();
+            WebPort = SetWebPort();
+            WebPath = SetWebVisionPath();
         }
 
         private string SetSiteCode()

@@ -1,4 +1,5 @@
 using AFMSDll;
+using System.Text.Json;
 namespace AFMSLoggerMonitors
 {
     internal sealed class TabLogger : TabPage
@@ -6,6 +7,7 @@ namespace AFMSLoggerMonitors
         private readonly TableLayoutPanel uiTpMain = new TableLayoutPanel();
         private readonly PanelInfo uiInfo;
         private readonly PanelDiag uiDiag;
+        private readonly PanelLog uiLog;
         private readonly ServiceStatusWorker serviceStatusWorker;
         private readonly LoggerTcpClient loggerTcpClient;
         private const int PADDING = 12;
@@ -43,8 +45,14 @@ namespace AFMSLoggerMonitors
             uiDiag.Margin = new Padding(0, PADDING, PADDING, PADDING);
             uiDiag.BorderThickness = 0;
 
+            uiLog = new PanelLog();
+            uiLog.Dock = DockStyle.Fill;
+            uiLog.Margin = new Padding(PADDING, 0, PADDING, PADDING);
+
             uiTpMain.Controls.Add(uiInfo, 0, 0);
             uiTpMain.Controls.Add(uiDiag, 1, 0);
+            uiTpMain.Controls.Add(uiLog, 0, 1);
+            uiTpMain.SetColumnSpan(uiLog, 2);
 
             Controls.Add(uiTpMain);
 
@@ -53,6 +61,7 @@ namespace AFMSLoggerMonitors
 
             loggerTcpClient = new LoggerTcpClient(monitoringHost, monitoringPort, TimeSpan.FromSeconds(10));
             loggerTcpClient.ConnectionChanged += LoggerTcpClient_ConnectionChanged;
+            loggerTcpClient.JsonReceived += LoggerTcpClient_JsonReceived;
             uiInfo.SetTcpConnection(false);
         }
 
@@ -78,6 +87,42 @@ namespace AFMSLoggerMonitors
             uiInfo.SetTcpConnection(e.Connected);
         }
 
+        private void LoggerTcpClient_JsonReceived(object? sender, LoggerJsonReceivedEventArgs e)
+        {
+            if (!TryGetJsonType(e.Json, out JsonPacketType jsonType)) return;
+
+            try
+            {
+                switch (jsonType)
+                {
+                    case JsonPacketType.ViewerLogMsg:
+                        ViewLogMsg? log = e.Json.Deserialize<ViewLogMsg>();
+                        if (log != null) uiLog.Append(log);
+                        break;
+
+                    case JsonPacketType.Diagnotics:
+                        LoggerDiagnostics? diagnostics = e.Json.Deserialize<LoggerDiagnostics>();
+                        if (diagnostics != null) uiDiag.UpdateDiagnostics(diagnostics);
+                        break;
+                }
+            }
+            catch (JsonException)
+            {
+            }
+        }
+
+        private static bool TryGetJsonType(JsonElement json, out JsonPacketType jsonType)
+        {
+            jsonType = default;
+            if (!json.TryGetProperty(nameof(_PacketBase.JsonType), out JsonElement value)) return false;
+            if (value.ValueKind == JsonValueKind.Number && value.TryGetInt32(out int number))
+            {
+                jsonType = (JsonPacketType)number;
+                return true;
+            }
+            return value.ValueKind == JsonValueKind.String && Enum.TryParse(value.GetString(), true, out jsonType);
+        }
+
         private static int GetDefaultMonitoringPort(LoggerKind kind)
         {
             return kind switch
@@ -94,6 +139,7 @@ namespace AFMSLoggerMonitors
                 serviceStatusWorker.StatusChecked -= ServiceStatusWorker_StatusChecked;
                 serviceStatusWorker.Dispose();
                 loggerTcpClient.ConnectionChanged -= LoggerTcpClient_ConnectionChanged;
+                loggerTcpClient.JsonReceived -= LoggerTcpClient_JsonReceived;
                 loggerTcpClient.Dispose();
             }
 

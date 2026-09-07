@@ -40,14 +40,15 @@ namespace AFMSLoggerMonitors
 
             uiDcStartTime = CreateCard("시작시간");
             uiDcStartTime.Margin = new Padding(0, 0, 5, 0);
-            uiDcStartTime.Value = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
+            uiDcStartTime.Value = "-";
 
             uiDcMemoryUse = CreateCard("메모리 사용량");
             uiDcMemoryUse.Margin = new Padding(5, 0, 5, 0);
+            uiDcMemoryUse.Value = "-";
 
             uiDcLastMeas = CreateCard("최근 수집 시간");
             uiDcLastMeas.Margin = new Padding(5, 0, 5, 0);
-            uiDcLastMeas.Value = DateTime.Now.ToString("yyyy/MM/dd HH:mm:ss");
+            uiDcLastMeas.Value = "-";
 
             uiTpRow0 = CreateTableLayout(2);
             uiTpRow0.Controls.Add(uiLbTitle, 0, 0);
@@ -62,6 +63,13 @@ namespace AFMSLoggerMonitors
             uiTpMain.Controls.Add(uiTpRow1, 0, 2);
 
             Controls.Add(uiTpMain);
+        }
+
+        public void UpdateDiagnostics(LoggerDiagnostics diagnostics)
+        {
+            uiDcStartTime.Value = diagnostics.ServiceStartTime.ToString("yyyy/MM/dd HH:mm:ss");
+            uiDcMemoryUse.Value = $"{diagnostics.MemoryUsageBytes / 1024.0 / 1024.0:0.00} MB";
+            uiDcLastMeas.Value = diagnostics.LastMeasurementTime?.ToString("yyyy/MM/dd HH:mm:ss") ?? "-";
         }
 
 
