@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using AFMSDll;
 
 namespace AFMSLoggerMonitors
 {
@@ -8,6 +9,7 @@ namespace AFMSLoggerMonitors
     {
         private readonly NotifyIcon _trayIcon;
         private readonly ContextMenuStrip _trayMenu;
+        private readonly Icon _trayIconImage;
         private FormMain _frmMain;
         public TrayApplicationContext()
         {
@@ -25,10 +27,11 @@ namespace AFMSLoggerMonitors
             _trayMenu.Items.Add(exitMenuItem);
 
             // 시스템 트레이 아이콘 생성
+            _trayIconImage = AFMSIcon.GetIcon(AFMSIcons.LoggerMonitor, 32);
             _trayIcon = new NotifyIcon
             {
-                Icon = SystemIcons.Application,
-                Text = "New Watchdog",
+                Icon = _trayIconImage,
+                Text = "통합 수집 서비스 모니터링",
                 ContextMenuStrip = _trayMenu,
                 Visible = true
             };
@@ -94,7 +97,7 @@ namespace AFMSLoggerMonitors
             Screen screen = Screen.FromPoint(Cursor.Position);
             Rectangle workingArea = screen.WorkingArea;
 
-            _frmMain.Width = 900;
+            _frmMain.Width = 980;
             _frmMain.Height = 600;
             _frmMain.Location = new Point(
                 workingArea.Right - _frmMain.Width - margin,
@@ -129,6 +132,7 @@ namespace AFMSLoggerMonitors
 
             _trayIcon.Dispose();
             _trayMenu.Dispose();
+            _trayIconImage.Dispose();
 
             base.ExitThreadCore();
         }

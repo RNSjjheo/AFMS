@@ -21,7 +21,7 @@ namespace AFMSLoggerMonitors
         public string DeviceName
         {
             get => uiDeviceName.Text;
-            set => SetLabelText(uiDeviceName, value);
+            set => TabCommon.SetLabelText(uiDeviceName, value);
         }
 
         [Category("AFMS Data")]
@@ -29,7 +29,7 @@ namespace AFMSLoggerMonitors
         public string DeviceDesc
         {
             get => uiDeviceDesc.Text;
-            set => SetLabelText(uiDeviceDesc, value);
+            set => TabCommon.SetLabelText(uiDeviceDesc, value);
         }
 
         [Category("AFMS Data")]
@@ -37,7 +37,7 @@ namespace AFMSLoggerMonitors
         public string ServiceName
         {
             get => uiServiceName.Text;
-            set => SetLabelText(uiServiceName, value);
+            set => TabCommon.SetLabelText(uiServiceName, value);
         }
 
         [Category("AFMS Data")]
@@ -45,7 +45,7 @@ namespace AFMSLoggerMonitors
         public string ConnectionInfo
         {
             get => uiConnectionInfo.Text;
-            set => SetLabelText(uiConnectionInfo, value);
+            set => TabCommon.SetLabelText(uiConnectionInfo, value);
         }
 
 
@@ -61,16 +61,16 @@ namespace AFMSLoggerMonitors
             uiTpMain.Dock = DockStyle.Fill;
             uiTpMain.Margin = Padding.Empty;
             uiTpMain.Padding = Padding.Empty;
-            uiTpMain.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 80F));
+            uiTpMain.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 70F));
             uiTpMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
-            uiTpMain.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 200F));
-            uiTpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 40F));
-            uiTpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 10F));
+            uiTpMain.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 180F));
+            uiTpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, TabCommon.TITILE_HIGTH));
+            uiTpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, TabCommon.TITILE_MARGIN));
             uiTpMain.RowStyles.Add(new RowStyle(SizeType.Percent, 33F));
             uiTpMain.RowStyles.Add(new RowStyle(SizeType.Percent, 33F));
             uiTpMain.RowStyles.Add(new RowStyle(SizeType.Percent, 33F));
 
-            uiDeviceName = CreateLabel("영상유속계", 14F, FontStyle.Bold, TabCommon.TextColor);
+            uiDeviceName = TabCommon.CreateTitleLabel("영상유속계");
             uiDeviceName.Text = LoggerDefine.GetDeviceName(kind);
             uiDeviceName.Margin = Padding.Empty;
 
@@ -85,22 +85,22 @@ namespace AFMSLoggerMonitors
             uiTpStatus.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             uiTpStatus.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
-            uiServiceStatus = new StatusIndicator("서비스 실행", true) { Margin = new Padding(0, 0, 18, 0) };
+            uiServiceStatus = new StatusIndicator("서비스 실행", true) { Margin = Padding.Empty };
             uiTcpStatus = new StatusIndicator("TCP 연결", true) { Margin = Padding.Empty };
             uiTpStatus.Controls.Add(uiServiceStatus, 0, 0);
             uiTpStatus.Controls.Add(uiTcpStatus, 1, 0);
 
-            Label deviceDesc = CreateLabel("설명", 9F, FontStyle.Regular, TabCommon.DescriptionColor);
-            Label serviceLabel = CreateLabel("서비스", 9F, FontStyle.Regular, TabCommon.DescriptionColor);
-            Label connectionLabel = CreateLabel("연결 정보", 9F, FontStyle.Regular, TabCommon.DescriptionColor);
+            Label deviceDesc = TabCommon.CreateLabel("설명", 9F, FontStyle.Regular, TabCommon.DescriptionColor);
+            Label serviceLabel = TabCommon.CreateLabel("서비스", 9F, FontStyle.Regular, TabCommon.DescriptionColor);
+            Label connectionLabel = TabCommon.CreateLabel("연결 정보", 9F, FontStyle.Regular, TabCommon.DescriptionColor);
 
-            uiServiceName = CreateLabel("", 9F, FontStyle.Regular, TabCommon.TextColor);
+            uiServiceName = TabCommon.CreateLabel("", 9F, FontStyle.Bold, TabCommon.TextColor);
             uiServiceName.Text = LoggerDefine.GetSerivceName(kind);
 
-            uiDeviceDesc = CreateLabel("", 9F, FontStyle.Regular, TabCommon.TextColor);
+            uiDeviceDesc = TabCommon.CreateLabel("", 9F, FontStyle.Bold, TabCommon.TextColor);
             uiDeviceDesc.Text = LoggerDefine.GetDescription(kind);
 
-            uiConnectionInfo = CreateLabel("127.0.0.1:8004", 9F, FontStyle.Regular, TabCommon.TextColor);
+            uiConnectionInfo = TabCommon.CreateLabel("127.0.0.1:8004", 9F, FontStyle.Bold, TabCommon.TextColor);
 
             uiTpMain.Controls.Add(uiDeviceName, 0, 0);
             uiTpMain.SetColumnSpan(uiDeviceName, 2);
@@ -130,29 +130,6 @@ namespace AFMSLoggerMonitors
         public void SetTcpConnection(bool connected)
         {
             SetStatus(uiTcpStatus, connected, connected ? "TCP 연결" : "TCP 끊김");
-        }
-
-        private static Label CreateLabel(string text, float fontSize, FontStyle fontStyle, Color foreColor)
-        {
-            return new Label
-            {
-                AutoEllipsis = true,
-                BackColor = Color.Transparent,
-                Dock = DockStyle.Fill,
-                Font = new Font(DLLStyle.DEFAULT_FONT_SYLTE, fontSize, fontStyle, GraphicsUnit.Point),
-                ForeColor = foreColor,
-                Margin = Padding.Empty,
-                Text = text,
-                TextAlign = ContentAlignment.MiddleLeft
-            };
-        }
-
-        private static void SetLabelText(Label label, string? value)
-        {
-            void UpdateText() => label.Text = value ?? string.Empty;
-
-            if (label.InvokeRequired) label.BeginInvoke(UpdateText);
-            else UpdateText();
         }
 
         private static void SetStatus(StatusIndicator indicator, bool active, string text)

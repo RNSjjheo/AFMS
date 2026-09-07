@@ -18,7 +18,7 @@ namespace AFMSLoggerMonitors
             Font = new Font(DLLStyle.DEFAULT_FONT_SYLTE, 9F, FontStyle.Bold, GraphicsUnit.Point);
             ForeColor = TabCommon.TextColor;
             BackColor = Color.White;
-            MinimumSize = new Size(96, 28);
+            MinimumSize = new Size(80, 28);
             Text = text;
             Dock = DockStyle.Fill;
             this.active = active;

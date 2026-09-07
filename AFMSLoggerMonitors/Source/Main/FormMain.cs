@@ -21,14 +21,18 @@ namespace AFMSLoggerMonitors
 
         private void ConfigureWindow()
         {
-            Text = "Total Logger Monitoring";
+            using Font titleBarFont = new Font(Font.FontFamily, 10.5F, FontStyle.Bold, GraphicsUnit.Point);
+
+            Text = "통합 수집 서비스 모니터링";
             Size = new Size(800, 600);
             TitleBarColor = DllColorHelper.HexToColor("#1E4B73");
-            TitleBarHeight = 40;
+            TitleBarHeight = 44;
+            TitleBarIconSize = 32;
+            TitleBarFont = titleBarFont;
             ShowIcon = true;
+            Icon = AFMSIcon.GetIcon(AFMSIcons.LoggerMonitor, 32);
             ShowTitleBarIcon = true;
-            BorderRadius = 5;
-            ResizeBorderWidth = 0;
+            BorderRadius = 10;
 
             using Bitmap titleBarImage = AFMSIcon.Get(AFMSIcons.LoggerMonitor, 32);
             TitleBarImage = titleBarImage;

@@ -21,7 +21,7 @@ namespace AFMSLoggerMonitors
             uiTpMain.RowCount = 2;
             uiTpMain.RowStyles.Add(new RowStyle(SizeType.Absolute, 150F));
             uiTpMain.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-            uiTpMain.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute,360F));
+            uiTpMain.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 340F));
             uiTpMain.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
             
             uiInfo = new PanelInfo(kind);

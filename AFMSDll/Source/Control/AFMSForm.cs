@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
 namespace AFMSDll
@@ -21,6 +22,8 @@ namespace AFMSDll
         private const int HTBOTTOMLEFT = 16;
         private const int HTBOTTOMRIGHT = 17;
         private const int CS_DROPSHADOW = 0x00020000;
+        private const int DWMWA_WINDOW_CORNER_PREFERENCE = 33;
+        private const int DWMWA_BORDER_COLOR = 34;
 
         private readonly Button _btnMinimize;
         private readonly Button _btnMaximize;
@@ -43,9 +46,11 @@ namespace AFMSDll
         private Color _windowBorderColor = Color.FromArgb(143, 156, 150);
         private Color _inactiveWindowBorderColor = Color.FromArgb(190, 199, 195);
         private Image? _titleBarImage;
+        private Font? _titleBarFont;
         private bool _showTitleBarIcon = true;
 
         private int _titleBarHeight = 31;
+        private int _titleBarIconSize = 16;
         private int _windowBorderThickness = 1;
         private int _borderRadius = 0;
         private int _resizeBorderWidth = 6;
@@ -54,6 +59,7 @@ namespace AFMSDll
         private bool _showMaximizeButton = true;
         private bool _showWindowShadow = true;
         private bool _windowActive = true;
+        private bool _dwmRoundedCornersApplied;
 
         public AFMSForm()
         {
@@ -168,7 +174,12 @@ namespace AFMSDll
         public Color WindowBorderColor
         {
             get => _windowBorderColor;
-            set { _windowBorderColor = value; Invalidate(); }
+            set
+            {
+                _windowBorderColor = value;
+                ApplyDwmBorderColor();
+                Invalidate();
+            }
         }
 
         [Category("AFMS Appearance")]
@@ -176,7 +187,12 @@ namespace AFMSDll
         public Color InactiveWindowBorderColor
         {
             get => _inactiveWindowBorderColor;
-            set { _inactiveWindowBorderColor = value; Invalidate(); }
+            set
+            {
+                _inactiveWindowBorderColor = value;
+                ApplyDwmBorderColor();
+                Invalidate();
+            }
         }
 
         [Category("AFMS Appearance")]
@@ -189,6 +205,32 @@ namespace AFMSDll
                 Image? previous = _titleBarImage;
                 _titleBarImage = value == null ? null : new Bitmap(value);
                 previous?.Dispose();
+                Invalidate(new Rectangle(0, 0, ClientSize.Width, TitleBarHeight));
+            }
+        }
+
+        [Category("AFMS Appearance")]
+        [DefaultValue(null)]
+        public Font? TitleBarFont
+        {
+            get => _titleBarFont;
+            set
+            {
+                Font? previous = _titleBarFont;
+                _titleBarFont = value == null ? null : new Font(value, value.Style);
+                previous?.Dispose();
+                Invalidate(new Rectangle(0, 0, ClientSize.Width, TitleBarHeight));
+            }
+        }
+
+        [Category("AFMS Appearance")]
+        [DefaultValue(16)]
+        public int TitleBarIconSize
+        {
+            get => _titleBarIconSize;
+            set
+            {
+                _titleBarIconSize = Math.Max(8, value);
                 Invalidate(new Rectangle(0, 0, ClientSize.Width, TitleBarHeight));
             }
         }
@@ -338,7 +380,7 @@ namespace AFMSDll
             e.Graphics.CompositingQuality = CompositingQuality.HighQuality;
 
             int border = WindowBorderThickness;
-            int iconSize = 16;
+            int iconSize = Math.Min(TitleBarIconSize, Math.Max(1, TitleBarHeight - border - 4));
             int iconX = border + 16;
             int iconY = border + ((TitleBarHeight - border - iconSize) / 2);
 
@@ -354,10 +396,10 @@ namespace AFMSDll
 
             int titleButtonsLeft = GetTitleButtonsLeft();
             Rectangle titleRect = new Rectangle(iconX, border, Math.Max(0, titleButtonsLeft - iconX - 8), Math.Max(0, TitleBarHeight - border));
-            TextRenderer.DrawText(e.Graphics, Text, Font, titleRect, TitleForeColor, TextFormatFlags.Left | TextFormatFlags.VerticalCenter |
+            TextRenderer.DrawText(e.Graphics, Text, TitleBarFont ?? Font, titleRect, TitleForeColor, TextFormatFlags.Left | TextFormatFlags.VerticalCenter |
                 TextFormatFlags.SingleLine | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPadding);
 
-            if (WindowBorderThickness <= 0 || ClientSize.Width <= 1 || ClientSize.Height <= 1) return;
+            if (WindowBorderThickness <= 0 || ClientSize.Width <= 1 || ClientSize.Height <= 1 || (_dwmRoundedCornersApplied && WindowBorderThickness == 1)) return;
 
             float inset = WindowBorderThickness / 2F;
             RectangleF rect = new RectangleF(inset, inset, ClientSize.Width - WindowBorderThickness, ClientSize.Height - WindowBorderThickness);
@@ -385,6 +427,12 @@ namespace AFMSDll
             Invalidate();
         }
 
+        protected override void OnHandleCreated(EventArgs e)
+        {
+            base.OnHandleCreated(e);
+            UpdateFormRegion();
+        }
+
         protected override void OnShown(EventArgs e)
         {
             base.OnShown(e);
@@ -409,6 +457,7 @@ namespace AFMSDll
         {
             base.OnActivated(e);
             _windowActive = true;
+            ApplyDwmBorderColor();
             Invalidate();
         }
 
@@ -416,6 +465,7 @@ namespace AFMSDll
         {
             base.OnDeactivate(e);
             _windowActive = false;
+            ApplyDwmBorderColor();
             Invalidate();
         }
 
@@ -598,15 +648,48 @@ namespace AFMSDll
 
             if (WindowState == FormWindowState.Maximized || BorderRadius <= 0)
             {
+                _dwmRoundedCornersApplied = false;
                 Region = null;
                 oldRegion?.Dispose();
+                ApplyDwmCornerPreference(DwmWindowCornerPreference.DoNotRound);
                 return;
             }
 
+            DwmWindowCornerPreference cornerPreference = BorderRadius <= 8
+                ? DwmWindowCornerPreference.RoundSmall
+                : DwmWindowCornerPreference.Round;
+
+            if (ApplyDwmCornerPreference(cornerPreference))
+            {
+                _dwmRoundedCornersApplied = true;
+                Region = null;
+                oldRegion?.Dispose();
+                ApplyDwmBorderColor();
+                return;
+            }
+
+            _dwmRoundedCornersApplied = false;
             RectangleF rect = new RectangleF(0, 0, ClientSize.Width, ClientSize.Height);
             using GraphicsPath path = CreateRoundPath(rect, BorderRadius);
             Region = new Region(path);
             oldRegion?.Dispose();
+        }
+
+        private bool ApplyDwmCornerPreference(DwmWindowCornerPreference preference)
+        {
+            if (!OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000)) return false;
+
+            int preferenceValue = (int)preference;
+            return DwmSetWindowAttribute(Handle, DWMWA_WINDOW_CORNER_PREFERENCE, ref preferenceValue, sizeof(int)) == 0;
+        }
+
+        private void ApplyDwmBorderColor()
+        {
+            if (!_dwmRoundedCornersApplied || !IsHandleCreated || !OperatingSystem.IsWindowsVersionAtLeast(10, 0, 22000)) return;
+
+            Color color = _windowActive ? WindowBorderColor : InactiveWindowBorderColor;
+            int colorReference = color.R | (color.G << 8) | (color.B << 16);
+            DwmSetWindowAttribute(Handle, DWMWA_BORDER_COLOR, ref colorReference, sizeof(int));
         }
 
         private static GraphicsPath CreateRoundPath(RectangleF rect, float radius)
@@ -632,6 +715,16 @@ namespace AFMSDll
 
             return path;
         }
+
+        private enum DwmWindowCornerPreference
+        {
+            DoNotRound = 1,
+            Round = 2,
+            RoundSmall = 3
+        }
+
+        [DllImport("dwmapi.dll")]
+        private static extern int DwmSetWindowAttribute(IntPtr windowHandle, int attribute, ref int attributeValue, int attributeSize);
 
         private void LayoutChrome()
         {
@@ -698,6 +791,8 @@ namespace AFMSDll
                 _shakeTimer.Dispose();
                 _titleBarImage?.Dispose();
                 _titleBarImage = null;
+                _titleBarFont?.Dispose();
+                _titleBarFont = null;
             }
 
             base.Dispose(disposing);
