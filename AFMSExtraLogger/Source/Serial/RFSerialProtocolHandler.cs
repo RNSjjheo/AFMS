@@ -69,7 +69,11 @@ namespace AFMSExtraLogger
             }
         }
 
-        private async Task HandleDeviceRequestAsync(RfModemMessage modemMessage, ProtocolFrame frame, Func<string, CancellationToken, Task> sendAsync, CancellationToken cancellationToken)
+        private async Task HandleDeviceRequestAsync(
+            RfModemMessage modemMessage,
+            ProtocolFrame frame,
+            Func<string, CancellationToken, Task> sendAsync,
+            CancellationToken cancellationToken)
         {
             if (!RFProtocol.TryParseDeviceRequest(frame.Payload, out DeviceRequestData? request, out string error) || request is null)
             {

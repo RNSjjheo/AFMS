@@ -1,10 +1,5 @@
 ﻿using AFMSDll;
 using log4net;
-using Newtonsoft.Json.Linq;
-using RnsLibrary;
-using System.Diagnostics;
-using System.Runtime.InteropServices.JavaScript;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace AFMSExtraLogger.Source.TcpServer
 {
