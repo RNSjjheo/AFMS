@@ -311,7 +311,7 @@ namespace AFMSDll
         public int SelectionIndicatorBottomOffset
         {
             get => _selectionIndicatorBottomOffset;
-            set { _selectionIndicatorBottomOffset = Math.Max(1, value); Invalidate(); }
+            set { _selectionIndicatorBottomOffset = Math.Max(0, value); Invalidate(); }
         }
 
         [Category("AFMS Appearance")]

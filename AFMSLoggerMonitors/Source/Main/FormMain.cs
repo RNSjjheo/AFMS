@@ -21,6 +21,8 @@ namespace AFMSLoggerMonitors
             uiTabCtl.EqualTabWidth = 120;
             uiTabCtl.BorderRadius = 5;
             uiTabCtl.SizeMode = TabSizeMode.Fixed;
+            uiTabCtl.SelectionIndicatorBottomOffset = 0;
+            uiTabCtl.SelectionIndicatorHorizontalInset = 0;
 
             uiLoggerVideo = new TabLogger(LoggerKind.VideoHydrosem);
 
