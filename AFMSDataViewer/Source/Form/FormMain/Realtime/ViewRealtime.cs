@@ -131,7 +131,6 @@ namespace AFMSDataViewer
             uiChart2 = CreateChartPanel();
             uiChart3 = CreateChartPanel();
             uiChart4 = CreateChartPanel();
-            uiTracking.SelectedTimeChanged += UiTracking_SelectedTimeChanged;
             ApplyNavigatorRange();
 
             uiTpTop.Controls.Add(uiRangeCombo, 0, 0);
@@ -152,11 +151,6 @@ namespace AFMSDataViewer
             DateTime start = selectedDateTime.Subtract(GetSelectedDuration());
 
             uiTracking?.SetRange(start, selectedDateTime, selectedDateTime);
-
-            uiChart1?.SetTimeRange(start, selectedDateTime);
-            uiChart2?.SetTimeRange(start, selectedDateTime);
-            uiChart3?.SetTimeRange(start, selectedDateTime);
-            uiChart4?.SetTimeRange(start, selectedDateTime);
         }
 
         private async void UiRangeCombo_SelectedIndexChanged(object? sender, EventArgs e)
@@ -187,14 +181,6 @@ namespace AFMSDataViewer
         private TimeSpan GetSelectedDuration() =>
             (uiRangeCombo.SelectedItem as QueryPeriodOption)?.Duration ??
             TimeSpan.FromHours((int)RealtimeQueryPeriod.Hours6);
-
-        private void UiTracking_SelectedTimeChanged(object? sender, TrackingTimeChangedEventArgs e)
-        {
-            uiChart1.SetTrackingTime(e.Time);
-            uiChart2.SetTrackingTime(e.Time);
-            uiChart3.SetTrackingTime(e.Time);
-            uiChart4.SetTrackingTime(e.Time);
-        }
 
         private void MeasurementDataHub_Changed(object? sender, MeasurementDataChangedEventArgs e)
         {
@@ -250,7 +236,6 @@ namespace AFMSDataViewer
             if (disposing)
             {
                 uiRangeCombo.SelectedIndexChanged -= UiRangeCombo_SelectedIndexChanged;
-                uiTracking.SelectedTimeChanged -= UiTracking_SelectedTimeChanged;
                 measurementDataHub.Changed -= MeasurementDataHub_Changed;
             }
 
@@ -270,7 +255,7 @@ namespace AFMSDataViewer
 
         private ChartSelectPanel CreateChartPanel()
         {
-            ChartSelectPanel panel = new ChartSelectPanel(measurementDataHub);
+            ChartSelectPanel panel = new ChartSelectPanel(measurementDataHub, uiTracking);
             panel.Dock = DockStyle.Fill;
             panel.BorderRadius = 5;
             panel.Padding = Padding.Empty;

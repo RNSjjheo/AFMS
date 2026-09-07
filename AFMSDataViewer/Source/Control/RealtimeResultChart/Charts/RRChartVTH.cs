@@ -8,8 +8,8 @@ namespace AFMSDataViewer
         {
             public override string ToString() => Text;
         }
-        public RRChartVTH(MeasurementDataHub measurementDataHub, DateTime start, DateTime end)
-            : base(ChartMainType.VTH, start, end, measurementDataHub)
+        public RRChartVTH(MeasurementDataHub measurementDataHub, Tracking tracking)
+            : base(ChartMainType.VTH, tracking, measurementDataHub)
         {
             TopLayout.SetSubComboVisible(false);
             TopLayout.uiComboMain.Items.Add(new ValueOption(PowerChartValueType.Input, "입력전압"));

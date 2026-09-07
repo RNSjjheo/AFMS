@@ -11,8 +11,8 @@ namespace AFMSDataViewer
         private readonly List<RealtimeChartSeries> loadedSeries = new();
         private bool populating;
 
-        public RRChartDischarge(MeasurementDataHub measurementDataHub, DateTime start, DateTime end)
-            : base(ChartMainType.Discharge, start, end, measurementDataHub)
+        public RRChartDischarge(MeasurementDataHub measurementDataHub, Tracking tracking)
+            : base(ChartMainType.Discharge, tracking, measurementDataHub)
         {
             TopLayout.uiComboMain.SelectedIndexChanged += (_, _) =>
             {

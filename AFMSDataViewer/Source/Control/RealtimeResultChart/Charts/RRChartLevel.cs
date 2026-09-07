@@ -4,8 +4,8 @@ namespace AFMSDataViewer
 {
     internal sealed class RRChartLevel : RealtimeResultChart
     {
-        public RRChartLevel(MeasurementDataHub measurementDataHub, DateTime start, DateTime end)
-            : base(ChartMainType.Level, start, end, measurementDataHub)
+        public RRChartLevel(MeasurementDataHub measurementDataHub, Tracking tracking)
+            : base(ChartMainType.Level, tracking, measurementDataHub)
         {
             TopLayout.SetSubComboVisible(false);
         }

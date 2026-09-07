@@ -21,13 +21,14 @@ namespace AFMSDataViewer
         private AFMSButton uiBtnChartVTHL;
         private RealtimeResultChart? uiResultChart;
         private readonly MeasurementDataHub measurementDataHub;
-        private DateTime? trackingTime;
-        private DateTime rangeStart;
-        private DateTime rangeEnd;
-        public ChartSelectPanel(MeasurementDataHub measurementDataHub)
+        private readonly Tracking tracking;
+
+        public ChartSelectPanel(MeasurementDataHub measurementDataHub, Tracking tracking)
         {
             ArgumentNullException.ThrowIfNull(measurementDataHub);
+            ArgumentNullException.ThrowIfNull(tracking);
             this.measurementDataHub = measurementDataHub;
+            this.tracking = tracking;
             const float NODE_WIDTH = 70F;
             this.BackColor = DllColorHelper.HexToColor("#FFFFFF");
 
@@ -129,31 +130,16 @@ namespace AFMSDataViewer
             uiResultChart?.Dispose();
             uiResultChart = chartType switch
             {
-                ChartMainType.Velocity => new RRChartVelocity(measurementDataHub, rangeStart, rangeEnd),
-                ChartMainType.Level => new RRChartLevel(measurementDataHub, rangeStart, rangeEnd),
-                ChartMainType.Discharge => new RRChartDischarge(measurementDataHub, rangeStart, rangeEnd),
-                _ => new RRChartVTH(measurementDataHub, rangeStart, rangeEnd)
+                ChartMainType.Velocity => new RRChartVelocity(measurementDataHub, tracking),
+                ChartMainType.Level => new RRChartLevel(measurementDataHub, tracking),
+                ChartMainType.Discharge => new RRChartDischarge(measurementDataHub, tracking),
+                _ => new RRChartVTH(measurementDataHub, tracking)
             };
-            if (trackingTime.HasValue)
-                uiResultChart.SetTrackingTime(trackingTime.Value);
             uiResultChart.MaximizeRequested += UiResultChart_MaximizeRequested;
             uiResultChart.CloseRequested += UiResultChart_CloseRequested;
             Controls.Clear();
             Controls.Add(uiResultChart);
             uiResultChart.LoadData();
-        }
-
-        public void SetTimeRange(DateTime start, DateTime end)
-        {
-            rangeStart = start;
-            rangeEnd = end;
-            uiResultChart?.SetTimeRange(start, end);
-        }
-
-        public void SetTrackingTime(DateTime time)
-        {
-            trackingTime = time;
-            uiResultChart?.SetTrackingTime(time);
         }
 
         /// <summary>표시 중인 실시간 차트를 제거하고 차트 선택 화면으로 돌아갑니다.</summary>

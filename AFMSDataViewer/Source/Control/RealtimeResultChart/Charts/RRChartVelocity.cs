@@ -22,8 +22,8 @@ namespace AFMSDataViewer
 
         private bool populating;
 
-        public RRChartVelocity(MeasurementDataHub measurementDataHub, DateTime start, DateTime end)
-            : base(ChartMainType.Velocity, start, end, measurementDataHub)
+        public RRChartVelocity(MeasurementDataHub measurementDataHub, Tracking tracking)
+            : base(ChartMainType.Velocity, tracking, measurementDataHub)
         {
             TopLayout.uiComboMain.SelectedIndexChanged += (_, _) =>
             {
@@ -149,15 +149,7 @@ namespace AFMSDataViewer
             Form? owner = FindForm();
             Tracking? mainTracking = (owner as FormMain)?._ViewRealtime.uiTracking;
             (double minimumVelocity, double maximumVelocity) = GetYAxisRange();
-            DlgAnalysisVelocity dialog = new(
-                series,
-                point,
-                transect,
-                MeasurementDataHub,
-                measurement,
-                minimumVelocity,
-                maximumVelocity,
-                mainTracking);
+            DlgAnalysisVelocity dialog = new(series, point, transect, MeasurementDataHub, measurement, minimumVelocity, maximumVelocity, mainTracking);
             dialog.Show(owner);
         }
     }

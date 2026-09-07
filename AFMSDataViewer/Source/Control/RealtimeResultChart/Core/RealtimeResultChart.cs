@@ -30,6 +30,7 @@ namespace AFMSDataViewer
         private readonly RealtimeChartLegendController legendController;
         private readonly TableLayoutPanel mainLayout = new();
         private readonly MeasurementDataHub? measurementDataHub;
+        private readonly Tracking tracking;
         private VerticalLine? trackingLine;
         private DateTime? trackingTime;
         private DateTime trackingLabelsExpireAt;
@@ -40,12 +41,14 @@ namespace AFMSDataViewer
         private double? minimumY;
         private double? maximumY;
 
-        protected RealtimeResultChart(ChartMainType chartType, DateTime rangeStart, DateTime rangeEnd,
-            MeasurementDataHub? measurementDataHub = null)
+        protected RealtimeResultChart(ChartMainType chartType, Tracking tracking, MeasurementDataHub? measurementDataHub = null)
         {
+            ArgumentNullException.ThrowIfNull(tracking);
             ChartType = chartType;
-            RangeStart = rangeStart;
-            RangeEnd = rangeEnd;
+            this.tracking = tracking;
+            RangeStart = tracking.RangeStart;
+            RangeEnd = tracking.RangeEnd;
+            trackingTime = tracking.SelectedTime;
             this.measurementDataHub = measurementDataHub;
             ChartAxisRange axisRange = DataViewerChartSettings.GetAxisRange(chartType);
             defaultMaximumY = axisRange.Maximum;
@@ -100,6 +103,7 @@ namespace AFMSDataViewer
             closeButton.BringToFront();
             Controls.Add(chartSection);
 
+            tracking.SelectedTimeChanged += Tracking_SelectedTimeChanged;
             if (measurementDataHub != null)
                 measurementDataHub.Changed += MeasurementDataHub_Changed;
         }
@@ -160,14 +164,6 @@ namespace AFMSDataViewer
 
         public abstract void LoadData();
 
-        public void SetTimeRange(DateTime start, DateTime end)
-        {
-            if (start >= end) throw new ArgumentException("차트 시작 시각은 종료 시각보다 이전이어야 합니다.");
-            RangeStart = start;
-            RangeEnd = end;
-            LoadData();
-        }
-
         public void SetSeries(IEnumerable<RealtimeChartSeries> series)
         {
             availableSeries.Clear();
@@ -212,6 +208,22 @@ namespace AFMSDataViewer
             }
 
             ShowTrackingTooltip(time);
+        }
+
+        private void Tracking_SelectedTimeChanged(object? sender, TrackingTimeChangedEventArgs e)
+        {
+            bool rangeChanged = RangeStart != tracking.RangeStart || RangeEnd != tracking.RangeEnd;
+            RangeStart = tracking.RangeStart;
+            RangeEnd = tracking.RangeEnd;
+
+            if (rangeChanged)
+            {
+                trackingTime = e.Time;
+                LoadData();
+                return;
+            }
+
+            SetTrackingTime(e.Time);
         }
 
         protected Color GetSeriesColor(int seriesIndex) => seriesIndex == 0
@@ -617,6 +629,7 @@ namespace AFMSDataViewer
         {
             if (disposing)
             {
+                tracking.SelectedTimeChanged -= Tracking_SelectedTimeChanged;
                 if (measurementDataHub != null)
                     measurementDataHub.Changed -= MeasurementDataHub_Changed;
                 legendController.Dispose();
