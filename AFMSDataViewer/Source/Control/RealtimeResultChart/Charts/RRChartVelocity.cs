@@ -149,8 +149,7 @@ namespace AFMSDataViewer
             Form? owner = FindForm();
             Tracking? mainTracking = (owner as FormMain)?._ViewRealtime.uiTracking;
             (double minimumVelocity, double maximumVelocity) = GetYAxisRange();
-            DlgDataAnalysis dialog = new(
-                ChartType,
+            DlgAnalysisVelocity dialog = new(
                 series,
                 point,
                 transect,

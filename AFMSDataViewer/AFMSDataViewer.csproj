@@ -59,6 +59,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Folder Include="Source\Form\DlgDataAyalysis\Velocity\" />
     <Folder Include="Source\Measurement\DataSet\" />
   </ItemGroup>
 

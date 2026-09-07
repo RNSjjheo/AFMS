@@ -97,7 +97,7 @@ namespace AFMSDataViewer
 
             Form? owner = FindForm();
             Tracking? mainTracking = (owner as FormMain)?._ViewRealtime.uiTracking;
-            DlgDataAnalysis dialog = new(ChartType, series, point, linkedTracking: mainTracking);
+            DlgAnalysisDischarge dialog = new(series, point, linkedTracking: mainTracking);
             dialog.Show(owner);
         }
 
