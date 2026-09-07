@@ -7,7 +7,7 @@ namespace AFMSLoggerMonitors
         private readonly TableLayoutPanel uiTpMain = new TableLayoutPanel();
         private readonly PanelInfo uiInfo;
         private readonly PanelDiag uiDiag;
-        private readonly PanelLog uiLog;
+        private readonly PanelLogging uiLog;
         private readonly ServiceStatusWorker serviceStatusWorker;
         private readonly LoggerTcpClient loggerTcpClient;
         private const int PADDING = 12;
@@ -45,7 +45,7 @@ namespace AFMSLoggerMonitors
             uiDiag.Margin = new Padding(0, PADDING, PADDING, PADDING);
             uiDiag.BorderThickness = 0;
 
-            uiLog = new PanelLog();
+            uiLog = new PanelLogging();
             uiLog.Dock = DockStyle.Fill;
             uiLog.Margin = new Padding(PADDING, 0, PADDING, PADDING);
 
