@@ -109,6 +109,9 @@
   <data name="icon_layout22_on" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
     <value>Icon\icon_layout22_on.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
   </data>
+  <data name="logger_monitor" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
+    <value>Icon\logger_monitor.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
+  </data>
   <data name="icon_measure_off" type="System.Resources.ResXFileRef, System.Windows.Forms" xml:space="preserve">
     <value>Icon\icon_measure_off.svg;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;utf-8</value>
   </data>

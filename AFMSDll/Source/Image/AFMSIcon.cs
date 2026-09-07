@@ -22,6 +22,7 @@ namespace AFMSDll
         Layout21On,
         Layout22Off,
         Layout22On,
+        LoggerMonitor,
         MeasureOff,
         MeasureOn,
         SearchOff,
@@ -112,6 +113,9 @@ namespace AFMSDll
                     break;
                 case AFMSIcons.Layout22On:
                     resource = Res.icon_layout22_on;
+                    break;
+                case AFMSIcons.LoggerMonitor:
+                    resource = Res.logger_monitor;
                     break;
                 case AFMSIcons.MeasureOff:
                     resource = Res.icon_measure_off;

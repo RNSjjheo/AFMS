@@ -8,7 +8,7 @@ namespace AFMSLoggerMonitors
         private readonly TableLayoutPanel uiTpMain = new TableLayoutPanel();
         private readonly PanelInfo uiInfo;
         private readonly PanelDiag uiDiag;
-        private const int PADDING = 10;
+        private const int PADDING = 12;
         public string ServiceName;
         public TabLogger(LoggerKind kind)
         {

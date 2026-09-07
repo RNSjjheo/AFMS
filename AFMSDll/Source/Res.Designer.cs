@@ -142,6 +142,14 @@ namespace AFMSDll {
             }
         }
 
+        internal static string logger_monitor
+        {
+            get
+            {
+                return ResourceManager.GetString("logger_monitor", resourceCulture);
+            }
+        }
+
         internal static string icon_measure_off {
             get {
                 return ResourceManager.GetString("icon_measure_off", resourceCulture);

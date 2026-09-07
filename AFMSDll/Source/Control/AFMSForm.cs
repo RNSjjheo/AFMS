@@ -295,7 +295,7 @@ namespace AFMSDll
         public int ResizeBorderWidth
         {
             get => _resizeBorderWidth;
-            set => _resizeBorderWidth = Math.Max(1, value);
+            set => _resizeBorderWidth = Math.Max(0, value);
         }
 
         [Category("Action")]

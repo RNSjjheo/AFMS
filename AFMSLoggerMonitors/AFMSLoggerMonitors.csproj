@@ -10,7 +10,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AFMSDll\AFMSDll.csproj" />
-    <ProjectReference Include="..\AFMSSettings\AFMSSettings.csproj" />
   </ItemGroup>
 
 </Project>
