@@ -133,6 +133,7 @@ namespace AFMSLoggerMonitors
             _trayIcon.Dispose();
             _trayMenu.Dispose();
             _trayIconImage.Dispose();
+            _frmMain.Dispose();
 
             base.ExitThreadCore();
         }

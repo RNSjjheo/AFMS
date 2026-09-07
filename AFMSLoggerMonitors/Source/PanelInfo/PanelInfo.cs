@@ -127,6 +127,18 @@ namespace AFMSLoggerMonitors
             SetStatus(uiServiceStatus, isRunning, isRunning ? "서비스 실행" : "서비스 중지");
         }
 
+        public void SetServiceState(ServiceRunState state)
+        {
+            string text = state switch
+            {
+                ServiceRunState.Running => "서비스 실행",
+                ServiceRunState.Stopped => "서비스 중지",
+                _ => "서비스 없음"
+            };
+
+            SetStatus(uiServiceStatus, state == ServiceRunState.Running, text);
+        }
+
         public void SetTcpConnection(bool connected)
         {
             SetStatus(uiTcpStatus, connected, connected ? "TCP 연결" : "TCP 끊김");
