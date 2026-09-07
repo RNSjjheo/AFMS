@@ -3,19 +3,16 @@ using AFMSExtraLogger.Source.Singleton;
 using AFMSExtraLogger.Source.TcpServer;
 using FirebirdSql.Data.FirebirdClient;
 using log4net;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using RnsLibrary;
 using System.Net;
-using System.Reflection;
 
 namespace AFMSExtraLogger
 {
     public class Program
     {
         private static readonly ILog Log = LogManager.GetLogger("SYS");
-        private static RestApiManager _RestApi;
         public static async Task<int> Main(string[] args)
         {
             RnsLog.Init(Environment.UserInteractive, "AFMSExtraLogger", 100, 0);
@@ -32,8 +29,8 @@ namespace AFMSExtraLogger
 
             try
             {
-                var builder = WebApplication.CreateBuilder(
-                    new WebApplicationOptions
+                HostApplicationBuilder builder = Host.CreateApplicationBuilder(
+                    new HostApplicationBuilderSettings
                     {
                         Args = args,
                         ContentRootPath = AppContext.BaseDirectory
@@ -52,9 +49,7 @@ namespace AFMSExtraLogger
                 });
 
                 builder.Services.AddSingleton(serviceProvider => new TcpPacketServer(IPAddress.Any, 8003));
-                builder.Services.AddSingleton<IRequestTaskQueue, RequestTaskQueue>();
                 builder.Services.AddSingleton<TcpMessageDispatcher>();
-                builder.Services.AddHostedService<RequestTaskWorker>();
                 builder.Services.AddHostedService<TcpServerWorker>();
                 builder.Services.AddHostedService<DiagnosticsWorker>();
 
@@ -63,11 +58,7 @@ namespace AFMSExtraLogger
                     builder.Services.AddHostedService<RFSerialServer>();
                 }
 
-                var app = builder.Build();
-
-                _RestApi = new RestApiManager(builder, app);
-                _RestApi.SetTcpServer(app.Services.GetRequiredService<TcpPacketServer>());
-                _RestApi.Regist();
+                IHost app = builder.Build();
 
                 TcpBrocastBuffer.WriteLog("SYS", $"===========================================================");
                 TcpBrocastBuffer.WriteLog("SYS", $"= AFMS Extra Logger");
@@ -80,7 +71,7 @@ namespace AFMSExtraLogger
                     TcpBrocastBuffer.WriteLog("SYS", log);
                 }
 
-                app.Run();
+                await app.RunAsync();
 
                 Log.Info("AFMSExtraLogger 정상 종료");
 

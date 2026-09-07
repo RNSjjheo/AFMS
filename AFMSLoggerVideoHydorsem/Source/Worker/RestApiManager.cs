@@ -2,7 +2,7 @@
 using log4net;
 using System.Text;
 
-namespace AFMSExtraLogger
+namespace AFMSLoggerVideoHydorsem
 {
     public class RestApiManager
     {
@@ -10,37 +10,29 @@ namespace AFMSExtraLogger
         private const string METHOD_POST = "POST";
 
         private static readonly ILog Log = LogManager.GetLogger("API");
-        private WebApplication _RestApi;
-        private TcpPacketServer _TcpServer;
-        public RestApiManager(WebApplicationBuilder builder, WebApplication app)
-        {
-            string path = $"http://0.0.0.0:{DiagnosticsOwner.Instance.WebPort}";
+        private readonly WebApplication restApi;
 
-            _RestApi = app;
-            builder.WebHost.UseUrls(path);
-        }
-
-        public void SetTcpServer(TcpPacketServer tcpserver)
+        public RestApiManager(WebApplication app)
         {
-            _TcpServer = tcpserver;
+            restApi = app;
         }
 
         public async Task StartAsync()
         {
-            await _RestApi.StartAsync();
+            await restApi.StartAsync();
         }
 
         public async Task StopAsync()
         {
-            await _RestApi.StopAsync();
-            await _RestApi.DisposeAsync();
+            await restApi.StopAsync();
+            await restApi.DisposeAsync();
         }
 
         public void Regist()
         {
             string path = DiagnosticsOwner.Instance.WebPath;
 
-            _RestApi.MapPost($"/{path}", async (HttpRequest request, IRequestTaskQueue queue) =>
+            restApi.MapPost($"/{path}", async (HttpRequest request, IRequestTaskQueue queue) =>
             {
                 string jsonBody;
 

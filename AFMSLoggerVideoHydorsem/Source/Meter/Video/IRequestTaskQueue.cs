@@ -1,4 +1,4 @@
-﻿namespace AFMSExtraLogger
+namespace AFMSLoggerVideoHydorsem
 {
     public interface IRequestTaskQueue
     {

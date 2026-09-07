@@ -1,6 +1,6 @@
 ﻿using System.Threading.Channels;
 
-namespace AFMSExtraLogger
+namespace AFMSLoggerVideoHydorsem
 {
     public sealed class RequestTaskQueue : IRequestTaskQueue
     {

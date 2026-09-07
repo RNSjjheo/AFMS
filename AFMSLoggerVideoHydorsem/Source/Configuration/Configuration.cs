@@ -1,13 +1,8 @@
 ﻿using AFMSDll;
-using FirebirdSql.Data.FirebirdClient;
 using RnsLibrary;
 using System.Data;
-using System.Data.Common;
-using System.Net;
-using System.Reflection;
-using System.Security.Principal;
 
-namespace AFMSExtraLogger.Source.Singleton
+namespace AFMSLoggerVideoHydorsem
 {
     public class Configuration
     {
@@ -27,8 +22,9 @@ namespace AFMSExtraLogger.Source.Singleton
             DiagnosticsOwner.Instance.LoggerVersion = AFMSBuild.GetVersion();
             DiagnosticsOwner.Instance.LoggerBuild = AFMSBuild.GetBuildDate();
             DiagnosticsOwner.Instance.ClientId = "ALL";
-            DiagnosticsOwner.Instance.StartTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"); ;
-            DiagnosticsOwner.Instance.MPDSPort = SetMpdsPort();
+            DiagnosticsOwner.Instance.WebPort = SetWebPort();
+            DiagnosticsOwner.Instance.WebPath = SetWebVisionPath();
+            DiagnosticsOwner.Instance.StartTime = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
         }
 
         private string SetSiteCode()
@@ -50,14 +46,30 @@ namespace AFMSExtraLogger.Source.Singleton
             return sitecode;
         }
 
-        private string SetMpdsPort()
+        private int SetWebPort()
+        {
+            int port = 0;
+            string s = "";
+            RnsIni<WebConfig> webconfig = new RnsIni<WebConfig>(AFMSBuild.NAME);
+            webconfig.Read(WebConfig.WebPort, out s, "8000");
+
+            // s가 null일 수 있으므로 안전하게 기본값 적용
+            if (string.IsNullOrWhiteSpace(s)) s = "8000";
+
+            if (!int.TryParse(s, out int n)) port = 8000;
+            else port = n;
+
+            return port;
+        }
+
+        private string SetWebVisionPath()
         {
             string path = "";
-            RnsIni<MpdsConfig> webconfig = new RnsIni<MpdsConfig>(AFMSBuild.NAME);
-            webconfig.Read(MpdsConfig.MpdsPort, out path, "COM9");
+            RnsIni<WebConfig> webconfig = new RnsIni<WebConfig>(AFMSBuild.NAME);
+            webconfig.Read(WebConfig.WebVisionPath, out path, "upload");
 
             // path가 null일 수 있으니 기본값 사용
-            return path ?? "COM9";
+            return path ?? "upload";
         }
     }
 }

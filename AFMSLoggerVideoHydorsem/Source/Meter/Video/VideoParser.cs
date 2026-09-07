@@ -4,11 +4,11 @@ using Newtonsoft.Json.Linq;
 using System.Globalization;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 
-namespace AFMSExtraLogger
+namespace AFMSLoggerVideoHydorsem
 {
     public class VideoParser
     {
-        public static MeasureVideo? Converting(string msg, out string errorMsg)
+        public static MeasureVideo? Converting(string msg, string siteCode, out string errorMsg)
         {
             MeasureVideo Data = new MeasureVideo();
             JObject json;
@@ -25,7 +25,7 @@ namespace AFMSExtraLogger
                 return null;
             }
 
-            Data.SiteCode = DiagnosticsOwner.Instance.SiteCode;
+            Data.SiteCode = siteCode;
             Data.DeviceType = ReadEnum(json, MeasureVideo.KEY_DEVICE_TYPE, HydroVideoType.NONE, out errorMsg);
             if (errorMsg != string.Empty) return null;
 

@@ -6,7 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace AFMSExtraLogger
+namespace AFMSLoggerVideoHydorsem
 {
     internal class RequestTaskWorker : BackgroundService
     {
@@ -58,7 +58,7 @@ namespace AFMSExtraLogger
         private async Task ProcessAsync(int workerNo, RequestWorkItem item, CancellationToken cancellationToken)
         {
             // Converting은 MeasureVideo?를 반환하므로 nullable로 받고 검사
-            MeasureVideo? data = VideoParser.Converting(item.Message, out string errorMsg);
+            MeasureVideo? data = VideoParser.Converting(item.Message, DiagnosticsOwner.Instance.SiteCode, out string errorMsg);
 
             if (data is null)
             {
@@ -69,7 +69,12 @@ namespace AFMSExtraLogger
                 return;
             }
 
-            bool result = DBWriter.VideoInsert(data);
+            bool result = VideoDbWriter.Insert(data);
+            if (!result)
+            {
+                TcpBrocastBuffer.WriteLog("API", $"[{item.Key}] 영상유속계 데이터를 DB에 기록하지 못했습니다.");
+                return;
+            }
 
             DiagnosticsOwner.Instance.VideoMeasDate = data.Datetime.ToString("yyyy-MM-dd");
             DiagnosticsOwner.Instance.VideoMeasTime = data.Datetime.ToString("HH:mm:ss");

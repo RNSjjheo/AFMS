@@ -6,27 +6,6 @@ namespace AFMSExtraLogger
 {
     public static class DBWriter
     {
-        public static bool  VideoInsert(MeasureVideo data)
-        {
-            data.Id = FBProvider.Instance.GetNextID(FbtHYDROMETERVIDEO.TABLE_NAME);
-            if (data.Id == 0) return false;
-
-            bool main = InsertMain(data);
-            if (!main) return false;
-
-            foreach (MeasureVideoCell cell in data.Cells)
-            {
-                cell.VideoId = data.Id;
-                cell.Id = FBProvider.Instance.GetNextID(FbtHYDROMETERVIDEOCELL.TABLE_NAME);
-                if (cell.Id == 0) return false;
-
-                bool detail = InsertDetail(cell);
-                if (!detail) return false;
-            }
-
-            return true;
-        }
-
         public static bool InsertMPDS(MeasurementBatch data)
         {
             if(!IsNewMPDSData(data))
@@ -50,50 +29,6 @@ namespace AFMSExtraLogger
                 bool detail = InsertMPDSDetail(cell);
                 if (!detail) return false;
             }
-
-            return true;
-        }
-
-        private static bool InsertMain(MeasureVideo data)
-        {
-            string sql = $"INSERT INTO {FbtHYDROMETERVIDEO.TABLE_NAME}(";
-            sql += "\n" + $"{FbtHYDROMETERVIDEO.COL_ID}";
-            sql += ",\n" + $"{FbtHYDROMETERVIDEO.COL_MEASURE_DATE}";
-            sql += ",\n" + $"{FbtHYDROMETERVIDEO.COL_MEASURE_TIME}";
-            sql += ",\n" + $"{FbtHYDROMETERVIDEO.COL_SITE_CODE}";
-            sql += ",\n" + $"{FbtHYDROMETERVIDEO.COL_DEVICE_TYPE}";
-            sql += ",\n" + $"{FbtHYDROMETERVIDEO.COL_STATUS}";
-            sql += ",\n" + $"{FbtHYDROMETERVIDEO.COL_INTERVAL}";
-            sql += ",\n" + $"{FbtHYDROMETERVIDEO.COL_WATERLEVEL}";
-            sql += ",\n" + $"{FbtHYDROMETERVIDEO.COL_AREA}";
-            sql += ",\n" + $"{FbtHYDROMETERVIDEO.COL_AREA_UNCERTAINTY}";
-            sql += ",\n" + $"{FbtHYDROMETERVIDEO.COL_VELO}";
-            sql += ",\n" + $"{FbtHYDROMETERVIDEO.COL_VELO_UNCERTAINTY}";
-            sql += ",\n" + $"{FbtHYDROMETERVIDEO.COL_DISC}";
-            sql += ",\n" + $"{FbtHYDROMETERVIDEO.COL_DISC_UNCERTAINTY}";
-            sql += ",\n" + $"{FbtHYDROMETERVIDEO.COL_CELL_COUNT}";
-            sql += ",\n" + $"{FbtHYDROMETERVIDEO.COL_CELL_LENGTH}";
-            sql += "\n" + $")VALUES (";
-            sql += "\n" + $"{data.Id}";
-            sql += ",\n" + $"'{data.Datetime.ToString("yyyyMMdd")}'";
-            sql += ",\n" + $"'{data.Datetime.ToString("HHmmss")}'";
-            sql += ",\n" + $"'{data.SiteCode}'";
-            sql += ",\n" + $"{(int)data.DeviceType}";
-            sql += ",\n" + $"{(int)data.Status}";
-            sql += ",\n" + $"{data.Interval}";
-            sql += ",\n" + $"{data.WaterLevel.ToString("0.00")}";
-            sql += ",\n" + $"{data.Area.ToString("0.00")}";
-            sql += ",\n" + $"{data.AreaUncertainty.ToString("0.00")}";
-            sql += ",\n" + $"{data.Velocity.ToString("0.000")}";
-            sql += ",\n" + $"{data.VeloUncertainty.ToString("0.000")}";
-            sql += ",\n" + $"{data.Disc.ToString("0.00")}";
-            sql += ",\n" + $"{data.DiscUncertainty.ToString("0.00")}";
-            sql += ",\n" + $"{data.CellCount}";
-            sql += ",\n" + $"{data.CellLength}";
-            sql += "\n" + $")";
-
-            using FBDatabase db = FBProvider.Instance.CreateDatabase();
-            db.RunNonQuery(sql);
 
             return true;
         }
@@ -132,32 +67,6 @@ namespace AFMSExtraLogger
             sql += ",\n" + $"{data.Wind.Atmosphere.ToString("0.00")}";
             sql += ",\n" + $"{data.CollectorRSSI.ToString()}";
             sql += ",\n" + $"0";
-            sql += "\n" + $")";
-
-            using FBDatabase db = FBProvider.Instance.CreateDatabase();
-            db.RunNonQuery(sql);
-
-            return true;
-        }
-
-        private static bool InsertDetail(MeasureVideoCell data)
-        {
-            string sql = $"INSERT INTO {FbtHYDROMETERVIDEOCELL.TABLE_NAME}(";
-            sql += "\n" + $"{FbtHYDROMETERVIDEOCELL.COL_ID}";
-            sql += ",\n" + $"{FbtHYDROMETERVIDEOCELL.COL_VIDEO_ID}";
-            sql += ",\n" + $"{FbtHYDROMETERVIDEOCELL.COL_CELL_NO}";
-            sql += ",\n" + $"{FbtHYDROMETERVIDEOCELL.COL_VELOCITY}";
-            sql += ",\n" + $"{FbtHYDROMETERVIDEOCELL.COL_POS_X}";
-            sql += ",\n" + $"{FbtHYDROMETERVIDEOCELL.COL_POS_Y}";
-            sql += ",\n" + $"{FbtHYDROMETERVIDEOCELL.COL_UNCERTAINTY}";
-            sql += "\n" + $")VALUES (";
-            sql += "\n" + $"{data.Id}";
-            sql += ",\n" + $"{data.VideoId}";
-            sql += ",\n" + $"{data.No}";
-            sql += ",\n" + $"{data.Velocity}";
-            sql += ",\n" + $"{data.PosX}";
-            sql += ",\n" + $"{data.PosY}";
-            sql += ",\n" + $"{data.Uncertainty}";
             sql += "\n" + $")";
 
             using FBDatabase db = FBProvider.Instance.CreateDatabase();
