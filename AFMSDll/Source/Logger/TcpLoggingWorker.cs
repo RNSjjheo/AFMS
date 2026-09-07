@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Text;
 using System.Threading.Channels;
 using log4net;
@@ -26,6 +27,7 @@ namespace AFMSDll
         private long lastMeasurementTicks;
 
         public DateTime ServiceStartTime { get; } = Process.GetCurrentProcess().StartTime;
+        public string ProgramVersion { get; } = ReadProgramVersion();
         public DateTime? LastMeasurementTime
         {
             get
@@ -38,6 +40,15 @@ namespace AFMSDll
         public void ReportMeasurement(DateTime measurementTime)
         {
             Interlocked.Exchange(ref lastMeasurementTicks, measurementTime.ToLocalTime().Ticks);
+        }
+
+        private static string ReadProgramVersion()
+        {
+            Assembly? assembly = Assembly.GetEntryAssembly();
+            if (assembly == null) return string.Empty;
+
+            string? informationalVersion = assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion;
+            return string.IsNullOrWhiteSpace(informationalVersion) ? assembly.GetName().Version?.ToString() ?? string.Empty : informationalVersion;
         }
     }
 
@@ -167,6 +178,7 @@ namespace AFMSDll
             return new LoggerDiagnostics
             {
                 ClientId = options.ServiceName,
+                ProgramVersion = diagnostics.ProgramVersion,
                 ServiceStartTime = diagnostics.ServiceStartTime,
                 MemoryUsageBytes = process.WorkingSet64,
                 LastMeasurementTime = diagnostics.LastMeasurementTime

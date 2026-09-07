@@ -85,6 +85,7 @@ namespace AFMSLoggerMonitors
         private void LoggerTcpClient_ConnectionChanged(object? sender, TcpConnectionChangedEventArgs e)
         {
             uiInfo.SetTcpConnection(e.Connected);
+            if (!e.Connected) uiDiag.SetDisconnected();
         }
 
         private void LoggerTcpClient_JsonReceived(object? sender, LoggerJsonReceivedEventArgs e)

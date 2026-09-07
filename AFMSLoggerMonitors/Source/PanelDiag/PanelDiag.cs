@@ -33,7 +33,7 @@ namespace AFMSLoggerMonitors
             uiTpMain.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
 
             uiLbTitle = TabCommon.CreateTitleLabel("운영 정보");
-            uiLbVersion = TabCommon.CreateLabel("v0.9.0.1", 9F, FontStyle.Regular, TabCommon.DescriptionColor);
+            uiLbVersion = TabCommon.CreateLabel("-.-.-.-", 9F, FontStyle.Regular, TabCommon.DescriptionColor);
             uiLbVersion.TextAlign = ContentAlignment.MiddleRight;
 
             uiDcStartTime = CreateCard("시작시간");
@@ -65,9 +65,17 @@ namespace AFMSLoggerMonitors
 
         public void UpdateDiagnostics(LoggerDiagnostics diagnostics)
         {
+            string versionText = string.IsNullOrWhiteSpace(diagnostics.ProgramVersion) ? string.Empty : $"v{diagnostics.ProgramVersion}";
+            TabCommon.SetLabelText(uiLbVersion, versionText);
             uiDcStartTime.Value = diagnostics.ServiceStartTime.ToString("yyyy/MM/dd HH:mm:ss");
             uiDcMemoryUse.Value = $"{diagnostics.MemoryUsageBytes / 1024.0 / 1024.0:0.00} MB";
             uiDcLastMeas.Value = diagnostics.LastMeasurementTime?.ToString("yyyy/MM/dd HH:mm:ss") ?? "-";
+        }
+
+        public void SetDisconnected()
+        {
+            TabCommon.SetLabelText(uiLbVersion, "-.-.-.-");
+            uiDcStartTime.Value = "-";
         }
 
 
