@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+	<TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
     <Nullable>enable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -27,15 +27,6 @@
 
     <Copy SourceFiles="@(DataReplicatorRuntimeFiles)" DestinationFiles="@(DataReplicatorRuntimeFiles->'$(OutDir)%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
   </Target>
-
-  <ItemGroup>
-    <ProjectReference Include="..\AFMSDataReplicator\AFMSDataReplicator.csproj" />
-    <ProjectReference Include="..\AFMSDischargeService\AFMSDischargeService.csproj" />
-    <ProjectReference Include="..\AFMSDll\AFMSDll.csproj" />
-    <ProjectReference Include="..\AFMSExtraLogger\AFMSExtraLogger.csproj" />
-    <ProjectReference Include="..\AFMSExtraMonitor\AFMSExtraMonitor.csproj" />
-    <ProjectReference Include="..\AFMSSettings\AFMSSettings.csproj" />
-  </ItemGroup>
 
   <ItemGroup>
     <Reference Include="RnsLibrary">
